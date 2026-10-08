@@ -2,6 +2,7 @@ package cn.mlus.neobiosphere.mixin;
 
 import cn.mlus.neobiosphere.carver.SphereCarver;
 import cn.mlus.neobiosphere.config.SphereConfig;
+import cn.mlus.neobiosphere.Neobiosphere;
 import cn.mlus.neobiosphere.registry.ModBiomeAccess;
 import cn.mlus.neobiosphere.worldgen.BiosphereWorldgen;
 import cn.mlus.neobiosphere.worldgen.BiosphereBiomeSourceAccess;
@@ -30,23 +31,17 @@ public abstract class MixinMultiNoiseBiomeSource implements BiosphereBiomeSource
 
         Holder<Biome> biomeHolder = this.getNoiseBiome(sampler.sample(x, y, z));
 
-        int sphereSpacing = SphereConfig.SPACING.get().intValue();
-        int centerY = SphereConfig.CENTER_Y.get().intValue();
-
         int i = QuartPos.toBlock(x);
         int j = QuartPos.toBlock(y);
         int k = QuartPos.toBlock(z);
-
-        int gridX = Math.round((float) i / sphereSpacing) * sphereSpacing;
-        int gridZ = Math.round((float) k / sphereSpacing) * sphereSpacing;
-
-        double dx = i - gridX;
-        double dy = j - centerY;
-        double dz = k - gridZ;
-
-        double distance = dx * dx + dz * dz + dy * dy;
-        int sphereRadius = SphereCarver.getSphereRadiusAt(i, k);
-        if (!biomeHolder.is(BiomeTags.IS_NETHER) && !biomeHolder.is(BiomeTags.IS_END) && (distance > (2 + sphereRadius) * (2 + sphereRadius))) {
+        boolean outsideSphere = !SphereCarver.isInsideAnySphere(i, j, k, -4);
+        if (SphereConfig.DEBUG_BIOME_LOOKUPS.get() && outsideSphere) {
+            Neobiosphere.LOGGER.debug("biome-route=MultiNoiseBiomeSource#getNoiseBiome sampler=({},{},{}) block=({},{},{}) before={} marked={}",
+                x, y, z, i, j, k,
+                biomeHolder.unwrapKey().map(key -> key.location().toString()).orElse("unregistered"),
+                neobiosphere$isBiosphereBiomeSource());
+        }
+        if (outsideSphere) {
             Holder<Biome> voidBiome = ModBiomeAccess.LOOKUP.getOrThrow(Biomes.THE_VOID);
             if(voidBiome.isBound())
                 cir.setReturnValue(voidBiome);
@@ -54,7 +49,7 @@ public abstract class MixinMultiNoiseBiomeSource implements BiosphereBiomeSource
     }
 
     @org.spongepowered.asm.mixin.Unique
-    private boolean neobiosphere$biosphereBiomeSource;
+    private volatile boolean neobiosphere$biosphereBiomeSource;
 
     @Override
     public boolean neobiosphere$isBiosphereBiomeSource() {

@@ -5,8 +5,12 @@
       "generator": {
         "type": "minecraft:noise",
         "biome_source": {
-          "type": "minecraft:multi_noise",
-          "preset": "minecraft:overworld"
+          "type": "neobiosphere:biospheres",
+          "source": {
+            "type": "minecraft:multi_noise",
+            "preset": "minecraft:overworld"
+          },
+          "void_biome": "minecraft:the_void"
         },
         "settings": "neobiosphere:biospheres"
       }

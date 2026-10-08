@@ -50,6 +50,7 @@ bridge_block = "minecraft:oak_planks"
 bridge_radius = 1
 restrict_structures_to_spheres = true
 structure_edge_margin = 16
+debug_biome_lookups = false
 ```
 
 - `radius`: Maximum sphere radius.
@@ -63,6 +64,7 @@ structure_edge_margin = 16
 - `bridge_radius`: Bridge radius (larger values make thicker bridges).
 - `restrict_structures_to_spheres`: Keep structure starts inside biospheres when enabled.
 - `structure_edge_margin`: Extra inward margin, in blocks, for structure start positions.
+- `debug_biome_lookups`: Enable temporary DEBUG logging for outside-sphere biome routes.
 
 ### Tuning Notes
 
