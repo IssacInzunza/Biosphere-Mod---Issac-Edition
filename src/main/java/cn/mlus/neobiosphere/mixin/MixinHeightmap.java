@@ -2,6 +2,7 @@ package cn.mlus.neobiosphere.mixin;
 
 import cn.mlus.neobiosphere.config.SphereConfig;
 import cn.mlus.neobiosphere.util.SphereUtil;
+import cn.mlus.neobiosphere.worldgen.BiosphereWorldgen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -22,7 +23,7 @@ public class MixinHeightmap {
             ordinal = 0
     )
     private BlockState onUpdateBlockState(BlockState state, int x, int y, int z) {
-        if (SphereUtil.isSphereBlock(state) && y > SphereConfig.CENTER_Y.get().intValue()) {
+        if (BiosphereWorldgen.isBiosphereChunk(this) && SphereUtil.isSphereBlock(state) && y > SphereConfig.CENTER_Y.get().intValue()) {
             return Blocks.AIR.defaultBlockState();
         }
         return state;
@@ -37,7 +38,7 @@ public class MixinHeightmap {
     )
     private static BlockState onPrimeGetBlockState(ChunkAccess instance, BlockPos pos) {
         BlockState original = instance.getBlockState(pos);
-        if (SphereUtil.isSphereBlock(original) && pos.getY() > SphereConfig.CENTER_Y.get().intValue()) {
+        if (BiosphereWorldgen.isBiosphereChunk(instance) && SphereUtil.isSphereBlock(original) && pos.getY() > SphereConfig.CENTER_Y.get().intValue()) {
             return Blocks.AIR.defaultBlockState();
         }
         return original;

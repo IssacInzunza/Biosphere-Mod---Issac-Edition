@@ -2,9 +2,11 @@ package cn.mlus.neobiosphere.event;
 
 import cn.mlus.neobiosphere.carver.SphereCarver;
 import cn.mlus.neobiosphere.util.SphereUtil;
+import cn.mlus.neobiosphere.worldgen.BiosphereWorldgen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -16,6 +18,9 @@ public class PlayerSpawnHandler {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         Player entity = event.getEntity();
         Level level = entity.level();
+        if (!isBiosphereWorld(level)) {
+            return;
+        }
         new Thread(() -> teleportIntoSphere(level, entity)).start();
     }
 
@@ -23,7 +28,15 @@ public class PlayerSpawnHandler {
     public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
         Player entity = event.getEntity();
         Level level = entity.level();
+        if (!isBiosphereWorld(level)) {
+            return;
+        }
         new Thread(() -> teleportIntoSphere(level, entity)).start();
+    }
+
+    private static boolean isBiosphereWorld(Level level) {
+        return level instanceof ServerLevel serverLevel
+                && BiosphereWorldgen.isBiosphereGenerator(serverLevel.getChunkSource().getGenerator());
     }
 
     private static void teleportIntoSphere(Level level, Player entity) {

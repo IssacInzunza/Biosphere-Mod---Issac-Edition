@@ -2,6 +2,11 @@ package cn.mlus.neobiosphere.mixin;
 
 import cn.mlus.neobiosphere.carver.SphereBridgeCarver;
 import cn.mlus.neobiosphere.carver.SphereCarver;
+import cn.mlus.neobiosphere.worldgen.BiosphereWorldgen;
+import cn.mlus.neobiosphere.worldgen.BiosphereChunkAccess;
+import cn.mlus.neobiosphere.worldgen.BiosphereGeneratorAccess;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.server.level.WorldGenRegion;
@@ -10,6 +15,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.BiomeManager;
+import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.chunk.CarvingMask;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ProtoChunk;
@@ -22,14 +28,53 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Iterator;
 import java.util.Objects;
 
 @Mixin(NoiseBasedChunkGenerator.class)
-public abstract class MixinNoiseBasedChunkGenerator {
+public abstract class MixinNoiseBasedChunkGenerator implements BiosphereGeneratorAccess {
+    private static final ResourceKey<NoiseGeneratorSettings> BIOSPHERE_SETTINGS = ResourceKey.create(Registries.NOISE_SETTINGS, cn.mlus.neobiosphere.Neobiosphere.prefix("biospheres"));
+
+    @Inject(method = "<init>", at = @org.spongepowered.asm.mixin.injection.At("TAIL"))
+    private void registerBiosphereBiomeSource(BiomeSource biomeSource, Holder<NoiseGeneratorSettings> settings, CallbackInfo ci) {
+        if (neobiosphere$isBiosphereGenerator()) {
+            BiosphereWorldgen.markBiomeSource(biomeSource);
+        }
+    }
+
+    @Override
+    public boolean neobiosphere$isBiosphereGenerator() {
+        return settings.unwrapKey().map(BIOSPHERE_SETTINGS::equals).orElse(false);
+    }
+
+    @Inject(method = "createNoiseChunk", at = @org.spongepowered.asm.mixin.injection.At("RETURN"))
+    private void markBiosphereNoiseChunk(ChunkAccess chunk, StructureManager structureManager, Blender blender,
+                                         RandomState random, org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<NoiseChunk> cir) {
+        if (neobiosphere$isBiosphereGenerator()) {
+            BiosphereWorldgen.markNoiseChunk(cir.getReturnValue());
+            if (cir.getReturnValue().aquifer() instanceof Aquifer.NoiseBasedAquifer aquifer) {
+                BiosphereWorldgen.markAquifer(aquifer);
+            }
+            ((BiosphereChunkAccess) chunk).neobiosphere$setBiosphere(true);
+        }
+    }
+
+    @Inject(method = "createBiomes", at = @org.spongepowered.asm.mixin.injection.At("HEAD"))
+    private void markBiosphereBiomeSource(RandomState random, Blender blender, StructureManager structureManager,
+                                          ChunkAccess chunk, CallbackInfoReturnable<java.util.concurrent.CompletableFuture<ChunkAccess>> cir) {
+        if (neobiosphere$isBiosphereGenerator()) {
+            BiosphereWorldgen.markBiomeSource(((NoiseBasedChunkGenerator)(Object)this).getBiomeSource());
+        }
+    }
+
     @Inject(method = "applyCarvers", at = @org.spongepowered.asm.mixin.injection.At("HEAD"), cancellable = true)
     private void applyCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomeManager, StructureManager structureManager, ChunkAccess chunk, GenerationStep.Carving step, CallbackInfo ci){
+        if (!neobiosphere$isBiosphereGenerator()) {
+            return;
+        }
+
         NoiseBasedChunkGenerator generator = (NoiseBasedChunkGenerator)(Object)this;
 
         BiomeManager biomemanager = biomeManager.withDifferentSource((p_255581_, p_255582_, p_255583_) -> generator.getBiomeSource().getNoiseBiome(p_255581_, p_255582_, p_255583_, random.sampler()));

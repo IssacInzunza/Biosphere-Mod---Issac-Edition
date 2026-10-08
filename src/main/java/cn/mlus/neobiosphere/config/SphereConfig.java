@@ -19,6 +19,8 @@ public class SphereConfig {
     public static final ModConfigSpec.ConfigValue<Boolean> GENERATE_BRIDGE;
     public static final ModConfigSpec.ConfigValue<String> BRIDGE_BLOCK;
     public static final ModConfigSpec.ConfigValue<Number> BRIDGE_RADIUS;
+    public static final ModConfigSpec.ConfigValue<Boolean> RESTRICT_STRUCTURES_TO_SPHERES;
+    public static final ModConfigSpec.IntValue STRUCTURE_EDGE_MARGIN;
 
     static {
         BUILDER.push("Settings");
@@ -31,6 +33,8 @@ public class SphereConfig {
         GENERATE_BRIDGE = BUILDER.comment("Generate bridges between spheres").define("generate_bridge", true);
         BRIDGE_BLOCK = BUILDER.comment("Block used for the bridges").define("bridge_block", "minecraft:oak_planks", SphereConfig::validateItemName);
         BRIDGE_RADIUS = BUILDER.comment("Radius of the bridges").define("bridge_radius", 1);
+        RESTRICT_STRUCTURES_TO_SPHERES = BUILDER.comment("Restrict structure starts to the inside of spheres").define("restrict_structures_to_spheres", true);
+        STRUCTURE_EDGE_MARGIN = BUILDER.comment("Minimum distance between a structure start and a sphere edge").defineInRange("structure_edge_margin", 16, 0, 128);
         SPEC = BUILDER.build();
     }
 

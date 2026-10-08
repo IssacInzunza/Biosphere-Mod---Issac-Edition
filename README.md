@@ -2,7 +2,7 @@
 
 A Biosphere world generation mod for NeoForge 1.21.1.
 
-NeoBiosphere generates large grid-aligned spheres in the Overworld (with an optional upper-hemisphere mode) while preserving vanilla biome sampling behavior. This allows different climate zones and terrain styles to appear naturally across different spheres. You can fine-tune sphere size, spacing, center height, bridge behavior, and more through configuration.
+NeoBiosphere generates large grid-aligned spheres in the Overworld (with an optional upper-hemisphere mode) while preserving vanilla biome sampling behavior. Select the **NeoBiosphere** world preset on the Create World screen to opt into the biosphere terrain. Vanilla Overworld presets remain unchanged.
 
 ## Highlights
 
@@ -13,6 +13,7 @@ NeoBiosphere generates large grid-aligned spheres in the Overworld (with an opti
 - Optional upper-hemisphere mode for sky-island or challenge-style gameplay.
 - Automatic sphere-to-sphere bridges for smoother exploration.
 - Compatibility-oriented implementation via Biome Modifier and noise routing integration.
+- Opt-in world preset that leaves vanilla worlds untouched.
 
 ## Requirements
 
@@ -47,6 +48,8 @@ only_upper_hemisphere = false
 generate_bridge = true
 bridge_block = "minecraft:oak_planks"
 bridge_radius = 1
+restrict_structures_to_spheres = true
+structure_edge_margin = 16
 ```
 
 - `radius`: Maximum sphere radius.
@@ -58,6 +61,8 @@ bridge_radius = 1
 - `generate_bridge`: Enable or disable bridges between adjacent spheres.
 - `bridge_block`: Block used for bridges.
 - `bridge_radius`: Bridge radius (larger values make thicker bridges).
+- `restrict_structures_to_spheres`: Keep structure starts inside biospheres when enabled.
+- `structure_edge_margin`: Extra inward margin, in blocks, for structure start positions.
 
 ### Tuning Notes
 
@@ -82,20 +87,16 @@ NeoBiosphere is designed to support most terrain/ecology mod setups, but world g
   - Mods that append content through Biome Modifiers.
 
 - Potential conflicts with:
-  - Mods or datapacks that directly replace noise settings for `minecraft:overworld`, `minecraft:large_biomes`, or `minecraft:amplified`.
+  - Mods or datapacks that replace or modify the `neobiosphere:biospheres` noise settings or world preset.
   - Mods that deeply alter Carver, Aquifer, or ChunkGenerator pipelines.
 
 - Recommended approach:
   - Treat NeoBiosphere as the primary world-shape mod.
   - Test in a fresh world before finalizing load order and datapack priority in modpacks.
 
-## Covered Overworld Noise Presets
+## World Preset
 
-Current version includes support for these Overworld presets:
-
-- `minecraft:overworld`
-- `minecraft:large_biomes`
-- `minecraft:amplified`
+Choose **Biospheres - Issac Edition** in the Create World screen to use the biosphere generator. The standard vanilla presets, including Overworld, Large Biomes, and Amplified, retain their normal terrain generation.
 
 ## FAQ
 

@@ -160,6 +160,10 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
     }
 
     public static boolean isInsideAnySphere(double x, double y, double z) {
+        return isInsideAnySphere(x, y, z, 0);
+    }
+
+    public static boolean isInsideAnySphere(double x, double y, double z, double edgeMargin) {
         int spacing = SphereConfig.SPACING.get().intValue();
         int centerY = SphereConfig.CENTER_Y.get().intValue();
         int gridX = getSphereGridX(x);
@@ -173,8 +177,9 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                 double dx = x - centerX;
                 double dy = y - centerY;
                 double dz = z - centerZ;
-                double shellThickness = 2.0;
-                double innerRadiusSq = (radius - shellThickness) * (radius - shellThickness);
+                // Keep structure starts away from the generated shell so their pieces do not cross into empty space.
+                double effectiveRadius = radius - 2.0 - edgeMargin;
+                double innerRadiusSq = effectiveRadius * effectiveRadius;
                 if (dx * dx + dy * dy + dz * dz < innerRadiusSq) {
                     return true;
                 }

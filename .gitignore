@@ -1,0 +1,21 @@
+# Gradle
+.gradle/
+build/
+
+# Local Minecraft development files
+run/
+logs/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Java crash and diagnostic files
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+
+# OS files
+.DS_Store
+Thumbs.db

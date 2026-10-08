@@ -3,6 +3,8 @@ package cn.mlus.neobiosphere.mixin;
 import cn.mlus.neobiosphere.carver.SphereCarver;
 import cn.mlus.neobiosphere.config.SphereConfig;
 import cn.mlus.neobiosphere.registry.ModBiomeAccess;
+import cn.mlus.neobiosphere.worldgen.BiosphereWorldgen;
+import cn.mlus.neobiosphere.worldgen.BiosphereBiomeSourceAccess;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.tags.BiomeTags;
@@ -17,11 +19,15 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(MultiNoiseBiomeSource.class)
-public abstract class MixinMultiNoiseBiomeSource{
+public abstract class MixinMultiNoiseBiomeSource implements BiosphereBiomeSourceAccess {
     @Shadow public abstract Holder<Biome> getNoiseBiome(Climate.TargetPoint targetPoint);
 
     @Inject(method = "getNoiseBiome(IIILnet/minecraft/world/level/biome/Climate$Sampler;)Lnet/minecraft/core/Holder;", at = @At("HEAD"), cancellable = true)
     private void getNoiseBiome(int x, int y, int z, Climate.Sampler sampler, CallbackInfoReturnable<Holder<Biome>> cir){
+        if (!neobiosphere$isBiosphereBiomeSource()) {
+            return;
+        }
+
         Holder<Biome> biomeHolder = this.getNoiseBiome(sampler.sample(x, y, z));
 
         int sphereSpacing = SphereConfig.SPACING.get().intValue();
@@ -45,5 +51,18 @@ public abstract class MixinMultiNoiseBiomeSource{
             if(voidBiome.isBound())
                 cir.setReturnValue(voidBiome);
         }
+    }
+
+    @org.spongepowered.asm.mixin.Unique
+    private boolean neobiosphere$biosphereBiomeSource;
+
+    @Override
+    public boolean neobiosphere$isBiosphereBiomeSource() {
+        return neobiosphere$biosphereBiomeSource;
+    }
+
+    @Override
+    public void neobiosphere$setBiosphereBiomeSource(boolean biosphere) {
+        neobiosphere$biosphereBiomeSource = biosphere;
     }
 }

@@ -6,9 +6,13 @@
   "refmap": "neobiosphere.refmap.json",
   "mixins": [
     "MixinHeightmap",
+    "MixinChunkAccess",
+    "MixinNoiseChunk",
     "MixinMultiNoiseBiomeSource",
     "MixinMultiNoiseBiomeSourceParameterList",
+    "MixinChunkGeneratorStructures",
     "MixinNoiseBasedAquifer",
+    "accessor.StructureManagerAccessor",
     "MixinNoiseBasedChunkGenerator"
   ],
   "client": [
