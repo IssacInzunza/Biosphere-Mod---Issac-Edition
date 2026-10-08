@@ -1,19 +1,21 @@
 # Biosphere Worlds - Issac Edition
 
-An Issac Edition fork of Biosphere Worlds for NeoForge 1.21.1.
+Biosphere Worlds – Issac Edition is a fork of [NeoBiosphere](https://github.com/mlus-asuka/NeoBiosphere) by mlus, for NeoForge 1.21.1. Full credit to the original author for the concept and base code.
 
 Biosphere Worlds generates the Overworld as floating glass biospheres surrounded by void, with biomes and structures restricted to each sphere. Select **Biospheres - Issac Edition** on the Create World screen to opt into the biosphere terrain. Vanilla Overworld presets remain unchanged.
 
 ## Highlights
 
 - Sphere-based Overworld generation with a clean grid layout.
-- Multi-biome support based on vanilla noise biome sampling.
+- Multi-biome support inside spheres.
 - Highly configurable parameters: radius, spacing, center Y, sphere block, bridge options, and more.
 - Per-sphere variety: each sphere gets a random size and block type from configurable lists, while remaining deterministic across world reloads.
 - Optional upper-hemisphere mode for sky-island or challenge-style gameplay.
 - Automatic sphere-to-sphere bridges for smoother exploration.
 - Compatibility-oriented implementation via Biome Modifier and noise routing integration.
 - Opt-in world preset that leaves vanilla worlds untouched.
+- Biomes outside the spheres are `minecraft:the_void`, so `/locate biome` and biome compasses only find biomes inside spheres.
+- Structures are restricted to the spheres, with a configurable edge margin.
 
 ## Requirements
 
@@ -154,6 +156,10 @@ GNU General Public License v3.0
 
 ## Feedback
 
-Issue tracker:
+Found a bug or have a suggestion? Open an issue:
 
-- https://github.com/mlus-asuka/Biosphere Worlds/issues
+- https://github.com/IssacInzunza/Biosphere-Mod---Issac-Edition/issues
+
+## Credits
+
+Original mod: [NeoBiosphere](https://github.com/mlus-asuka/NeoBiosphere) by mlus (GPL-3.0). This fork keeps the original license and copyright notices.
