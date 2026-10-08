@@ -1,0 +1,24 @@
+{
+  "required": true,
+  "package": "cn.mlus.biosphereworlds.mixin",
+  "minVersion": "0.8.5",
+  "compatibilityLevel": "JAVA_21",
+  "refmap": "biosphereworlds.refmap.json",
+  "mixins": [
+    "MixinHeightmap",
+    "MixinChunkAccess",
+    "MixinChunkGeneratorBiomeSource",
+    "MixinNoiseChunk",
+    "MixinMultiNoiseBiomeSource",
+    "MixinMultiNoiseBiomeSourceParameterList",
+    "MixinChunkGeneratorStructures",
+    "MixinNoiseBasedAquifer",
+    "accessor.StructureManagerAccessor",
+    "MixinNoiseBasedChunkGenerator"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

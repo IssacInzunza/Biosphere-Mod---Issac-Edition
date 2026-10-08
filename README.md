@@ -1,8 +1,8 @@
-# NeoBiosphere
+# Biosphere Worlds - Issac Edition
 
-A Biosphere world generation mod for NeoForge 1.21.1.
+An Issac Edition fork of Biosphere Worlds for NeoForge 1.21.1.
 
-NeoBiosphere generates large grid-aligned spheres in the Overworld (with an optional upper-hemisphere mode) while preserving vanilla biome sampling behavior. Select the **NeoBiosphere** world preset on the Create World screen to opt into the biosphere terrain. Vanilla Overworld presets remain unchanged.
+Biosphere Worlds generates the Overworld as floating glass biospheres surrounded by void, with biomes and structures restricted to each sphere. Select **Biospheres - Issac Edition** on the Create World screen to opt into the biosphere terrain. Vanilla Overworld presets remain unchanged.
 
 ## Highlights
 
@@ -31,9 +31,9 @@ Using a fresh world is strongly recommended to avoid broken borders with previou
 
 ## Configuration
 
-Config file path in development environment: `run/config/NeoBiosphere.toml`
+Config file path in development environment: `run/config/BiosphereWorlds.toml`
 
-Typical path in normal client/server installations: `<game_dir>/config/NeoBiosphere.toml`
+Typical path in normal client/server installations: `<game_dir>/config/BiosphereWorlds.toml`
 
 ### Main Settings
 
@@ -82,18 +82,18 @@ Suggested presets:
 
 ## Compatibility
 
-NeoBiosphere is designed to support most terrain/ecology mod setups, but world generation is a high-conflict area. Please note:
+Biosphere Worlds is designed to support most terrain/ecology mod setups, but world generation is a high-conflict area. Please note:
 
 - Usually compatible with:
   - Mods that mainly add mobs, vegetation, structures, or surface features.
   - Mods that append content through Biome Modifiers.
 
 - Potential conflicts with:
-  - Mods or datapacks that replace or modify the `neobiosphere:biospheres` noise settings or world preset.
+  - Mods or datapacks that replace or modify the `biosphereworlds:biospheres` noise settings or world preset.
   - Mods that deeply alter Carver, Aquifer, or ChunkGenerator pipelines.
 
 - Recommended approach:
-  - Treat NeoBiosphere as the primary world-shape mod.
+  - Treat Biosphere Worlds as the primary world-shape mod.
   - Test in a fresh world before finalizing load order and datapack priority in modpacks.
 
 ## World Preset
@@ -156,4 +156,4 @@ GNU General Public License v3.0
 
 Issue tracker:
 
-- https://github.com/mlus-asuka/NeoBiosphere/issues
+- https://github.com/mlus-asuka/Biosphere Worlds/issues
