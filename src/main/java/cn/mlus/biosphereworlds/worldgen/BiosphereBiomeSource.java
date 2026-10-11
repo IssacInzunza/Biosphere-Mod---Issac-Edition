@@ -1,6 +1,5 @@
 package cn.mlus.biosphereworlds.worldgen;
 
-import cn.mlus.biosphereworlds.carver.SphereCarver;
 import cn.mlus.biosphereworlds.registry.ModBiomeSources;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.MapCodec;
@@ -87,7 +86,7 @@ public final class BiosphereBiomeSource extends BiomeSource {
     }
 
     private static boolean isInsideSphere(int x, int y, int z) {
-        return SphereCarver.isInsideAnySphere(x, y, z, -4);
+        return SphereLayout.current().isInside(x, y, z, -4);
     }
 
     public Holder<Biome> voidBiome() {

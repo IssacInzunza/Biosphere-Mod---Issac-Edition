@@ -1,8 +1,7 @@
 package cn.mlus.biosphereworlds.mixin;
 
-import cn.mlus.biosphereworlds.carver.SphereCarver;
-import cn.mlus.biosphereworlds.config.SphereConfig;
 import cn.mlus.biosphereworlds.worldgen.BiosphereWorldgen;
+import cn.mlus.biosphereworlds.worldgen.SphereLayout;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Aquifer;
@@ -32,21 +31,18 @@ public class MixinNoiseBasedAquifer {
             return;
         }
 
-        int sphereSpacing = SphereConfig.SPACING.get().intValue();
-        int centerY = SphereConfig.CENTER_Y.get().intValue();
+        SphereLayout layout = SphereLayout.current();
 
         int x = context.blockX();
         int y = context.blockY();
         int z = context.blockZ();
 
-        int sphereRadius = SphereCarver.getSphereRadiusAt(x, z);
+        SphereLayout.Sphere sphere = layout.sphereContaining(x, z);
+        int sphereRadius = sphere.radius();
 
-        double gridX = Math.round((float) x / sphereSpacing) * sphereSpacing;
-        double gridZ = Math.round((float) z / sphereSpacing) * sphereSpacing;
-
-        double dx = x - gridX;
-        double dy = y - centerY;
-        double dz = z - gridZ;
+        double dx = x - sphere.centerX();
+        double dy = y - layout.params().centerY();
+        double dz = z - sphere.centerZ();
 
         double distance = dx * dx + dy * dy + dz * dz;
         if (distance - sphereRadius * sphereRadius >= -sphereRadius * 2) {

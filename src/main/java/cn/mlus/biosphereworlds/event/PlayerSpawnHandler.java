@@ -1,8 +1,8 @@
 package cn.mlus.biosphereworlds.event;
 
-import cn.mlus.biosphereworlds.carver.SphereCarver;
 import cn.mlus.biosphereworlds.util.SphereUtil;
 import cn.mlus.biosphereworlds.worldgen.BiosphereWorldgen;
+import cn.mlus.biosphereworlds.worldgen.SphereLayout;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -46,7 +46,7 @@ public class PlayerSpawnHandler {
             return;
         }
 
-        int radius = SphereCarver.getSphereRadiusAt(currentPos.getX(), currentPos.getZ());
+        int radius = SphereLayout.current().sphereContaining(currentPos.getX(), currentPos.getZ()).radius();
         BlockPos targetPos = findValidPosition(level, currentPos, radius);
 
         if (targetPos != null) {

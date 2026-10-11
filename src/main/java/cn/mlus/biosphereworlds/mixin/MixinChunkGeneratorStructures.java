@@ -1,9 +1,9 @@
 package cn.mlus.biosphereworlds.mixin;
 
-import cn.mlus.biosphereworlds.carver.SphereCarver;
 import cn.mlus.biosphereworlds.config.SphereConfig;
 import cn.mlus.biosphereworlds.mixin.accessor.StructureManagerAccessor;
 import cn.mlus.biosphereworlds.worldgen.BiosphereWorldgen;
+import cn.mlus.biosphereworlds.worldgen.SphereLayout;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
@@ -38,14 +38,15 @@ public abstract class MixinChunkGeneratorStructures {
             return;
         }
 
+        SphereLayout layout = SphereLayout.current();
         int centerX = chunkPos.getMiddleBlockX();
         int centerZ = chunkPos.getMiddleBlockZ();
-        int centerY = SphereConfig.CENTER_Y.get().intValue();
+        int centerY = layout.params().centerY();
         int edgeMargin = SphereConfig.STRUCTURE_EDGE_MARGIN.get().intValue();
 
         // Structure starts are seeded at the candidate chunk. Requiring that point to be
         // inside the shrunken sphere prevents the generated pieces from reaching empty space.
-        if (!SphereCarver.isInsideAnySphere(centerX, centerY, centerZ, edgeMargin)) {
+        if (!layout.isInside(centerX, centerY, centerZ, edgeMargin)) {
             cir.setReturnValue(false);
         }
     }

@@ -1,6 +1,7 @@
 package cn.mlus.biosphereworlds.carver;
 
 import cn.mlus.biosphereworlds.config.SphereConfig;
+import cn.mlus.biosphereworlds.worldgen.SphereLayout;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -30,8 +31,9 @@ public class SphereBridgeCarver extends SphereCarver {
                          @NotNull RandomSource random, @NotNull Aquifer aquifer, @NotNull ChunkPos chunkPos,
                          @NotNull CarvingMask carvingMask) {
 
-        int spacing = SphereConfig.SPACING.get().intValue();
-        int centerY = SphereConfig.CENTER_Y.get().intValue();
+        SphereLayout layout = SphereLayout.current();
+        int spacing = layout.params().spacing();
+        int centerY = layout.params().centerY();
         int bridgeRadius = SphereConfig.BRIDGE_RADIUS.get().intValue();
         boolean enableBridges = SphereConfig.GENERATE_BRIDGE.get();
 
@@ -45,25 +47,26 @@ public class SphereBridgeCarver extends SphereCarver {
 
         boolean generated = false;
 
-        int gridXStart = (int)Math.floor((double)chunkStartX / spacing);
-        int gridXEnd = (int)Math.ceil((double)chunkEndX / spacing);
-        int gridZStart = (int)Math.floor((double)chunkStartZ / spacing);
-        int gridZEnd = (int)Math.ceil((double)chunkEndZ / spacing);
+        int gridXStart = layout.firstCellIndex(chunkStartX);
+        int gridXEnd = layout.lastCellIndex(chunkEndX);
+        int gridZStart = layout.firstCellIndex(chunkStartZ);
+        int gridZEnd = layout.lastCellIndex(chunkEndZ);
 
         for (int gridX = gridXStart; gridX <= gridXEnd; gridX++) {
             for (int gridZ = gridZStart; gridZ <= gridZEnd; gridZ++) {
-                double centerX = gridX * spacing;
-                double centerZ = gridZ * spacing;
+                SphereLayout.Sphere sphere = layout.sphereAtCell(gridX, gridZ);
+                double centerX = sphere.centerX();
+                double centerZ = sphere.centerZ();
 
                 if (enableBridges) {
-                    generated |= carveBridge(chunk, centerX, centerZ, centerY,
+                    generated |= carveBridge(chunk, layout, centerX, centerZ, centerY,
                             centerX + spacing, centerZ, centerY,
-                            spacing, bridgeRadius, bridgeState,
+                            bridgeRadius, bridgeState,
                             chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
 
-                    generated |= carveBridge(chunk, centerX, centerZ, centerY,
+                    generated |= carveBridge(chunk, layout, centerX, centerZ, centerY,
                             centerX, centerZ + spacing, centerY,
-                            spacing, bridgeRadius, bridgeState,
+                            bridgeRadius, bridgeState,
                             chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
                 }
             }
@@ -72,9 +75,9 @@ public class SphereBridgeCarver extends SphereCarver {
         return generated;
     }
 
-    private boolean carveBridge(ChunkAccess chunk, double x1, double z1, double y1,
+    private boolean carveBridge(ChunkAccess chunk, SphereLayout layout, double x1, double z1, double y1,
                                 double x2, double z2, double y2,
-                                double spacing, int bridgeRadius, BlockState bridgeState,
+                                int bridgeRadius, BlockState bridgeState,
                                 int chunkStartX, int chunkEndX, int chunkStartZ, int chunkEndZ) {
         boolean generated = false;
 
@@ -121,7 +124,7 @@ public class SphereBridgeCarver extends SphereCarver {
 
                     if (distSq <= bridgeRadiusSq && distSq >= bridgeRadiusMinusOneSq) {
                         BlockPos pos = new BlockPos(x, y, z);
-                        if (!SphereCarver.isInsideAnySphere(x, y, z)) {
+                        if (!layout.isInside(x, y, z)) {
                             if (chunk.getBlockState(pos).isAir()) {
                                 chunk.setBlockState(pos, bridgeState, false);
                                 generated = true;

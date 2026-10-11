@@ -1,11 +1,11 @@
 package cn.mlus.biosphereworlds.mixin;
 
-import cn.mlus.biosphereworlds.carver.SphereCarver;
 import cn.mlus.biosphereworlds.config.SphereConfig;
 import cn.mlus.biosphereworlds.BiosphereWorlds;
 import cn.mlus.biosphereworlds.registry.ModBiomeAccess;
 import cn.mlus.biosphereworlds.worldgen.BiosphereWorldgen;
 import cn.mlus.biosphereworlds.worldgen.BiosphereBiomeSourceAccess;
+import cn.mlus.biosphereworlds.worldgen.SphereLayout;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.tags.BiomeTags;
@@ -34,7 +34,7 @@ public abstract class MixinMultiNoiseBiomeSource implements BiosphereBiomeSource
         int i = QuartPos.toBlock(x);
         int j = QuartPos.toBlock(y);
         int k = QuartPos.toBlock(z);
-        boolean outsideSphere = !SphereCarver.isInsideAnySphere(i, j, k, -4);
+        boolean outsideSphere = !SphereLayout.current().isInside(i, j, k, -4);
         if (SphereConfig.DEBUG_BIOME_LOOKUPS.get() && outsideSphere) {
             BiosphereWorlds.LOGGER.debug("biome-route=MultiNoiseBiomeSource#getNoiseBiome sampler=({},{},{}) block=({},{},{}) before={} marked={}",
                 x, y, z, i, j, k,

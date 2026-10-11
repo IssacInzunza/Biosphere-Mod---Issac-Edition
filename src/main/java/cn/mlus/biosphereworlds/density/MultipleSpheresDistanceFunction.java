@@ -1,7 +1,6 @@
 package cn.mlus.biosphereworlds.density;
 
-import cn.mlus.biosphereworlds.carver.SphereCarver;
-import cn.mlus.biosphereworlds.config.SphereConfig;
+import cn.mlus.biosphereworlds.worldgen.SphereLayout;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -25,20 +24,18 @@ public record MultipleSpheresDistanceFunction(
 
     @Override
     public double compute(FunctionContext context) {
-        int spacing = SphereConfig.SPACING.get().intValue();
-        int centerY = SphereConfig.CENTER_Y.get().intValue();
+        SphereLayout layout = SphereLayout.current();
 
         // Calculate nearest grid point
-        double gridX = Math.round((double)context.blockX() / spacing) * spacing;
-        double gridZ = Math.round((double)context.blockZ() / spacing) * spacing;
+        SphereLayout.Sphere sphere = layout.sphereContaining(context.blockX(), context.blockZ());
 
         // Calculate distance to nearest sphere center
-        double dx = context.blockX() - gridX;
-        double dy = context.blockY() - centerY;
-        double dz = context.blockZ() - gridZ;
+        double dx = context.blockX() - sphere.centerX();
+        double dy = context.blockY() - layout.params().centerY();
+        double dz = context.blockZ() - sphere.centerZ();
 
         double distance = dx * dx + dy * dy + dz * dz;
-        int radius = SphereCarver.getSphereRadiusAt(context.blockX(), context.blockZ());
+        int radius = sphere.radius();
         return distance / (radius * radius); // return value from 0 to 1, 0 = center, >1 = outside
     }
 

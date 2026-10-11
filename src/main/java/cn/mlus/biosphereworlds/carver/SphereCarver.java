@@ -1,6 +1,7 @@
 package cn.mlus.biosphereworlds.carver;
 
 import cn.mlus.biosphereworlds.config.SphereConfig;
+import cn.mlus.biosphereworlds.worldgen.SphereLayout;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
@@ -39,8 +40,8 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                          @NotNull RandomSource random, @NotNull Aquifer aquifer, @NotNull ChunkPos chunkPos,
                          @NotNull CarvingMask carvingMask) {
 
-        int spacing = SphereConfig.SPACING.get().intValue();
-        int centerY = SphereConfig.CENTER_Y.get().intValue();
+        SphereLayout layout = SphereLayout.current();
+        int centerY = layout.params().centerY();
 
         int chunkStartX = chunkPos.getMinBlockX();
         int chunkStartZ = chunkPos.getMinBlockZ();
@@ -49,18 +50,20 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
 
         boolean generated = false;
 
-        int gridXStart = (int)Math.floor((double)chunkStartX / spacing);
-        int gridXEnd = (int)Math.ceil((double)chunkEndX / spacing);
-        int gridZStart = (int)Math.floor((double)chunkStartZ / spacing);
-        int gridZEnd = (int)Math.ceil((double)chunkEndZ / spacing);
+        int gridXStart = layout.firstCellIndex(chunkStartX);
+        int gridXEnd = layout.lastCellIndex(chunkEndX);
+        int gridZStart = layout.firstCellIndex(chunkStartZ);
+        int gridZEnd = layout.lastCellIndex(chunkEndZ);
 
         for (int gridX = gridXStart; gridX <= gridXEnd; gridX++) {
             for (int gridZ = gridZStart; gridZ <= gridZEnd; gridZ++) {
 
-                double centerX = gridX * spacing;
-                double centerZ = gridZ * spacing;
+                SphereLayout.Sphere sphere = layout.sphereAtCell(gridX, gridZ);
 
-                int radius = getSphereRadius(gridX, gridZ);
+                double centerX = sphere.centerX();
+                double centerZ = sphere.centerZ();
+
+                int radius = sphere.radius();
                 if (SphereConfig.ONLY_UPPER_HEMISPHERE.get())
                     radius--;
 
@@ -69,7 +72,7 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                 int minY = Math.max(chunk.getMinBuildHeight(), centerY - radius - 1);
                 int maxY = Math.min(chunk.getMaxBuildHeight(), centerY + radius + 1);
 
-                double shellThickness = 2.0;
+                double shellThickness = SphereLayout.SHELL_THICKNESS;
                 double innerRadiusSq = (radius - shellThickness) * (radius - shellThickness);
                 double outerRadiusSq = radius * radius;
 
@@ -122,70 +125,12 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
         return true;
     }
 
-    public static int getSphereGridX(double x) {
-        return (int) Math.round(x / SphereConfig.SPACING.get().intValue());
-    }
-
-    public static int getSphereGridZ(double z) {
-        return (int) Math.round(z / SphereConfig.SPACING.get().intValue());
-    }
-
-    public static double getSphereCenterX(int gridX) {
-        return gridX * SphereConfig.SPACING.get().intValue();
-    }
-
-    public static double getSphereCenterZ(int gridZ) {
-        return gridZ * SphereConfig.SPACING.get().intValue();
-    }
-
-    public static int getSphereRadius(int gridX, int gridZ) {
-        int minRadius = SphereConfig.MIN_RADIUS.get().intValue();
-        int maxRadius = SphereConfig.RADIUS.get().intValue();
-        if (minRadius >= maxRadius) return maxRadius;
-        int seed = gridX * 31 + gridZ;
-        int hash = seed * 1664525 + 1013904223;
-        return minRadius + Math.abs(hash) % (maxRadius - minRadius + 1);
-    }
-
-    public static int getSphereRadiusAt(double x, double z) {
-        return getSphereRadius(getSphereGridX(x), getSphereGridZ(z));
-    }
-
     public static BlockState getSphereBlockState(int gridX, int gridZ) {
         java.util.List<? extends String> sphereBlocks = SphereConfig.SPHERE_BLOCK.get();
         if (sphereBlocks.isEmpty()) return Blocks.AIR.defaultBlockState();
         int blockIndex = Math.abs(gridX * 31 + gridZ) % sphereBlocks.size();
         return BuiltInRegistries.BLOCK.get(
                 ResourceLocation.parse(sphereBlocks.get(blockIndex))).defaultBlockState();
-    }
-
-    public static boolean isInsideAnySphere(double x, double y, double z) {
-        return isInsideAnySphere(x, y, z, 0);
-    }
-
-    public static boolean isInsideAnySphere(double x, double y, double z, double edgeMargin) {
-        int spacing = SphereConfig.SPACING.get().intValue();
-        int centerY = SphereConfig.CENTER_Y.get().intValue();
-        int gridX = getSphereGridX(x);
-        int gridZ = getSphereGridZ(z);
-        // Check the nearest sphere and its neighbors to handle edge cases
-        for (int gx = gridX - 1; gx <= gridX + 1; gx++) {
-            for (int gz = gridZ - 1; gz <= gridZ + 1; gz++) {
-                double centerX = getSphereCenterX(gx);
-                double centerZ = getSphereCenterZ(gz);
-                int radius = getSphereRadius(gx, gz);
-                double dx = x - centerX;
-                double dy = y - centerY;
-                double dz = z - centerZ;
-                // Keep structure starts away from the generated shell so their pieces do not cross into empty space.
-                double effectiveRadius = radius - 2.0 - edgeMargin;
-                double innerRadiusSq = effectiveRadius * effectiveRadius;
-                if (dx * dx + dy * dy + dz * dz < innerRadiusSq) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     public static class SphereCarverConfig extends CarverConfiguration {
