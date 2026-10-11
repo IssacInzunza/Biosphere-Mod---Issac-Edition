@@ -8,13 +8,19 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.Heightmap;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(Heightmap.class)
 public class MixinHeightmap {
+
+    @Shadow
+    @Final
+    private ChunkAccess chunk;
 
     @ModifyVariable(
             method = "update",
@@ -23,7 +29,7 @@ public class MixinHeightmap {
             ordinal = 0
     )
     private BlockState onUpdateBlockState(BlockState state, int x, int y, int z) {
-        if (BiosphereWorldgen.isBiosphereChunk(this) && SphereUtil.isSphereBlock(state) && y > SphereConfig.CENTER_Y.get().intValue()) {
+        if (BiosphereWorldgen.isBiosphereChunk(this.chunk) && SphereUtil.isSphereBlock(state) && y > SphereConfig.CENTER_Y.get().intValue()) {
             return Blocks.AIR.defaultBlockState();
         }
         return state;
