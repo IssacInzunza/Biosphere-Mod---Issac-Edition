@@ -1,0 +1,52 @@
+{
+  "generator.biosphereworlds.biospheres": "Biospheres - Issac Edition",
+
+  "biosphereworlds.configuration.title": "Configuración de Biosphere Worlds",
+  "biosphereworlds.configuration.section.biosphereworlds.toml.title": "Configuración de Biosphere Worlds",
+  "biosphereworlds.configuration.Settings": "Ajustes de las esferas",
+
+  "biosphereworlds.configuration.radius": "Radio máximo de las esferas",
+  "biosphereworlds.configuration.radius.tooltip": "Radio máximo de las esferas, en bloques (128 por defecto). Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.min_radius": "Radio mínimo de las esferas",
+  "biosphereworlds.configuration.min_radius.tooltip": "Radio mínimo de las esferas. Ponlo igual al radio máximo para esferas de tamaño fijo, o más bajo para que cada esfera elija un tamaño aleatorio. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.spacing": "Separación entre esferas",
+  "biosphereworlds.configuration.spacing.tooltip": "Distancia entre los centros de las esferas en la cuadrícula, en bloques. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.center_y": "Altura del centro",
+  "biosphereworlds.configuration.center_y.tooltip": "Nivel Y usado como centro de cada esfera. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.sphere_block": "Bloques del cascarón",
+  "biosphereworlds.configuration.sphere_block.tooltip": "Ids de bloque usados para los cascarones; cada esfera elige uno de forma determinista según su posición en la cuadrícula. En esta pantalla puedes editar, reordenar o eliminar las entradas existentes, pero las entradas nuevas hay que añadirlas a mano en el archivo de configuración. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.only_upper_hemisphere": "Solo hemisferio superior",
+  "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Genera solo la mitad superior de cada esfera. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.generate_bridge": "Generar puentes",
+  "biosphereworlds.configuration.generate_bridge.tooltip": "Genera puentes entre esferas adyacentes. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.bridge_block": "Bloque de los puentes",
+  "biosphereworlds.configuration.bridge_block.tooltip": "Id del bloque usado por los puentes (por ejemplo minecraft:oak_planks). Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.bridge_radius": "Radio de los puentes",
+  "biosphereworlds.configuration.bridge_radius.tooltip": "Grosor radial del tubo del puente; valores mayores producen puentes más gruesos. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.restrict_structures_to_spheres": "Restringir estructuras a las esferas",
+  "biosphereworlds.configuration.restrict_structures_to_spheres.tooltip": "Mantiene los inicios de estructura dentro de las esferas en vez de dejarlos aparecer en el vacío. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.structure_edge_margin": "Margen de borde de estructuras",
+  "biosphereworlds.configuration.structure_edge_margin.tooltip": "Margen adicional hacia dentro, en bloques, entre el inicio de una estructura y el borde de la esfera. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.debug_biome_lookups": "Depurar consultas de bioma",
+  "biosphereworlds.configuration.debug_biome_lookups.tooltip": "Registra en nivel DEBUG las rutas de consulta de bioma fuera de las esferas. Solo diagnóstico: no cambia la generación del mundo.",
+
+  "biosphereworlds.configuration.edge_ocean_enabled": "Océano de borde",
+  "biosphereworlds.configuration.edge_ocean_enabled.tooltip": "Inunda con océano la banda junto al cascarón de la esfera: el terreno se aplana hasta un fondo plano para que el agua llegue al cristal. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.edge_ocean_width": "Ancho del océano de borde",
+  "biosphereworlds.configuration.edge_ocean_width.tooltip": "Ancho de la banda de océano, como porcentaje del radio de la esfera (0-100). Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.edge_ocean_depth": "Profundidad del océano de borde",
+  "biosphereworlds.configuration.edge_ocean_depth.tooltip": "Profundidad del fondo oceánico por debajo del nivel del mar (63), en bloques (0-100). Solo afecta a mundos nuevos."
+}

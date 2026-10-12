@@ -53,6 +53,9 @@ bridge_radius = 1
 restrict_structures_to_spheres = true
 structure_edge_margin = 16
 debug_biome_lookups = false
+edge_ocean_enabled = false
+edge_ocean_width = 20
+edge_ocean_depth = 20
 ```
 
 - `radius`: Maximum sphere radius.
@@ -67,6 +70,9 @@ debug_biome_lookups = false
 - `restrict_structures_to_spheres`: Keep structure starts inside biospheres when enabled.
 - `structure_edge_margin`: Extra inward margin, in blocks, for structure start positions.
 - `debug_biome_lookups`: Enable temporary DEBUG logging for outside-sphere biome routes.
+- `edge_ocean_enabled`: Flood the band next to the sphere shell with ocean: the terrain is clamped down to a flat floor so water reaches the glass.
+- `edge_ocean_width`: Width of the ocean band, as a percentage of the sphere radius (range `0..100`).
+- `edge_ocean_depth`: Depth of the ocean floor below sea level (63), in blocks (range `0..100`).
 
 ### Tuning Notes
 
