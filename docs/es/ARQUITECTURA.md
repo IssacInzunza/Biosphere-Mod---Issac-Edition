@@ -9,128 +9,128 @@ puede demostrar leyendo el código, se marca como **No verificado:**.
 
 ### 1.1 Punto de entrada, configuración y utilidades
 
-- `src/main/java/cn/mlus/biosphereworlds/BiosphereWorlds.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/BiosphereWorlds.java` —
   clase anotada con `@Mod("biosphereworlds")`. En el constructor registra la
   configuración común y los registros diferidos de funciones de densidad,
   carvers, features, biome sources y serializers de biome modifiers.
-- `src/main/java/cn/mlus/biosphereworlds/config/SphereConfig.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/config/SphereConfig.java` —
   declara y construye la `ModConfigSpec` que NeoForge carga como
   `BiosphereWorlds.toml`. También valida los identificadores de bloques
   configurados.
-- `src/main/java/cn/mlus/biosphereworlds/util/SphereUtil.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/util/SphereUtil.java` —
   contiene cálculos auxiliares de pertenencia a una esfera y comprueba si un
   `BlockState` pertenece a la lista configurada de bloques del cascarón.
 
 ### 1.2 Worldgen y geometría
 
-- `src/main/java/cn/mlus/biosphereworlds/carver/SphereCarver.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereCarver.java` —
   `WorldCarver` principal. Recorre las celdas de la cuadrícula que pueden tocar
   un chunk y coloca el cascarón esférico; también calcula centros, radios,
   selección determinista del bloque y pruebas de interior.
-- `src/main/java/cn/mlus/biosphereworlds/carver/SphereBridgeCarver.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereBridgeCarver.java` —
   subclase del carver que une centros vecinos con un tubo hueco de bloques,
   respetando `generate_bridge`, `bridge_block` y `bridge_radius`.
-- `src/main/java/cn/mlus/biosphereworlds/density/MultipleSpheresDistanceFunction.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/density/MultipleSpheresDistanceFunction.java` —
   `DensityFunction.SimpleFunction` registrada como
   `biosphereworlds:multiple_spheres`; devuelve la distancia cuadrática
   normalizada al centro de la esfera más cercana.
-- `src/main/java/cn/mlus/biosphereworlds/feature/SphereFeature.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/feature/SphereFeature.java` —
   `Feature` que podría colocar una esfera completa a partir de un
   `FeatureConfiguration`. El propio archivo la marca como `Not in use`; el
   worldgen activo usa `SphereCarver`.
-- `src/main/java/cn/mlus/biosphereworlds/worldgen/BiosphereBiomeSource.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereBiomeSource.java` —
   wrapper de `BiomeSource` con Codec propio. Delega el bioma original dentro
   de una esfera y devuelve `minecraft:the_void` fuera; también filtra las
   consultas de búsqueda de biomas.
-- `src/main/java/cn/mlus/biosphereworlds/worldgen/BiosphereWorldgen.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereWorldgen.java` —
   almacén de marcas para identificar biome sources, generators, noise chunks,
   aquifers y chunks asociados al preset de biosferas.
-- `src/main/java/cn/mlus/biosphereworlds/worldgen/BiosphereBiomeSourceAccess.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereBiomeSourceAccess.java` —
   interfaz que expone la marca booleana inyectada en las implementaciones de
   `BiomeSource`.
-- `src/main/java/cn/mlus/biosphereworlds/worldgen/BiosphereGeneratorAccess.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereGeneratorAccess.java` —
   interfaz usada por el mixin del `NoiseBasedChunkGenerator` para identificar
   el generator del preset.
-- `src/main/java/cn/mlus/biosphereworlds/worldgen/BiosphereNoiseChunkAccess.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereNoiseChunkAccess.java` —
   interfaz para marcar un `NoiseChunk` como perteneciente al worldgen de
   biosferas.
-- `src/main/java/cn/mlus/biosphereworlds/worldgen/BiosphereChunkAccess.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereChunkAccess.java` —
   interfaz para marcar un `ChunkAccess` como chunk de biosferas.
 
 ### 1.3 Eventos
 
-- `src/main/java/cn/mlus/biosphereworlds/event/PlayerSpawnHandler.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/event/PlayerSpawnHandler.java` —
   escucha login y respawn. En un `ServerLevel` cuyo generator es el de
   biosferas, busca una superficie sólida dentro de la esfera y teletransporta
   al jugador si apareció sobre el cascarón.
 
 ### 1.4 Registros
 
-- `src/main/java/cn/mlus/biosphereworlds/registry/ModBiomeAccess.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/registry/ModBiomeAccess.java` —
   guarda el `HolderGetter<Biome>` capturado desde el preset de multi-noise,
   para resolver posteriormente `Biomes.THE_VOID`.
-- `src/main/java/cn/mlus/biosphereworlds/registry/ModBiomeSources.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/registry/ModBiomeSources.java` —
   registra el `MapCodec` de `BiosphereBiomeSource` con el id
   `biosphereworlds:biospheres`.
-- `src/main/java/cn/mlus/biosphereworlds/registry/ModCarvers.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/registry/ModCarvers.java` —
   registra `sphere_carver` y `sphere_bridge_carver`, además de sus claves de
   configured carver.
-- `src/main/java/cn/mlus/biosphereworlds/registry/ModDensityFunctions.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/registry/ModDensityFunctions.java` —
   registra el tipo de density function `multiple_spheres` y su clave de
   función configurada.
-- `src/main/java/cn/mlus/biosphereworlds/registry/ModFeature.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/registry/ModFeature.java` —
   registra `SphereFeature` y conserva la clave de su `PlacedFeature`.
-- `src/main/java/cn/mlus/biosphereworlds/registry/SphereBiomeModifierSerializers.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/registry/SphereBiomeModifierSerializers.java` —
   registra los codecs de los biome modifiers personalizados para añadir
   carvers y features.
 
 ### 1.5 Datos y biome modifiers
 
-- `src/main/java/cn/mlus/biosphereworlds/data/DataGenerators.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/data/DataGenerators.java` —
   atiende `GatherDataEvent` y añade el proveedor de entradas de datapack.
-- `src/main/java/cn/mlus/biosphereworlds/data/ModDatapackEntries.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/data/ModDatapackEntries.java` —
   configura un `RegistrySetBuilder` para generar entradas de
   `BIOME_MODIFIERS`.
-- `src/main/java/cn/mlus/biosphereworlds/data/SphereBiomeBoostrap.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/data/SphereBiomeBoostrap.java` —
   registra los biome modifiers que añaden el carver de esfera, el de puentes y
   `minecraft:freeze_top_layer` al bioma `the_void`.
-- `src/main/java/cn/mlus/biosphereworlds/data/SphereBiomeCarverModifier.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/data/SphereBiomeCarverModifier.java` —
   añade configured carvers en la fase `GenerationStep.Carving.AIR`, excepto en
   biomas etiquetados como Nether o End.
-- `src/main/java/cn/mlus/biosphereworlds/data/SphereBiomeFeatureModifier.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/data/SphereBiomeFeatureModifier.java` —
   añade placed features en la fase `TOP_LAYER_MODIFICATION`. En el estado
   actual existe el serializer, pero la llamada que lo usaría en
   `SphereBiomeBoostrap` está comentada.
 
 ### 1.6 Mixins y accessor
 
-- `src/main/java/cn/mlus/biosphereworlds/mixin/MixinChunkAccess.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinChunkAccess.java` —
   añade a `ChunkAccess` una marca booleana de chunk de biosferas.
-- `src/main/java/cn/mlus/biosphereworlds/mixin/MixinChunkGeneratorBiomeSource.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinChunkGeneratorBiomeSource.java` —
   marca el `BiomeSource` devuelto por un generator de biosferas y, si está
   activado, registra una ruta de depuración.
-- `src/main/java/cn/mlus/biosphereworlds/mixin/MixinChunkGeneratorStructures.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinChunkGeneratorStructures.java` —
   intercepta `ChunkGenerator.tryGenerateStructure` y rechaza inicios fuera del
   interior reducido de una esfera.
-- `src/main/java/cn/mlus/biosphereworlds/mixin/MixinHeightmap.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinHeightmap.java` —
   hace que el cascarón por encima de `center_y` se comporte como aire al
   actualizar o inicializar heightmaps.
-- `src/main/java/cn/mlus/biosphereworlds/mixin/MixinMultiNoiseBiomeSource.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinMultiNoiseBiomeSource.java` —
   marca un `MultiNoiseBiomeSource` y sustituye por `the_void` las consultas
   fuera de las esferas.
-- `src/main/java/cn/mlus/biosphereworlds/mixin/MixinMultiNoiseBiomeSourceParameterList.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinMultiNoiseBiomeSourceParameterList.java` —
   captura el `HolderGetter<Biome>` durante la construcción de la lista preset
   de multi-noise y lo entrega a `ModBiomeAccess`.
-- `src/main/java/cn/mlus/biosphereworlds/mixin/MixinNoiseBasedAquifer.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinNoiseBasedAquifer.java` —
   identifica aquifers del worldgen de biosferas y fuerza aire cerca del borde
   interior para evitar que el aquifer rellene el vacío.
-- `src/main/java/cn/mlus/biosphereworlds/mixin/MixinNoiseBasedChunkGenerator.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinNoiseBasedChunkGenerator.java` —
   identifica el generator por su `NoiseGeneratorSettings`, marca chunks,
   noise chunks y aquifers, y reemplaza `applyCarvers` para ejecutar los dos
   carvers de esfera de forma controlada.
-- `src/main/java/cn/mlus/biosphereworlds/mixin/MixinNoiseChunk.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinNoiseChunk.java` —
   añade a `NoiseChunk` la marca usada por el mixin del aquifer.
-- `src/main/java/cn/mlus/biosphereworlds/mixin/accessor/StructureManagerAccessor.java` —
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/accessor/StructureManagerAccessor.java` —
   accessor mixin que expone el campo privado `level` de `StructureManager`.
 
 ### 1.7 Recursos de runtime y datos
@@ -460,21 +460,21 @@ desde aquí cómo se comporta su memoria durante muchos mundos o recargas.
   o código en una clase existente de Minecraft sin cambiar su fuente; se
   parece a programación orientada a aspectos aplicada a clases ya compiladas.
   En este proyecto aparece en
-  [`src/main/java/cn/mlus/biosphereworlds/mixin/`](../../src/main/java/cn/mlus/biosphereworlds/mixin/)
+  [`src/main/java/mx/issacinzunza/biosphereworlds/mixin/`](../../src/main/java/mx/issacinzunza/biosphereworlds/mixin/)
   y se activa desde [`src/main/resources/biosphereworlds.mixins.json`](../../src/main/resources/biosphereworlds.mixins.json).
 - **Codec** — serializador/deserializador declarativo de Mojang; describe cómo
   convertir JSON/registries a un objeto tipado y viceversa. Ejemplos:
-  [`BiosphereBiomeSource.CODEC`](../../src/main/java/cn/mlus/biosphereworlds/worldgen/BiosphereBiomeSource.java)
+  [`BiosphereBiomeSource.CODEC`](../../src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereBiomeSource.java)
   y `SphereCarverConfig.CODEC` en
-  [`SphereCarver.java`](../../src/main/java/cn/mlus/biosphereworlds/carver/SphereCarver.java).
+  [`SphereCarver.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereCarver.java).
 - **BiomeSource** — componente que responde qué bioma corresponde a
   coordenadas de bioma; es análogo a un proveedor de lectura espacial, no a
   una tabla estática de entidades. El wrapper está en
-  [`BiosphereBiomeSource.java`](../../src/main/java/cn/mlus/biosphereworlds/worldgen/BiosphereBiomeSource.java).
+  [`BiosphereBiomeSource.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereBiomeSource.java).
 - **DensityFunction** — función numérica que el generador de ruido evalúa por
   posición para decidir densidad de terreno, cuevas y transiciones. La
   implementación del mod es
-  [`MultipleSpheresDistanceFunction.java`](../../src/main/java/cn/mlus/biosphereworlds/density/MultipleSpheresDistanceFunction.java).
+  [`MultipleSpheresDistanceFunction.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/density/MultipleSpheresDistanceFunction.java).
 - **Noise settings** — documento de worldgen que combina altura, ruido,
   router de densidades, fluido por defecto y reglas de spawn. El preset usa
   [`data/biosphereworlds/worldgen/noise_settings/biospheres.json`](../../src/main/resources/data/biosphereworlds/worldgen/noise_settings/biospheres.json).
@@ -482,33 +482,33 @@ desde aquí cómo se comporta su memoria durante muchos mundos o recargas.
   registrables de mundo, como presets, carvers y biome modifiers; se parece a
   configuración versionada por recurso, pero con los codecs y registries del
   juego. Este proyecto genera parte de ellos desde
-  [`SphereBiomeBoostrap.java`](../../src/main/java/cn/mlus/biosphereworlds/data/SphereBiomeBoostrap.java)
+  [`SphereBiomeBoostrap.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/data/SphereBiomeBoostrap.java)
   y los conserva en `src/generated/resources/`.
 - **Registro** — catálogo gestionado por Minecraft/NeoForge donde un id
   (`namespace:path`) se asocia a un tipo, por ejemplo un carver o biome source.
   El mod declara catálogos diferidos en
-  [`ModCarvers.java`](../../src/main/java/cn/mlus/biosphereworlds/registry/ModCarvers.java),
-  [`ModBiomeSources.java`](../../src/main/java/cn/mlus/biosphereworlds/registry/ModBiomeSources.java)
-  y [`ModDensityFunctions.java`](../../src/main/java/cn/mlus/biosphereworlds/registry/ModDensityFunctions.java).
+  [`ModCarvers.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/registry/ModCarvers.java),
+  [`ModBiomeSources.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/registry/ModBiomeSources.java)
+  y [`ModDensityFunctions.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/registry/ModDensityFunctions.java).
 - **Holder** — referencia envuelta a un valor de registry; puede estar ligada
   (`bound`) o resolverse mediante un lookup. Los `Holder<Biome>` son la unidad
   que intercambian `BiomeSource` y los biome modifiers, por ejemplo en
-  [`BiosphereBiomeSource.java`](../../src/main/java/cn/mlus/biosphereworlds/worldgen/BiosphereBiomeSource.java).
+  [`BiosphereBiomeSource.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereBiomeSource.java).
 - **ResourceLocation** — identificador compuesto por namespace y path, como
   `minecraft:the_void` o `biosphereworlds:biospheres`. El helper del mod lo
-  crea en [`BiosphereWorlds.prefix`](../../src/main/java/cn/mlus/biosphereworlds/BiosphereWorlds.java)
+  crea en [`BiosphereWorlds.prefix`](../../src/main/java/mx/issacinzunza/biosphereworlds/BiosphereWorlds.java)
   y la configuración lo parsea en
-  [`SphereConfig.java`](../../src/main/java/cn/mlus/biosphereworlds/config/SphereConfig.java).
+  [`SphereConfig.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/config/SphereConfig.java).
 - **Biome Modifier** — extensión de NeoForge que modifica las settings de un
   bioma durante fases de worldgen; es comparable a un hook de composición
   gestionado por el loader. Las implementaciones están en
-  [`SphereBiomeCarverModifier.java`](../../src/main/java/cn/mlus/biosphereworlds/data/SphereBiomeCarverModifier.java)
-  y [`SphereBiomeFeatureModifier.java`](../../src/main/java/cn/mlus/biosphereworlds/data/SphereBiomeFeatureModifier.java).
+  [`SphereBiomeCarverModifier.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/data/SphereBiomeCarverModifier.java)
+  y [`SphereBiomeFeatureModifier.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/data/SphereBiomeFeatureModifier.java).
 
 ## 5. Configuración
 
 Todas las opciones se declaran en
-[`SphereConfig.java`](../../src/main/java/cn/mlus/biosphereworlds/config/SphereConfig.java)
+[`SphereConfig.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/config/SphereConfig.java)
 y se registran como `ModConfig.Type.COMMON` con el nombre
 `BiosphereWorlds.toml`. La ruta de desarrollo habitual es
 `run/config/BiosphereWorlds.toml`; no es un archivo fuente versionado.
@@ -629,7 +629,7 @@ automáticamente al proyecto.
 ### Cambiar un valor por defecto
 
 Edita la declaración correspondiente en
-[`SphereConfig.java`](../../src/main/java/cn/mlus/biosphereworlds/config/SphereConfig.java).
+[`SphereConfig.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/config/SphereConfig.java).
 Por ejemplo, para cambiar el centro vertical:
 
 ```java
