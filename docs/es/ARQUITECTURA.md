@@ -527,6 +527,9 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 | `restrict_structures_to_spheres` | `ConfigValue<Boolean>` | `true` | `MixinChunkGeneratorStructures.restrictStructureToSphere` | Activa la cancelación de inicios de estructura fuera de las esferas. |
 | `structure_edge_margin` | `IntValue` | `16` (rango `0..128`) | `MixinChunkGeneratorStructures.restrictStructureToSphere` | Margen adicional hacia dentro del radio para el punto inicial de una estructura. |
 | `debug_biome_lookups` | `BooleanValue` | `false` | `MixinMultiNoiseBiomeSource`, `MixinChunkGeneratorBiomeSource` | Escribe rutas DEBUG para consultas de bioma fuera de las esferas y para marcar el source. |
+| `edge_ocean_enabled` | `BooleanValue` | `false` | `SphereEdgeOceanFunction` | Inunda de océano la banda junto al cascarón: el terreno se aplana hasta un fondo plano para que el agua alcance el cristal. Solo afecta a mundos nuevos. |
+| `edge_ocean_width` | `IntValue` | `20` (rango `0..100`) | `SphereEdgeOceanFunction` | Ancho de la banda de océano, como porcentaje del radio de la esfera. Solo afecta a mundos nuevos. |
+| `edge_ocean_depth` | `IntValue` | `20` (rango `0..100`) | `SphereEdgeOceanFunction` | Profundidad del fondo oceánico por debajo del nivel del mar (63), en bloques. Solo afecta a mundos nuevos. |
 
 La validación de `sphere_block` y `bridge_block` está en
 `SphereConfig.validateItemName(Object)`: exige un `String` y que el

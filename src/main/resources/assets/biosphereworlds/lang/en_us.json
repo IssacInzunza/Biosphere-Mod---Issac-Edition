@@ -1,3 +1,52 @@
 {
-  "generator.biosphereworlds.biospheres": "Biospheres - Issac Edition"
+  "generator.biosphereworlds.biospheres": "Biospheres - Issac Edition",
+
+  "biosphereworlds.configuration.title": "Biosphere Worlds Configuration",
+  "biosphereworlds.configuration.section.biosphereworlds.toml.title": "Biosphere Worlds Configuration",
+  "biosphereworlds.configuration.Settings": "Sphere Settings",
+
+  "biosphereworlds.configuration.radius": "Maximum sphere radius",
+  "biosphereworlds.configuration.radius.tooltip": "Maximum radius of the spheres, in blocks (128 = default). Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.min_radius": "Minimum sphere radius",
+  "biosphereworlds.configuration.min_radius.tooltip": "Minimum radius of the spheres. Set it equal to the maximum radius for fixed-size spheres, or lower for per-sphere random sizing. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.spacing": "Sphere spacing",
+  "biosphereworlds.configuration.spacing.tooltip": "Distance between sphere center points on the grid, in blocks. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.center_y": "Sphere center Y",
+  "biosphereworlds.configuration.center_y.tooltip": "Y level used as the center of every sphere. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.sphere_block": "Sphere shell blocks",
+  "biosphereworlds.configuration.sphere_block.tooltip": "Block ids used for the sphere shells; each sphere picks one deterministically from its grid position. On this screen you can edit, reorder or remove the existing entries, but new entries must be added to the config file by hand. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.only_upper_hemisphere": "Upper hemisphere only",
+  "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Generate only the upper half of each sphere. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.generate_bridge": "Generate bridges",
+  "biosphereworlds.configuration.generate_bridge.tooltip": "Generate bridges between adjacent spheres. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.bridge_block": "Bridge block",
+  "biosphereworlds.configuration.bridge_block.tooltip": "Block id used for the bridges (for example minecraft:oak_planks). Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.bridge_radius": "Bridge radius",
+  "biosphereworlds.configuration.bridge_radius.tooltip": "Radial thickness of the bridge tube; larger values make thicker bridges. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.restrict_structures_to_spheres": "Restrict structures to spheres",
+  "biosphereworlds.configuration.restrict_structures_to_spheres.tooltip": "Keep structure starts inside the spheres instead of letting them generate in the void. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.structure_edge_margin": "Structure edge margin",
+  "biosphereworlds.configuration.structure_edge_margin.tooltip": "Extra inward margin, in blocks, between a structure start and the sphere edge. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.debug_biome_lookups": "Debug biome lookups",
+  "biosphereworlds.configuration.debug_biome_lookups.tooltip": "Log outside-sphere biome lookup routes at DEBUG level. Diagnostic only: it does not change world generation.",
+
+  "biosphereworlds.configuration.edge_ocean_enabled": "Edge ocean",
+  "biosphereworlds.configuration.edge_ocean_enabled.tooltip": "Flood the band next to the sphere shell with ocean: the terrain is clamped down to a flat floor so water reaches the glass. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.edge_ocean_width": "Edge ocean width",
+  "biosphereworlds.configuration.edge_ocean_width.tooltip": "Width of the ocean band, as a percentage of the sphere radius (0-100). Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.edge_ocean_depth": "Edge ocean depth",
+  "biosphereworlds.configuration.edge_ocean_depth.tooltip": "Depth of the ocean floor below sea level (63), in blocks (0-100). Only affects newly generated worlds."
 }
