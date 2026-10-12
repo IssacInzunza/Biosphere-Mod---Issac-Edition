@@ -17,14 +17,14 @@ resultado para ninguna coordenada**.
 
 | # | Archivo | Clase | Método | Fórmula | Notas |
 |---|---------|-------|--------|---------|-------|
-| C1 | `src/main/java/cn/mlus/biosphereworlds/carver/SphereCarver.java:125` | `SphereCarver` | `getSphereGridX(double)` | `(int) Math.round(x / SPACING)` | Canónica, `double` |
-| C2 | `src/main/java/cn/mlus/biosphereworlds/carver/SphereCarver.java:129` | `SphereCarver` | `getSphereGridZ(double)` | `(int) Math.round(z / SPACING)` | Canónica, `double` |
-| C3 | `src/main/java/cn/mlus/biosphereworlds/carver/SphereCarver.java:52-55` | `SphereCarver` | `carve(...)` | `floor(minX/spacing)` … `ceil(maxX/spacing)` | Enumeración de celdas que tocan el chunk (no es «la celda de un punto») |
-| C4 | `src/main/java/cn/mlus/biosphereworlds/carver/SphereBridgeCarver.java:48-51` | `SphereBridgeCarver` | `carve(...)` | idéntico a C3 | **Duplicado literal de C3** |
-| C5 | `src/main/java/cn/mlus/biosphereworlds/util/SphereUtil.java:11-12` | `SphereUtil` | `isInSideSphere(...)` | `Math.round((float) x / spacing) * spacing` | **`float`**, devuelve el **centro**, no el índice. Código muerto (ver §1.6) |
-| C6 | `src/main/java/cn/mlus/biosphereworlds/density/MultipleSpheresDistanceFunction.java:32-33` | `MultipleSpheresDistanceFunction` | `compute(...)` | `Math.round((double) bx / spacing) * spacing` | Devuelve el **centro**; usa `SPACING` del config, ignora su propio campo `spacing` |
-| C7 | `src/main/java/cn/mlus/biosphereworlds/mixin/MixinNoiseBasedAquifer.java:44-45` | `MixinNoiseBasedAquifer` | `onComputeSubstance(...)` | `Math.round((float) x / sphereSpacing) * sphereSpacing` | **`float`**, devuelve el **centro** |
-| C8 | `src/main/java/cn/mlus/biosphereworlds/feature/SphereFeature.java:34-35` | `SphereFeature` | `place(...)` | `Math.round((double) ox / spacing) * spacing` | `spacing` es `double` del config de la feature. **Clase marcada «Not in use»** |
+| C1 | `src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereCarver.java:125` | `SphereCarver` | `getSphereGridX(double)` | `(int) Math.round(x / SPACING)` | Canónica, `double` |
+| C2 | `src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereCarver.java:129` | `SphereCarver` | `getSphereGridZ(double)` | `(int) Math.round(z / SPACING)` | Canónica, `double` |
+| C3 | `src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereCarver.java:52-55` | `SphereCarver` | `carve(...)` | `floor(minX/spacing)` … `ceil(maxX/spacing)` | Enumeración de celdas que tocan el chunk (no es «la celda de un punto») |
+| C4 | `src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereBridgeCarver.java:48-51` | `SphereBridgeCarver` | `carve(...)` | idéntico a C3 | **Duplicado literal de C3** |
+| C5 | `src/main/java/mx/issacinzunza/biosphereworlds/util/SphereUtil.java:11-12` | `SphereUtil` | `isInSideSphere(...)` | `Math.round((float) x / spacing) * spacing` | **`float`**, devuelve el **centro**, no el índice. Código muerto (ver §1.6) |
+| C6 | `src/main/java/mx/issacinzunza/biosphereworlds/density/MultipleSpheresDistanceFunction.java:32-33` | `MultipleSpheresDistanceFunction` | `compute(...)` | `Math.round((double) bx / spacing) * spacing` | Devuelve el **centro**; usa `SPACING` del config, ignora su propio campo `spacing` |
+| C7 | `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinNoiseBasedAquifer.java:44-45` | `MixinNoiseBasedAquifer` | `onComputeSubstance(...)` | `Math.round((float) x / sphereSpacing) * sphereSpacing` | **`float`**, devuelve el **centro** |
+| C8 | `src/main/java/mx/issacinzunza/biosphereworlds/feature/SphereFeature.java:34-35` | `SphereFeature` | `place(...)` | `Math.round((double) ox / spacing) * spacing` | `spacing` es `double` del config de la feature. **Clase marcada «Not in use»** |
 
 **Riesgo de equivalencia:** C5 y C7 usan división en `float`; C1/C2/C6/C8 en
 `double`. Coinciden para las coordenadas normales de un mundo, pero difieren en
@@ -243,8 +243,8 @@ ambos caminos de `minRadius >= maxRadius`.
 
 ## 5. Decisiones pendientes de tu OK
 
-1. **Paquete** de `SphereLayout`. Propongo `cn.mlus.biosphereworlds.worldgen`
-   (junto a `BiosphereWorldgen`). Alternativa: `cn.mlus.biosphereworlds.util`.
+1. **Paquete** de `SphereLayout`. Propongo `mx.issacinzunza.biosphereworlds.worldgen`
+   (junto a `BiosphereWorldgen`). Alternativa: `mx.issacinzunza.biosphereworlds.util`.
 2. **División `float` vs `double`** en C5/C7 (§1.1). Propongo `double` (unifica
    con la canónica) y documentar el cambio en coordenadas > ~2^24.
 3. **`D5` (acuífero)**: ¿lo dejo con su umbral lineal propio, o lo expreso como
@@ -260,7 +260,7 @@ ambos caminos de `minRadius >= maxRadius`.
 
 Decidido y aplicado tras el OK:
 
-1. **Paquete**: `cn.mlus.biosphereworlds.worldgen.SphereLayout`.
+1. **Paquete**: `mx.issacinzunza.biosphereworlds.worldgen.SphereLayout`.
 2. **División**: se unifica en `double`. Documentado como única divergencia
    aceptada, solo por encima de ~2^24.
 3. **D5 (acuífero)**: conserva su umbral lineal propio en el mixin; solo toma la
@@ -271,7 +271,7 @@ Decidido y aplicado tras el OK:
 6. `SphereUtil.isInSideSphere` (código muerto) se **eliminó**.
 
 Prueba de equivalencia:
-`src/test/java/cn/mlus/biosphereworlds/worldgen/SphereLayoutEquivalenceTest.java`.
+`src/test/java/mx/issacinzunza/biosphereworlds/worldgen/SphereLayoutEquivalenceTest.java`.
 19 casos, 0 fallos. `Legacy` es la copia literal de las fórmulas viejas
 parametrizada; la muestra cubre bordes de celda, celdas negativas, los dos
 caminos de `minRadius >= maxRadius`, márgenes `-4`/`0`/`16`/`128`/`1000` y el caso
