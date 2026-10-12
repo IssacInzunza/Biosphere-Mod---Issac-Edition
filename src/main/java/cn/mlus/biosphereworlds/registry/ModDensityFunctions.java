@@ -2,6 +2,7 @@ package cn.mlus.biosphereworlds.registry;
 
 import cn.mlus.biosphereworlds.BiosphereWorlds;
 import cn.mlus.biosphereworlds.density.MultipleSpheresDistanceFunction;
+import cn.mlus.biosphereworlds.density.SphereEdgeOceanFunction;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -13,6 +14,7 @@ public class ModDensityFunctions {
     public static final DeferredRegister<MapCodec<? extends DensityFunction>> DENSITY_FUNCTIONS =
             DeferredRegister.create(Registries.DENSITY_FUNCTION_TYPE, BiosphereWorlds.MODID);
     public static final DeferredHolder<MapCodec<? extends DensityFunction>, MapCodec<MultipleSpheresDistanceFunction>> MULTIPLE_SPHERES = register("multiple_spheres", MultipleSpheresDistanceFunction.CODEC);
+    public static final DeferredHolder<MapCodec<? extends DensityFunction>, MapCodec<SphereEdgeOceanFunction>> SPHERE_EDGE_OCEAN = register("sphere_edge_ocean", SphereEdgeOceanFunction.CODEC);
 
     private static <T extends DensityFunction> DeferredHolder<MapCodec<? extends DensityFunction>, MapCodec<T>> register(String name, MapCodec<T> codec) {
         return DENSITY_FUNCTIONS.register(name, () -> codec);

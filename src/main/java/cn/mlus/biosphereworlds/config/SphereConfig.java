@@ -22,6 +22,9 @@ public class SphereConfig {
     public static final ModConfigSpec.ConfigValue<Boolean> RESTRICT_STRUCTURES_TO_SPHERES;
     public static final ModConfigSpec.IntValue STRUCTURE_EDGE_MARGIN;
     public static final ModConfigSpec.BooleanValue DEBUG_BIOME_LOOKUPS;
+    public static final ModConfigSpec.BooleanValue EDGE_OCEAN_ENABLED;
+    public static final ModConfigSpec.IntValue EDGE_OCEAN_WIDTH;
+    public static final ModConfigSpec.IntValue EDGE_OCEAN_DEPTH;
 
     static {
         BUILDER.push("Settings");
@@ -37,6 +40,9 @@ public class SphereConfig {
         RESTRICT_STRUCTURES_TO_SPHERES = BUILDER.comment("Restrict structure starts to the inside of spheres").define("restrict_structures_to_spheres", true);
         STRUCTURE_EDGE_MARGIN = BUILDER.comment("Minimum distance between a structure start and a sphere edge").defineInRange("structure_edge_margin", 16, 0, 128);
         DEBUG_BIOME_LOOKUPS = BUILDER.comment("Log outside-sphere biome lookup routes at DEBUG level").define("debug_biome_lookups", false);
+        EDGE_OCEAN_ENABLED = BUILDER.comment("Flood the band next to the sphere shell with ocean: the terrain is clamped down to a flat floor so water reaches the glass").define("edge_ocean_enabled", false);
+        EDGE_OCEAN_WIDTH = BUILDER.comment("Width of the ocean band, as a percentage of the sphere radius").defineInRange("edge_ocean_width", 20, 0, 100);
+        EDGE_OCEAN_DEPTH = BUILDER.comment("Depth of the ocean floor below sea level (63), in blocks").defineInRange("edge_ocean_depth", 20, 0, 100);
         SPEC = BUILDER.build();
     }
 
