@@ -19,3 +19,4 @@ replay_pid*.log
 # OS files
 .DS_Store
 Thumbs.db
+AGENTS.md

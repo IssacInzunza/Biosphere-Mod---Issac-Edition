@@ -23,6 +23,9 @@
   "biosphereworlds.configuration.only_upper_hemisphere": "Upper hemisphere only",
   "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Generate only the upper half of each sphere. Only affects newly generated worlds.",
 
+  "biosphereworlds.configuration.close_open_top": "Close open sphere tops",
+  "biosphereworlds.configuration.close_open_top.tooltip": "Close spheres extending above Y=320 with a flat cap at Y=319 using each sphere's shell material. Disabled by default. Removes the natural exit for aircraft; with an opaque shell material, the interior receives less light. Only affects newly generated chunks.",
+
   "biosphereworlds.configuration.generate_bridge": "Generate bridges",
   "biosphereworlds.configuration.generate_bridge.tooltip": "Generate bridges between adjacent spheres. Only affects newly generated worlds.",
 

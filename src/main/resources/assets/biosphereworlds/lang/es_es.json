@@ -23,6 +23,9 @@
   "biosphereworlds.configuration.only_upper_hemisphere": "Solo hemisferio superior",
   "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Genera solo la mitad superior de cada esfera. Solo afecta a mundos nuevos.",
 
+  "biosphereworlds.configuration.close_open_top": "Cerrar la parte superior abierta",
+  "biosphereworlds.configuration.close_open_top.tooltip": "Cierra las esferas que superan Y=320 con una tapa plana en Y=319 del material del cascarón de cada esfera. Desactivado por defecto. Elimina la salida natural para aeronaves; con un material de cascarón opaco, el interior recibe menos luz. Solo afecta a chunks nuevos.",
+
   "biosphereworlds.configuration.generate_bridge": "Generar puentes",
   "biosphereworlds.configuration.generate_bridge.tooltip": "Genera puentes entre esferas adyacentes. Solo afecta a mundos nuevos.",
 
