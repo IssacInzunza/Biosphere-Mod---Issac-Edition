@@ -1,5 +1,6 @@
 package mx.issacinzunza.biosphereworlds.carver;
 
+import mx.issacinzunza.biosphereworlds.BiosphereWorlds;
 import mx.issacinzunza.biosphereworlds.config.SphereConfig;
 import mx.issacinzunza.biosphereworlds.config.SphereConfig.BedrockMode;
 import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
@@ -28,6 +29,8 @@ import net.minecraft.world.level.levelgen.carver.WorldCarver;
 import net.minecraft.world.level.levelgen.heightproviders.HeightProvider;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
@@ -42,6 +45,9 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
      * puede rellenar minY..minY + 4; la capa extra es margen.
      */
     private static final int BEDROCK_FLOOR_BAND_TOP = 5;
+
+    /** Evita repetir el log de diagnostico de la celda (0,0) en cada chunk. */
+    private static final AtomicBoolean LOGGED_SATELLITES_CELL_ZERO = new AtomicBoolean();
 
     public SphereCarver(Codec<SphereCarverConfig> codec) {
         super(codec);
@@ -158,10 +164,93 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                         }
                     }
                 }
+
+                // Satelites de esta celda. El bucle es independiente del de la
+                // principal: un chunk que solo toca un satelite (sin tocar la
+                // esfera principal) sigue enumerando esta celda gracias a
+                // firstCellIndex/lastCellIndex, y aqui no hay ninguna poda por
+                // distancia al centro de la principal.
+                if (layout.params().satellitesEnabled()) {
+                    List<SphereLayout.Satellite> satellites = layout.satellitesAtCell(gridX, gridZ);
+                    for (SphereLayout.Satellite satellite : satellites) {
+                        generated |= carveSatellite(chunk, satellite, blockState,
+                                chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
+                    }
+                    if (gridX == 0 && gridZ == 0
+                            && LOGGED_SATELLITES_CELL_ZERO.compareAndSet(false, true)) {
+                        logSatellitesCellZero(satellites);
+                    }
+                }
             }
         }
 
         return generated;
+    }
+
+    /**
+     * Pinta un satelite de la etapa 1: cascaron del mismo bloque que su principal y
+     * cuerpo solido de piedra. No aplica tapa, forro de bedrock ni
+     * {@code only_upper_hemisphere}: los satelites son siempre esferas completas y
+     * la colocacion ya garantiza que caben en los limites del mundo.
+     */
+    private boolean carveSatellite(ChunkAccess chunk, SphereLayout.Satellite satellite,
+                                   BlockState shellState,
+                                   int chunkStartX, int chunkEndX, int chunkStartZ, int chunkEndZ) {
+        double radius = satellite.radius();
+        double innerRadius = Math.max(0.0, radius - SphereLayout.SHELL_THICKNESS);
+        double innerRadiusSq = innerRadius * innerRadius;
+        double outerRadiusSq = radius * radius;
+
+        int minX = Math.max(chunkStartX, (int) Math.floor(satellite.centerX() - radius));
+        int maxX = Math.min(chunkEndX, (int) Math.ceil(satellite.centerX() + radius));
+        int minZ = Math.max(chunkStartZ, (int) Math.floor(satellite.centerZ() - radius));
+        int maxZ = Math.min(chunkEndZ, (int) Math.ceil(satellite.centerZ() + radius));
+        int minY = Math.max(chunk.getMinBuildHeight(), (int) Math.floor(satellite.centerY() - radius));
+        int maxY = Math.min(chunk.getMaxBuildHeight() - 1, (int) Math.ceil(satellite.centerY() + radius));
+
+        BlockState bodyState = Blocks.STONE.defaultBlockState();
+        boolean generated = false;
+
+        for (int x = minX; x <= maxX; x++) {
+            double dx = x - satellite.centerX();
+            double dx2 = dx * dx;
+            if (dx2 > outerRadiusSq) {
+                continue;
+            }
+            for (int z = minZ; z <= maxZ; z++) {
+                double dz = z - satellite.centerZ();
+                double horizontalDistSq = dx2 + dz * dz;
+                if (horizontalDistSq > outerRadiusSq) {
+                    continue;
+                }
+                for (int y = minY; y <= maxY; y++) {
+                    double dy = y - satellite.centerY();
+                    double distanceSq = horizontalDistSq + dy * dy;
+                    if (distanceSq > outerRadiusSq) {
+                        continue;
+                    }
+                    BlockState state = distanceSq > innerRadiusSq ? shellState : bodyState;
+                    chunk.setBlockState(new BlockPos(x, y, z), state, false);
+                    generated = true;
+                }
+            }
+        }
+
+        return generated;
+    }
+
+    /** Log DEBUG con las posiciones y radios de los satelites de la celda (0,0). */
+    private static void logSatellitesCellZero(List<SphereLayout.Satellite> satellites) {
+        StringBuilder message = new StringBuilder("satellites cell=(0,0) count=")
+                .append(satellites.size());
+        for (SphereLayout.Satellite satellite : satellites) {
+            message.append(" [x=").append(String.format(java.util.Locale.ROOT, "%.2f", satellite.centerX()))
+                    .append(" y=").append(String.format(java.util.Locale.ROOT, "%.2f", satellite.centerY()))
+                    .append(" z=").append(String.format(java.util.Locale.ROOT, "%.2f", satellite.centerZ()))
+                    .append(" r=").append(satellite.radius())
+                    .append(']');
+        }
+        BiosphereWorlds.LOGGER.debug(message.toString());
     }
 
     /**

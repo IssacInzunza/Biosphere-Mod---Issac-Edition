@@ -27,6 +27,15 @@ public class SphereConfig {
     public static final ModConfigSpec.BooleanValue EDGE_OCEAN_ENABLED;
     public static final ModConfigSpec.IntValue EDGE_OCEAN_WIDTH;
     public static final ModConfigSpec.IntValue EDGE_OCEAN_DEPTH;
+    public static final ModConfigSpec.BooleanValue SATELLITES_ENABLED;
+    public static final ModConfigSpec.IntValue SATELLITES_MAX_COUNT;
+    public static final ModConfigSpec.IntValue SATELLITES_MIN_SIZE_PERCENT;
+    public static final ModConfigSpec.IntValue SATELLITES_MAX_SIZE_PERCENT;
+    public static final ModConfigSpec.IntValue SATELLITES_MIN_GAP_PERCENT;
+    public static final ModConfigSpec.IntValue SATELLITES_MAX_GAP_PERCENT;
+    public static final ModConfigSpec.IntValue SATELLITES_MIN_GAP_BLOCKS;
+    public static final ModConfigSpec.IntValue SATELLITES_MIN_ELEVATION_DEGREES;
+    public static final ModConfigSpec.IntValue SATELLITES_MAX_ELEVATION_DEGREES;
 
     static {
         BUILDER.push("Settings");
@@ -47,6 +56,15 @@ public class SphereConfig {
         EDGE_OCEAN_ENABLED = BUILDER.comment("Flood the band next to the sphere shell with ocean: the terrain is clamped down to a flat floor so water reaches the glass").define("edge_ocean_enabled", false);
         EDGE_OCEAN_WIDTH = BUILDER.comment("Width of the ocean band, as a percentage of the sphere radius").defineInRange("edge_ocean_width", 20, 0, 100);
         EDGE_OCEAN_DEPTH = BUILDER.comment("Depth of the ocean floor below sea level (63), in blocks").defineInRange("edge_ocean_depth", 20, 0, 100);
+        SATELLITES_ENABLED = BUILDER.comment("Generate small satellite spheres above each main sphere. Only affects newly generated worlds.").define("satellites_enabled", true);
+        SATELLITES_MAX_COUNT = BUILDER.comment("Maximum satellites per main sphere (0 disables them even if satellites_enabled is true)").defineInRange("satellites_max_count", 3, 0, 64);
+        SATELLITES_MIN_SIZE_PERCENT = BUILDER.comment("Minimum satellite radius, as a percentage of the main sphere radius (default 8)").defineInRange("satellites_min_size_percent", 8, 1, 100);
+        SATELLITES_MAX_SIZE_PERCENT = BUILDER.comment("Maximum satellite radius, as a percentage of the main sphere radius (default 12)").defineInRange("satellites_max_size_percent", 12, 1, 100);
+        SATELLITES_MIN_GAP_PERCENT = BUILDER.comment("Minimum gap between the satellite and main sphere surfaces, as a percentage of the main radius").defineInRange("satellites_min_gap_percent", 25, 0, 1000);
+        SATELLITES_MAX_GAP_PERCENT = BUILDER.comment("Maximum gap between the satellite and main sphere surfaces, as a percentage of the main radius").defineInRange("satellites_max_gap_percent", 75, 0, 1000);
+        SATELLITES_MIN_GAP_BLOCKS = BUILDER.comment("Absolute minimum gap, in blocks, with the main sphere; also the safety margin from the cell border and other satellites").defineInRange("satellites_min_gap_blocks", 16, 0, 1024);
+        SATELLITES_MIN_ELEVATION_DEGREES = BUILDER.comment("Minimum elevation angle of the satellites above the main sphere center, in degrees").defineInRange("satellites_min_elevation_degrees", 30, 0, 90);
+        SATELLITES_MAX_ELEVATION_DEGREES = BUILDER.comment("Maximum elevation angle of the satellites above the main sphere center, in degrees").defineInRange("satellites_max_elevation_degrees", 55, 0, 90);
         SPEC = BUILDER.build();
     }
 

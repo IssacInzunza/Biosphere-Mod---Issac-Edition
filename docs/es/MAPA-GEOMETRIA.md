@@ -333,3 +333,71 @@ y pasan después.
   `BiosphereBiomeSource` (que sí usa D2 en la ruta más caliente) es el punto que
   TerraBlender podría envolver; al no cambiar su contrato ni su predicado, el
   riesgo es bajo. **No verificado.**
+
+---
+
+## 8. Satélites (ETAPA 1: cascarón y cuerpo de piedra)
+
+Implementado en:
+
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SatellitePlacement.java` —
+  colocación pura. Recibe la esfera principal, las principales vecinas, la
+  instantánea de `SphereLayout.Params` y los límites horizontales de la celda.
+  No lee configuración ni toca Minecraft, así que es determinista y se prueba con
+  JUnit.
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SphereLayout.java` —
+  `Satellite` (centro y radio), `satellitesAtCell(cellX, cellZ)` con caché
+  `AtomicReferenceArray` por celda, e `isInsideSatellite(x, y, z)`.
+- `src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereCarver.java` —
+  `carveSatellite` pinta el cascarón con el bloque de la principal y el interior
+  con `minecraft:stone`.
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinHeightmap.java` —
+  todo el volumen de un satélite se trata como aire al actualizar o primar
+  heightmaps.
+
+Reglas de colocación:
+
+- Hash de 64 bits propio (constantes distintas del hash del radio), derivado solo
+  de `(cellX, cellZ, índice, intento)`. El radio y el caso
+  `Math.abs(Integer.MIN_VALUE)` no se tocan.
+- Ángulo base por celda + paso áureo por índice + jitter: los satélites de una
+  celda no pueden quedar todos en la misma dirección.
+- Tamaño en `[min_size, max_size]` por ciento del radio principal (por defecto
+  8–12 %); hueco en `[min_gap, max_gap]` con mínimo absoluto
+  `satellites_min_gap_blocks`.
+- Elevación en `[min_elevation, max_elevation]` grados sobre el centro.
+- Validación con el volumen completo: celda horizontal con margen, Y entre -64 y
+  319, sin solape con la principal, las principales vecinas ni los satélites ya
+  colocados de la misma celda. Máximo 16 intentos por satélite; si ninguno vale,
+  se omite sin error.
+- Cada satélite cabe entero en su celda, así que `isInsideSatellite` solo
+  consulta la celda que contiene el punto (no las nueve) y dos satélites de
+  celdas distintas no pueden solaparse.
+
+Con `satellites_enabled = false`:
+
+- `SphereLayout` no reserva la caché de satélites (`satelliteCache == null`).
+- `satellitesAtCell` devuelve `List.of()` e `isInsideSatellite` devuelve `false`
+  antes de cualquier cálculo.
+- `SphereCarver` no entra en el bucle de satélites y `MixinHeightmap` comprueba
+  la opción antes de llamar a `SphereLayout`.
+- La geometría de las principales es bit a bit la misma; las pruebas de
+  equivalencia usan el constructor de cuatro argumentos de `Params`, que deja
+  los satélites apagados.
+
+Densidad, bioma y estructuras no cambian: un satélite está íntegramente fuera de
+su principal, así que `sphereContaining` sigue devolviendo la principal,
+`MultipleSpheresDistanceFunction` da `> 1` (vacío) y el acuífero da aire. El
+bioma interior es `minecraft:the_void`, sin mobs. El filtro de estructuras solo
+acepta inicios dentro de la principal, de modo que ya rechaza los satélites.
+
+Heightmaps: se ignoran **todos** los bloques del volumen del satélite (cascarón y
+cuerpo de piedra) en `Heightmap.update` y `Heightmap.primeHeightmaps`, no solo
+los bloques de cascarón por encima de `center_y`. Así un satélite sobre una
+esfera no contamina `WORLD_SURFACE_WG` ni `OCEAN_FLOOR_WG` y no altera calles de
+aldea ni vegetación de abajo.
+
+Limitación numérica: con `center_y = 62` y los valores por defecto solo caben
+satélites si el radio principal es menor de unos 200-300 bloques. A 55° el límite
+es el techo (319); a 30° es el ancho de la celda (spacing/2). Por encima de ese
+radio la colocación omite satélites sin error.

@@ -123,7 +123,7 @@ public class SphereBridgeCarver extends SphereCarver {
 
                     if (distSq <= bridgeRadiusSq && distSq >= bridgeRadiusMinusOneSq) {
                         BlockPos pos = new BlockPos(x, y, z);
-                        if (!layout.isInside(x, y, z)) {
+                        if (!layout.isInside(x, y, z) && !layout.isInsideSatellite(x, y, z)) {
                             if (chunk.getBlockState(pos).isAir()) {
                                 chunk.setBlockState(pos, bridgeState, false);
                                 generated = true;
