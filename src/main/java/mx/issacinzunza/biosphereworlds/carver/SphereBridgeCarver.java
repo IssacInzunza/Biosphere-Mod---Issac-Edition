@@ -33,7 +33,6 @@ public class SphereBridgeCarver extends SphereCarver {
 
         SphereLayout layout = SphereLayout.current();
         int spacing = layout.params().spacing();
-        int centerY = layout.params().centerY();
         int bridgeRadius = SphereConfig.BRIDGE_RADIUS.get().intValue();
         boolean enableBridges = SphereConfig.GENERATE_BRIDGE.get();
 
@@ -59,13 +58,13 @@ public class SphereBridgeCarver extends SphereCarver {
                 double centerZ = sphere.centerZ();
 
                 if (enableBridges) {
-                    generated |= carveBridge(chunk, layout, centerX, centerZ, centerY,
-                            centerX + spacing, centerZ, centerY,
+                    generated |= carveBridge(chunk, layout, centerX, centerZ, sphere.centerY(),
+                            centerX + spacing, centerZ, layout.sphereAtCell(gridX + 1, gridZ).centerY(),
                             bridgeRadius, bridgeState,
                             chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
 
-                    generated |= carveBridge(chunk, layout, centerX, centerZ, centerY,
-                            centerX, centerZ + spacing, centerY,
+                    generated |= carveBridge(chunk, layout, centerX, centerZ, sphere.centerY(),
+                            centerX, centerZ + spacing, layout.sphereAtCell(gridX, gridZ + 1).centerY(),
                             bridgeRadius, bridgeState,
                             chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
                 }

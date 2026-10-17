@@ -60,8 +60,14 @@ public final class SphereLayout {
         }
     }
 
-    /** Una esfera concreta de la cuadricula. Inmutable. */
-    public record Sphere(int cellX, int cellZ, double centerX, double centerZ, int radius) {
+    /**
+     * Una esfera concreta de la cuadricula. Inmutable.
+     *
+     * <p>{@code centerY} es propio de cada esfera. Hoy todas las principales usan el
+     * mismo valor de configuracion, pero la prueba de pertenencia lee el centro de la
+     * esfera y no el global, para que los satelites puedan tener su propia altura.</p>
+     */
+    public record Sphere(int cellX, int cellZ, double centerX, double centerY, double centerZ, int radius) {
     }
 
     // ------------------------------------------------------------------
@@ -161,7 +167,7 @@ public final class SphereLayout {
         if (cached != null && cached.cellX() == cellX && cached.cellZ() == cellZ) {
             return cached;
         }
-        Sphere fresh = new Sphere(cellX, cellZ, centerX(cellX), centerZ(cellZ), radiusAt(cellX, cellZ));
+        Sphere fresh = new Sphere(cellX, cellZ, centerX(cellX), params.centerY(), centerZ(cellZ), radiusAt(cellX, cellZ));
         cache.set(slot, fresh);
         return fresh;
     }
@@ -224,7 +230,6 @@ public final class SphereLayout {
     public boolean isInside(double x, double y, double z, double edgeMargin) {
         int gridX = cellX(x);
         int gridZ = cellZ(z);
-        double centerY = params.centerY();
         for (int gx = gridX - 1; gx <= gridX + 1; gx++) {
             for (int gz = gridZ - 1; gz <= gridZ + 1; gz++) {
                 if (contains(sphereAtCell(gx, gz), x, y, z, edgeMargin)) {
@@ -252,13 +257,12 @@ public final class SphereLayout {
     public double distanceToEdge(double x, double y, double z) {
         int gridX = cellX(x);
         int gridZ = cellZ(z);
-        double centerY = params.centerY();
         double best = Double.NEGATIVE_INFINITY;
         for (int gx = gridX - 1; gx <= gridX + 1; gx++) {
             for (int gz = gridZ - 1; gz <= gridZ + 1; gz++) {
                 Sphere sphere = sphereAtCell(gx, gz);
                 double dx = x - sphere.centerX();
-                double dy = y - centerY;
+                double dy = y - sphere.centerY();
                 double dz = z - sphere.centerZ();
                 double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                 double toEdge = (sphere.radius() - SHELL_THICKNESS) - distance;
@@ -276,7 +280,7 @@ public final class SphereLayout {
 
     private boolean contains(Sphere sphere, double x, double y, double z, double edgeMargin) {
         double dx = x - sphere.centerX();
-        double dy = y - params.centerY();
+        double dy = y - sphere.centerY();
         double dz = z - sphere.centerZ();
         double effectiveRadius = sphere.radius() - SHELL_THICKNESS - edgeMargin;
         double innerRadiusSq = effectiveRadius * effectiveRadius;

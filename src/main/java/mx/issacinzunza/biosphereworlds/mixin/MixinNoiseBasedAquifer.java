@@ -41,7 +41,7 @@ public class MixinNoiseBasedAquifer {
         int sphereRadius = sphere.radius();
 
         double dx = x - sphere.centerX();
-        double dy = y - layout.params().centerY();
+        double dy = y - sphere.centerY();
         double dz = z - sphere.centerZ();
 
         double distance = dx * dx + dy * dy + dz * dz;

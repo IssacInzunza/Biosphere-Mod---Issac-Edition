@@ -54,7 +54,6 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                          @NotNull CarvingMask carvingMask) {
 
         SphereLayout layout = SphereLayout.current();
-        int centerY = layout.params().centerY();
         boolean closeOpenTop = SphereConfig.CLOSE_OPEN_TOP.get();
         int topCapY = chunk.getMaxBuildHeight() - 1;
 
@@ -87,6 +86,7 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
 
                 double centerX = sphere.centerX();
                 double centerZ = sphere.centerZ();
+                int centerY = (int) sphere.centerY();
 
                 int radius = sphere.radius();
                 if (SphereConfig.ONLY_UPPER_HEMISPHERE.get())

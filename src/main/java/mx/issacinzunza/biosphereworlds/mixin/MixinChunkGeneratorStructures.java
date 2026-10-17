@@ -41,12 +41,12 @@ public abstract class MixinChunkGeneratorStructures {
         SphereLayout layout = SphereLayout.current();
         int centerX = chunkPos.getMiddleBlockX();
         int centerZ = chunkPos.getMiddleBlockZ();
-        int centerY = layout.params().centerY();
+        SphereLayout.Sphere sphere = layout.sphereContaining(centerX, centerZ);
         int edgeMargin = SphereConfig.STRUCTURE_EDGE_MARGIN.get().intValue();
 
         // Structure starts are seeded at the candidate chunk. Requiring that point to be
         // inside the shrunken sphere prevents the generated pieces from reaching empty space.
-        if (!layout.isInside(centerX, centerY, centerZ, edgeMargin)) {
+        if (!layout.isInside(centerX, sphere.centerY(), centerZ, edgeMargin)) {
             cir.setReturnValue(false);
         }
     }
