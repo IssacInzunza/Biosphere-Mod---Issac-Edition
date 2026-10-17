@@ -281,6 +281,13 @@ Si `only_upper_hemisphere` está activo, `SphereCarver.carve` reduce el radio en
 uno y restringe el reemplazo: por debajo de Y 55 solo permite agua y exige que
 el bloque sea reemplazable según `canReplaceBlock`.
 
+Con `close_open_top` activo, la misma condición del bucle acepta además el disco
+completo (`distanceSq <= radius^2`) cuando `y == maxBuildHeight - 1`. En ese Y el
+cascarón ya cubre todo el disco si `center_y + radius <= 321`, así que la
+cláusula solo añade bloques cuando la esfera está realmente cortada, y usa el
+mismo radio efectivo y el mismo bloque que el cascarón. La opción se lee en
+`carve` y no forma parte de la caché de `SphereLayout.current()`.
+
 ### Paso 5: biome source wrapper y biomas
 
 El JSON del preset decodifica `BiosphereBiomeSource` con dos campos:
@@ -521,6 +528,7 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 | `center_y` | `ConfigValue<Number>` | `62` | carvers, density function, estructuras, aquifer, heightmap y spawn handler | Altura Y del centro de cada esfera y referencia vertical de varias comprobaciones. |
 | `sphere_block` | `ConfigValue<List<? extends String>>` | `["minecraft:glass"]` | `SphereCarver.getSphereBlockState`, `SphereUtil`, `PlayerSpawnHandler`, `MixinHeightmap` | Lista de ids de bloques posibles para el cascarón; la celda selecciona uno determinísticamente. Se valida contra `BuiltInRegistries.ITEM`, aunque luego se usa como bloque. |
 | `only_upper_hemisphere` | `ConfigValue<Boolean>` | `false` | `SphereCarver.carve` | Activa el modo de hemisferio superior y sus reglas especiales de reemplazo bajo Y 55. |
+| `close_open_top` | `BooleanValue` | `false` | `SphereCarver.carve` | Cierra con una tapa plana en el Y colocable más alto (319) las esferas cortadas por el límite de construcción, usando el bloque del cascarón. Solo afecta a mundos nuevos. |
 | `generate_bridge` | `ConfigValue<Boolean>` | `true` | `SphereBridgeCarver.carve` | Activa o desactiva la colocación de puentes entre centros vecinos. |
 | `bridge_block` | `ConfigValue<String>` | `"minecraft:oak_planks"` | `SphereBridgeCarver.carve` | Id del bloque usado por los puentes. |
 | `bridge_radius` | `ConfigValue<Number>` | `1` | `SphereBridgeCarver.carveBridge` | Grosor radial del tubo de puente. |

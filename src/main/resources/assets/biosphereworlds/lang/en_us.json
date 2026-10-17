@@ -23,6 +23,9 @@
   "biosphereworlds.configuration.only_upper_hemisphere": "Upper hemisphere only",
   "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Generate only the upper half of each sphere. Only affects newly generated worlds.",
 
+  "biosphereworlds.configuration.close_open_top": "Close open tops",
+  "biosphereworlds.configuration.close_open_top.tooltip": "Close spheres that pass the build limit with a flat cap at the highest placeable Y (319), using the sphere shell block. Removes the natural exit at the top. Only affects newly generated worlds.",
+
   "biosphereworlds.configuration.generate_bridge": "Generate bridges",
   "biosphereworlds.configuration.generate_bridge.tooltip": "Generate bridges between adjacent spheres. Only affects newly generated worlds.",
 
