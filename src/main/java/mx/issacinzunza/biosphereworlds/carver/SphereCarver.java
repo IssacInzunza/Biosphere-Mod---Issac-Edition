@@ -1,6 +1,7 @@
 package mx.issacinzunza.biosphereworlds.carver;
 
 import mx.issacinzunza.biosphereworlds.config.SphereConfig;
+import mx.issacinzunza.biosphereworlds.config.SphereConfig.BedrockMode;
 import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -30,6 +31,18 @@ import org.jetbrains.annotations.NotNull;
 import java.util.function.Function;
 
 public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
+
+    /** Grosor del forro de bedrock del modo shell, en bloques. */
+    public static final int BEDROCK_LINER_THICKNESS = 3;
+
+    /**
+     * Capas sobre el minimo del mundo que barre el modo none. El JSON de
+     * surface_rule usa above_bottom 0 y 5, que resuelven a minY y minY + 5, y la
+     * condicion es verdadera en minY y falsa en minY + 5, asi que la regla solo
+     * puede rellenar minY..minY + 4; la capa extra es margen.
+     */
+    private static final int BEDROCK_FLOOR_BAND_TOP = 5;
+
     public SphereCarver(Codec<SphereCarverConfig> codec) {
         super(codec);
     }
@@ -44,6 +57,16 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
         int centerY = layout.params().centerY();
         boolean closeOpenTop = SphereConfig.CLOSE_OPEN_TOP.get();
         int topCapY = chunk.getMaxBuildHeight() - 1;
+
+        // bedrock_mode. Con floor no se activa ninguna rama nueva. El forro solo
+        // existe con hemisphere completo: con only_upper_hemisphere no hay mitad
+        // inferior que forrar y shell se comporta exactamente como floor.
+        BedrockMode bedrockMode = SphereConfig.BEDROCK_MODE.get();
+        boolean bedrockLiner = bedrockMode == BedrockMode.SHELL && !SphereConfig.ONLY_UPPER_HEMISPHERE.get();
+        BlockState bedrockState = bedrockLiner ? Blocks.BEDROCK.defaultBlockState() : null;
+        if (bedrockMode == BedrockMode.NONE) {
+            replaceBedrockFloor(chunk);
+        }
 
         int chunkStartX = chunkPos.getMinBlockX();
         int chunkStartZ = chunkPos.getMinBlockZ();
@@ -77,6 +100,15 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                 double shellThickness = SphereLayout.SHELL_THICKNESS;
                 double innerRadiusSq = (radius - shellThickness) * (radius - shellThickness);
                 double outerRadiusSq = radius * radius;
+
+                // Forro (modo shell): las tres capas pegadas por dentro al
+                // cascaron. Fuera de shell no se calcula nada.
+                double linerInnerRadiusSq = 0.0;
+                if (bedrockLiner) {
+                    double linerInnerRadius = radius - shellThickness - BEDROCK_LINER_THICKNESS;
+                    if (linerInnerRadius < 0.0) linerInnerRadius = 0.0;
+                    linerInnerRadiusSq = linerInnerRadius * linerInnerRadius;
+                }
 
                 for (int x = chunkStartX; x <= chunkEndX; x++) {
                     double dx = x - centerX;
@@ -113,6 +145,16 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                                     generated = true;
                                 }
                             }
+                            // Forro de bedrock del modo shell: mitad inferior
+                            // (y <= centerY) y estrictamente por dentro del
+                            // cascaron, que nunca se toca.
+                            else if (bedrockLiner
+                                    && dy <= 0.0
+                                    && distanceSq >= linerInnerRadiusSq
+                                    && distanceSq < innerRadiusSq) {
+                                chunk.setBlockState(new BlockPos(x, y, z), bedrockState, false);
+                                generated = true;
+                            }
                         }
                     }
                 }
@@ -120,6 +162,32 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
         }
 
         return generated;
+    }
+
+    /**
+     * Modo none: la regla {@code bedrock_floor} de la surface_rule pone bedrock
+     * en las primeras capas del mundo. Las reglas de superficie corren en el
+     * estado SURFACE y los carvers en el estado CARVERS, asi que en este punto
+     * esa bedrock ya esta puesta y se puede sustituir sin tocar el JSON. Solo se
+     * sustituye bedrock: el aire y el agua no se tocan. El bloque que la regla
+     * reemplazo era {@code default_block} (piedra), pero aqui se usa deepslate.
+     */
+    private static void replaceBedrockFloor(@NotNull ChunkAccess chunk) {
+        BlockState deepslate = Blocks.DEEPSLATE.defaultBlockState();
+        int floorY = chunk.getMinBuildHeight();
+        int bandTop = Math.min(chunk.getMaxBuildHeight() - 1, floorY + BEDROCK_FLOOR_BAND_TOP);
+        ChunkPos chunkPos = chunk.getPos();
+
+        for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
+            for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
+                for (int y = floorY; y <= bandTop; y++) {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    if (chunk.getBlockState(pos).is(Blocks.BEDROCK)) {
+                        chunk.setBlockState(pos, deepslate, false);
+                    }
+                }
+            }
+        }
     }
 
     @Override

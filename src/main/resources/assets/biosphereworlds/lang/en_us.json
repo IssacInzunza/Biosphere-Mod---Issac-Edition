@@ -26,6 +26,9 @@
   "biosphereworlds.configuration.close_open_top": "Close open tops",
   "biosphereworlds.configuration.close_open_top.tooltip": "Close spheres that pass the build limit with a flat cap at the highest placeable Y (319), using the sphere shell block. Removes the natural exit at the top. Only affects newly generated worlds.",
 
+  "biosphereworlds.configuration.bedrock_mode": "Bedrock mode",
+  "biosphereworlds.configuration.bedrock_mode.tooltip": "Bedrock at the world floor. floor: keep the bedrock_floor surface rule at the bottom of the world. none: no bedrock at the bottom, the floor is deepslate instead (the Create Diesel Generators pumpjack needs bedrock, so it will not work with this value). shell: floor plus a 3-block bedrock lining on the inside of the glass shell in the lower half of each sphere; with only_upper_hemisphere enabled it behaves exactly like floor. Only affects newly generated chunks.",
+
   "biosphereworlds.configuration.generate_bridge": "Generate bridges",
   "biosphereworlds.configuration.generate_bridge.tooltip": "Generate bridges between adjacent spheres. Only affects newly generated worlds.",
 
