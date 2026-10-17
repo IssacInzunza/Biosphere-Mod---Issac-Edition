@@ -26,6 +26,9 @@
   "biosphereworlds.configuration.close_open_top": "Cerrar tapas superiores",
   "biosphereworlds.configuration.close_open_top.tooltip": "Cierra con una tapa plana en el Y colocable más alto (319) las esferas que superan el límite de construcción, usando el bloque del cascarón. Elimina la salida natural por arriba. Solo afecta a mundos nuevos.",
 
+  "biosphereworlds.configuration.bedrock_mode": "Modo de bedrock",
+  "biosphereworlds.configuration.bedrock_mode.tooltip": "Bedrock en el suelo del mundo. floor: se mantiene la regla bedrock_floor de la surface_rule en el fondo del mundo. none: sin bedrock en el fondo, el suelo pasa a ser deepslate (el pumpjack de Create Diesel Generators necesita bedrock, así que no funcionará con este valor). shell: lo de floor más un forro de bedrock de 3 bloques por dentro del cascarón de vidrio en la mitad inferior de cada esfera; con only_upper_hemisphere activo se comporta exactamente como floor. Solo afecta a chunks nuevos.",
+
   "biosphereworlds.configuration.generate_bridge": "Generar puentes",
   "biosphereworlds.configuration.generate_bridge.tooltip": "Genera puentes entre esferas adyacentes. Solo afecta a mundos nuevos.",
 

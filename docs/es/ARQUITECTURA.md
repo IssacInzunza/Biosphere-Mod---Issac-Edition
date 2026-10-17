@@ -288,6 +288,25 @@ cláusula solo añade bloques cuando la esfera está realmente cortada, y usa el
 mismo radio efectivo y el mismo bloque que el cascarón. La opción se lee en
 `carve` y no forma parte de la caché de `SphereLayout.current()`.
 
+Con `bedrock_mode` el carver también controla el bedrock del suelo. Las reglas
+de superficie se aplican en el estado SURFACE
+(`ChunkStatusTasks.generateSurface` → `NoiseBasedChunkGenerator.buildSurface` →
+`SurfaceSystem.buildSurface`) y los carvers después, en el estado CARVERS
+(`ChunkStatusTasks.generateCarvers` → `NoiseBasedChunkGenerator.applyCarvers`),
+así que en `carve` la bedrock de la regla `bedrock_floor` ya está colocada y se
+puede sustituir sin tocar el JSON:
+
+- `floor` (por defecto): no se activa ninguna rama nueva; el conjunto de
+  bloques escritos es idéntico al anterior.
+- `none`: `replaceBedrockFloor` barre las primeras capas del chunk
+  (`min_y .. min_y + 5`) y cambia por deepslate solo los bloques que son
+  bedrock; el aire y el agua no se tocan.
+- `shell`: además, la rama `else if` del bucle rellena con bedrock las tres
+  capas estrictamente por dentro del cascarón (`radius - 5 <= d < radius - 2`)
+  en la mitad inferior (`y <= center_y`), sustituyendo cualquier bloque salvo el
+  cascarón. Con `only_upper_hemisphere` el forro no se genera y `shell` se
+  comporta como `floor`.
+
 ### Paso 5: biome source wrapper y biomas
 
 El JSON del preset decodifica `BiosphereBiomeSource` con dos campos:
@@ -529,6 +548,7 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 | `sphere_block` | `ConfigValue<List<? extends String>>` | `["minecraft:glass"]` | `SphereCarver.getSphereBlockState`, `SphereUtil`, `PlayerSpawnHandler`, `MixinHeightmap` | Lista de ids de bloques posibles para el cascarón; la celda selecciona uno determinísticamente. Se valida contra `BuiltInRegistries.ITEM`, aunque luego se usa como bloque. |
 | `only_upper_hemisphere` | `ConfigValue<Boolean>` | `false` | `SphereCarver.carve` | Activa el modo de hemisferio superior y sus reglas especiales de reemplazo bajo Y 55. |
 | `close_open_top` | `BooleanValue` | `false` | `SphereCarver.carve` | Cierra con una tapa plana en el Y colocable más alto (319) las esferas cortadas por el límite de construcción, usando el bloque del cascarón. Solo afecta a mundos nuevos. |
+| `bedrock_mode` | `EnumValue<BedrockMode>` | `floor` | `SphereCarver.carve` | Bedrock del suelo del mundo. `floor`: se mantiene la regla `bedrock_floor` de la surface_rule en el fondo (Y −64..−60, solo donde hay piedra). `none`: sin bedrock en el fondo; el carver sustituye esa bedrock por deepslate, así que el suelo se puede minar (el pumpjack de Create Diesel Generators necesita bedrock y no funcionará). `shell`: lo de `floor` más un forro de bedrock de 3 bloques por dentro del cascarón de vidrio en la mitad inferior (`y <= center_y`), que sustituye cualquier bloque salvo el cascarón. Con `only_upper_hemisphere` activo, `shell` se comporta exactamente como `floor`. Solo afecta a chunks nuevos. |
 | `generate_bridge` | `ConfigValue<Boolean>` | `true` | `SphereBridgeCarver.carve` | Activa o desactiva la colocación de puentes entre centros vecinos. |
 | `bridge_block` | `ConfigValue<String>` | `"minecraft:oak_planks"` | `SphereBridgeCarver.carve` | Id del bloque usado por los puentes. |
 | `bridge_radius` | `ConfigValue<Number>` | `1` | `SphereBridgeCarver.carveBridge` | Grosor radial del tubo de puente. |

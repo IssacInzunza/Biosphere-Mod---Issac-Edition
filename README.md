@@ -48,6 +48,7 @@ center_y = 62
 sphere_block = ["minecraft:glass"]
 only_upper_hemisphere = false
 close_open_top = false
+bedrock_mode = "floor"
 generate_bridge = true
 bridge_block = "minecraft:oak_planks"
 bridge_radius = 1
@@ -66,6 +67,7 @@ edge_ocean_depth = 20
 - `sphere_block`: List of block IDs used for sphere shells. Each sphere randomly picks one type from the list, deterministically based on its grid position. For example `["minecraft:glass", "minecraft:stone", "minecraft:obsidian"]`.
 - `only_upper_hemisphere`: Generate only upper hemispheres when enabled.
 - `close_open_top`: Close spheres that pass the build limit with a flat cap at the highest placeable Y (319), using each sphere's shell block. Use it when `center_y + radius` is greater than 321, which is when the shell leaves an open hole at the top; below that value the shell already covers the whole disk and the option changes nothing. Default `false` keeps the natural opening.
+- `bedrock_mode`: Bedrock at the world floor. `floor` (default) keeps the `bedrock_floor` surface rule at the bottom of the world (Y -64 to -60, noisy, only where there is stone). `none` leaves no bedrock at the bottom: the carver turns that bedrock into deepslate, so the world floor can be mined through (the Create Diesel Generators pumpjack needs bedrock, so it will not work with this value). `shell` is `floor` plus a 3-block bedrock lining on the inside of the glass shell in the lower half of each sphere (`y <= center_y`), which replaces any block except the shell itself and gives an accessible bedrock layer to build on. With `only_upper_hemisphere` enabled, `shell` behaves exactly like `floor` (there is no lower half to line). Only affects newly generated chunks.
 - `generate_bridge`: Enable or disable bridges between adjacent spheres.
 - `bridge_block`: Block used for bridges.
 - `bridge_radius`: Bridge radius (larger values make thicker bridges).

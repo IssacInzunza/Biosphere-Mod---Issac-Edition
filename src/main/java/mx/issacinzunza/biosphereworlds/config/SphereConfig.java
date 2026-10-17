@@ -17,6 +17,7 @@ public class SphereConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> SPHERE_BLOCK;
     public static final ModConfigSpec.ConfigValue<Boolean> ONLY_UPPER_HEMISPHERE;
     public static final ModConfigSpec.BooleanValue CLOSE_OPEN_TOP;
+    public static final ModConfigSpec.EnumValue<BedrockMode> BEDROCK_MODE;
     public static final ModConfigSpec.ConfigValue<Boolean> GENERATE_BRIDGE;
     public static final ModConfigSpec.ConfigValue<String> BRIDGE_BLOCK;
     public static final ModConfigSpec.ConfigValue<Number> BRIDGE_RADIUS;
@@ -36,6 +37,7 @@ public class SphereConfig {
         SPHERE_BLOCK = BUILDER.comment("Blocks used for the spheres, randomly assigned per sphere").defineListAllowEmpty("sphere_block", java.util.List.of("minecraft:glass"), SphereConfig::validateItemName);
         ONLY_UPPER_HEMISPHERE = BUILDER.comment("Generate only the upper hemisphere of the spheres").define("only_upper_hemisphere", false);
         CLOSE_OPEN_TOP = BUILDER.comment("Close spheres cut by the build limit with a flat cap at the top buildable Y, using the sphere shell block").define("close_open_top", false);
+        BEDROCK_MODE = BUILDER.comment("Bedrock at the world floor. floor: keep the bedrock_floor surface rule at the bottom of the world. none: no bedrock at the bottom, the floor is deepslate instead (the Create Diesel Generators pumpjack needs bedrock, so it will not work with this value). shell: floor plus a bedrock lining of 3 blocks on the inside of the glass shell in the lower half of each sphere. With only_upper_hemisphere enabled, shell behaves exactly like floor.").defineEnum("bedrock_mode", BedrockMode.FLOOR);
         GENERATE_BRIDGE = BUILDER.comment("Generate bridges between spheres").define("generate_bridge", true);
         BRIDGE_BLOCK = BUILDER.comment("Block used for the bridges").define("bridge_block", "minecraft:oak_planks", SphereConfig::validateItemName);
         BRIDGE_RADIUS = BUILDER.comment("Radius of the bridges").define("bridge_radius", 1);
@@ -46,6 +48,13 @@ public class SphereConfig {
         EDGE_OCEAN_WIDTH = BUILDER.comment("Width of the ocean band, as a percentage of the sphere radius").defineInRange("edge_ocean_width", 20, 0, 100);
         EDGE_OCEAN_DEPTH = BUILDER.comment("Depth of the ocean floor below sea level (63), in blocks").defineInRange("edge_ocean_depth", 20, 0, 100);
         SPEC = BUILDER.build();
+    }
+
+    /** Valores de {@code bedrock_mode}. */
+    public enum BedrockMode {
+        FLOOR,
+        NONE,
+        SHELL
     }
 
     private static boolean validateItemName(final Object obj) {
