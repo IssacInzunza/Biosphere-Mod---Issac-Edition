@@ -16,6 +16,7 @@ public class SphereConfig {
     public static final ModConfigSpec.ConfigValue<Number> CENTER_Y;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> SPHERE_BLOCK;
     public static final ModConfigSpec.ConfigValue<Boolean> ONLY_UPPER_HEMISPHERE;
+    public static final ModConfigSpec.BooleanValue CLOSE_OPEN_TOP;
     public static final ModConfigSpec.ConfigValue<Boolean> GENERATE_BRIDGE;
     public static final ModConfigSpec.ConfigValue<String> BRIDGE_BLOCK;
     public static final ModConfigSpec.ConfigValue<Number> BRIDGE_RADIUS;
@@ -34,6 +35,7 @@ public class SphereConfig {
         CENTER_Y = BUILDER.comment("Center Y level for sphere generation").define("center_y", 62);
         SPHERE_BLOCK = BUILDER.comment("Blocks used for the spheres, randomly assigned per sphere").defineListAllowEmpty("sphere_block", java.util.List.of("minecraft:glass"), SphereConfig::validateItemName);
         ONLY_UPPER_HEMISPHERE = BUILDER.comment("Generate only the upper hemisphere of the spheres").define("only_upper_hemisphere", false);
+        CLOSE_OPEN_TOP = BUILDER.comment("Close spheres cut by the build limit with a flat cap at the top buildable Y, using the sphere shell block").define("close_open_top", false);
         GENERATE_BRIDGE = BUILDER.comment("Generate bridges between spheres").define("generate_bridge", true);
         BRIDGE_BLOCK = BUILDER.comment("Block used for the bridges").define("bridge_block", "minecraft:oak_planks", SphereConfig::validateItemName);
         BRIDGE_RADIUS = BUILDER.comment("Radius of the bridges").define("bridge_radius", 1);

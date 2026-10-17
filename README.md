@@ -47,6 +47,7 @@ spacing = 500
 center_y = 62
 sphere_block = ["minecraft:glass"]
 only_upper_hemisphere = false
+close_open_top = false
 generate_bridge = true
 bridge_block = "minecraft:oak_planks"
 bridge_radius = 1
@@ -64,6 +65,7 @@ edge_ocean_depth = 20
 - `center_y`: Y level of sphere centers.
 - `sphere_block`: List of block IDs used for sphere shells. Each sphere randomly picks one type from the list, deterministically based on its grid position. For example `["minecraft:glass", "minecraft:stone", "minecraft:obsidian"]`.
 - `only_upper_hemisphere`: Generate only upper hemispheres when enabled.
+- `close_open_top`: Close spheres that pass the build limit with a flat cap at the highest placeable Y (319), using each sphere's shell block. Use it when `center_y + radius` is greater than 321, which is when the shell leaves an open hole at the top; below that value the shell already covers the whole disk and the option changes nothing. Default `false` keeps the natural opening.
 - `generate_bridge`: Enable or disable bridges between adjacent spheres.
 - `bridge_block`: Block used for bridges.
 - `bridge_radius`: Bridge radius (larger values make thicker bridges).

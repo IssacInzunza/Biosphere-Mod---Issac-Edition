@@ -42,6 +42,8 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
 
         SphereLayout layout = SphereLayout.current();
         int centerY = layout.params().centerY();
+        boolean closeOpenTop = SphereConfig.CLOSE_OPEN_TOP.get();
+        int topCapY = chunk.getMaxBuildHeight() - 1;
 
         int chunkStartX = chunkPos.getMinBlockX();
         int chunkStartZ = chunkPos.getMinBlockZ();
@@ -97,7 +99,12 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                             double dy = y - centerY;
                             double distanceSq = horizontalDistSq + dy * dy;
 
-                            if (distanceSq >= innerRadiusSq && distanceSq <= outerRadiusSq) {
+                            // Cascaron historico. Con close_open_top activo la
+                            // misma condicion rellena ademas el disco completo en
+                            // el Y colocable mas alto, cerrando el hueco que deja
+                            // una esfera cortada por el limite de construccion.
+                            if (distanceSq <= outerRadiusSq
+                                    && (distanceSq >= innerRadiusSq || (closeOpenTop && y == topCapY))) {
                                 if(!SphereConfig.ONLY_UPPER_HEMISPHERE.get() || canReplaceBlock(config, chunk.getBlockState(new BlockPos(x, y, z)))) {
                                     if(SphereConfig.ONLY_UPPER_HEMISPHERE.get() && (y < 55 && !chunk.getBlockState(new BlockPos(x, y, z)).is(Blocks.WATER)))
                                         continue;
