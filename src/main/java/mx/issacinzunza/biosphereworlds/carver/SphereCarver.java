@@ -42,7 +42,6 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
 
         SphereLayout layout = SphereLayout.current();
         int centerY = layout.params().centerY();
-        boolean closeOpenTop = SphereConfig.CLOSE_OPEN_TOP.get();
 
         int chunkStartX = chunkPos.getMinBlockX();
         int chunkStartZ = chunkPos.getMinBlockZ();
@@ -72,9 +71,6 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
 
                 int minY = Math.max(chunk.getMinBuildHeight(), centerY - radius - 1);
                 int maxY = Math.min(chunk.getMaxBuildHeight(), centerY + radius + 1);
-                if (closeOpenTop) {
-                    maxY = layout.shellMaxY(chunk.getMaxBuildHeight(), radius, true);
-                }
 
                 double shellThickness = SphereLayout.SHELL_THICKNESS;
                 double innerRadiusSq = (radius - shellThickness) * (radius - shellThickness);
@@ -116,37 +112,6 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
             }
         }
 
-        if (closeOpenTop) {
-            generated |= placeTopCaps(layout, chunk, chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
-        }
-        return generated;
-    }
-
-    /** Paso adicional exclusivo de close_open_top; no participa en el cascaron antiguo. */
-    private boolean placeTopCaps(SphereLayout layout, ChunkAccess chunk,
-                                 int chunkStartX, int chunkEndX, int chunkStartZ, int chunkEndZ) {
-        int y = SphereLayout.TOP_CAP_Y;
-        if (y < chunk.getMinBuildHeight() || y >= chunk.getMaxBuildHeight()) {
-            return false;
-        }
-        boolean onlyUpperHemisphere = SphereConfig.ONLY_UPPER_HEMISPHERE.get();
-        boolean generated = false;
-        for (int gridX = layout.firstCellIndex(chunkStartX); gridX <= layout.lastCellIndex(chunkEndX); gridX++) {
-            for (int gridZ = layout.firstCellIndex(chunkStartZ); gridZ <= layout.lastCellIndex(chunkEndZ); gridZ++) {
-                SphereLayout.Sphere sphere = layout.sphereAtCell(gridX, gridZ);
-                BlockState blockState = getSphereBlockState(gridX, gridZ);
-                for (int x = chunkStartX; x <= chunkEndX; x++) {
-                    double dx = x - sphere.centerX();
-                    for (int z = chunkStartZ; z <= chunkEndZ; z++) {
-                        double dz = z - sphere.centerZ();
-                        if (layout.isTopCap(sphere, dx * dx + dz * dz, y, onlyUpperHemisphere, true)) {
-                            chunk.setBlockState(new BlockPos(x, y, z), blockState, false);
-                            generated = true;
-                        }
-                    }
-                }
-            }
-        }
         return generated;
     }
 

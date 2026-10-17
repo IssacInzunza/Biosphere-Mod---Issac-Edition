@@ -37,39 +37,6 @@ public final class SphereLayout {
     /** Grosor del cascaron, en bloques. Valor historico de {@code SphereCarver}. */
     public static final double SHELL_THICKNESS = 2.0;
 
-    public static final int TOP_CAP_Y = 319;
-
-    /** Radio historico del cascaron en cada modo, sin consultar configuracion. */
-    public static int shellRadius(Sphere sphere, boolean onlyUpperHemisphere) {
-        return sphere.radius() - (onlyUpperHemisphere ? 1 : 0);
-    }
-
-    /** Predicado puro: conserva incluso la multiplicacion int del radio exterior. */
-    public boolean isShell(int radius, double horizontalDistSq, int y) {
-        double dy = y - params.centerY();
-        double distanceSq = horizontalDistSq + dy * dy;
-        double innerRadiusSq = (radius - SHELL_THICKNESS) * (radius - SHELL_THICKNESS);
-        double outerRadiusSq = radius * radius;
-        return distanceSq >= innerRadiusSq && distanceSq <= outerRadiusSq;
-    }
-
-    /** Bucle inclusivo historico cuando esta apagada; limite colocable al activarla. */
-    public int shellMaxY(int maxBuildHeight, int radius, boolean closeOpenTop) {
-        int maxY = Math.min(maxBuildHeight, params.centerY() + radius + 1);
-        return closeOpenTop ? Math.min(maxY, Math.min(maxBuildHeight - 1, TOP_CAP_Y)) : maxY;
-    }
-
-    /** Disco de una capa que incluye el anillo del cascaron, sin salir de la esfera. */
-    public boolean isTopCap(Sphere sphere, double horizontalDistSq, int y,
-                            boolean onlyUpperHemisphere, boolean enabled) {
-        if (!enabled || y != TOP_CAP_Y || (long) params.centerY() + sphere.radius() <= 320) {
-            return false;
-        }
-        int radius = shellRadius(sphere, onlyUpperHemisphere);
-        double dy = y - params.centerY();
-        return horizontalDistSq + dy * dy <= (double) radius * radius;
-    }
-
     /** Tamano de la cache por celda: {@code 1 << CACHE_BITS} entradas. */
     private static final int CACHE_BITS = 12;
     private static final int CACHE_SIZE = 1 << CACHE_BITS;

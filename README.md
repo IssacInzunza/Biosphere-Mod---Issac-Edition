@@ -47,7 +47,6 @@ spacing = 500
 center_y = 62
 sphere_block = ["minecraft:glass"]
 only_upper_hemisphere = false
-close_open_top = false
 generate_bridge = true
 bridge_block = "minecraft:oak_planks"
 bridge_radius = 1
@@ -65,7 +64,6 @@ edge_ocean_depth = 20
 - `center_y`: Y level of sphere centers.
 - `sphere_block`: List of block IDs used for sphere shells. Each sphere randomly picks one type from the list, deterministically based on its grid position. For example `["minecraft:glass", "minecraft:stone", "minecraft:obsidian"]`.
 - `only_upper_hemisphere`: Generate only upper hemispheres when enabled.
-- `close_open_top`: Close spheres extending above Y=320 with a one-block flat cap at Y=319, using each sphere's shell material and effective shell radius (including the upper-hemisphere radius adjustment). Disabled by default; affects newly generated chunks. The cap replaces blocks across its disk, including terrain in upper-hemisphere mode. Closing the top removes the natural exit for aircraft; opaque shell materials reduce interior light.
 - `generate_bridge`: Enable or disable bridges between adjacent spheres.
 - `bridge_block`: Block used for bridges.
 - `bridge_radius`: Bridge radius (larger values make thicker bridges).
@@ -82,14 +80,6 @@ edge_ocean_depth = 20
 - If `spacing > 2 * radius`, spheres have gaps between them.
 - If `spacing = 2 * radius`, spheres are tangent.
 - If `spacing < 2 * radius`, spheres overlap.
-
-| Setting | Default | Effect |
-|---|---|---|
-| `close_open_top` | `false` | Add a flat shell-material cap at Y=319 to spheres extending above Y=320. |
-
-Limitation: when `2 * radius > spacing`, the existing cell enumeration clips both the shell and the cap by cells; overlapping spheres are not guaranteed to form complete shells or caps. This option preserves that behavior. An empty shell block list (air), or a non-solid shell material, cannot provide a solid enclosure.
-
-The existing heightmap treatment is unchanged: shell materials above `center_y` are ignored by the biosphere heightmap mixin. At `center_y >= 319`, this exclusion does not apply to the cap. Lighting, high bridges touching the cap, and chunk seams must be checked in game, including after saving and reloading.
 
 Suggested presets:
 

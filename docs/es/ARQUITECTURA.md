@@ -281,42 +281,6 @@ Si `only_upper_hemisphere` está activo, `SphereCarver.carve` reduce el radio en
 uno y restringe el reemplazo: por debajo de Y 55 solo permite agua y exige que
 el bloque sea reemplazable según `canReplaceBlock`.
 
-`close_open_top` (por defecto `false`) activa una tapa de una capa en Y=319
-para las esferas cuyo `center_y + radio > 320`. La geometría pura reside en
-`SphereLayout.shellRadius`, `shellMaxY` e `isTopCap`; `isShell` conserva la
-referencia pura para las pruebas. El recorrido del cascarón anterior se mantiene
-literalmente en `SphereCarver.carve`, incluidas sus lecturas de configuración.
-Solo dentro de `if (closeOpenTop)` se limita la altura y se ejecuta, después
-del cascarón, el paso separado `placeTopCaps`. Apagada no llama a ese paso
-ni al predicado de tapa. La tapa usa el mismo
-radio efectivo del cascarón en ambos modos de `only_upper_hemisphere`:
-el disco cumple `(x-cx)^2 + (z-cz)^2 + (319-cy)^2 <= r^2` e incluye el anillo
-del cascarón para que no haya huecos. Si no intersecta ese plano, no hay tapa.
-Cada chunk procesa solo sus 16×16 columnas, sin escribir en vecinos.
-Se utiliza el material del cascarón de cada esfera; en el disco se reemplaza
-también el terreno, incluso en modo hemisferio. Con la opción activada, el
-bucle de `SphereCarver` no escribe por encima de Y=319 ni del máximo colocable
-del chunk. Apagada conserva el rango inclusivo y las decisiones anteriores.
-
-Limitación: con `2 * radio > spacing`, la enumeración existente de celdas corta
-tanto el cascarón como la tapa por celdas; no se garantiza un cierre completo
-de las esferas solapadas. No se amplía esa enumeración. Una lista de materiales
-vacía (aire), o un material no sólido, tampoco garantiza un cierre sólido.
-
-La tapa elimina la salida natural para aeronaves y, con un cascarón opaco,
-el interior recibe menos luz. No cambia `MixinHeightmap`: su exclusión del
-material del cascarón solo se aplica por encima de `center_y`; con centros
-en Y=319 o superiores no excluye la tapa. Tampoco cambia puentes, océano ni
-aldeas. Solo afecta a chunks nuevos; mezclar chunks antiguos y nuevos puede
-dejar una tapa parcial.
-
-`SphereTopCapTest` compara bit a bit las máscaras de colocación contra un
-recorrido literal anterior con la opción apagada, y comprueba el disco y su
-solape con el anillo en una cuadrícula de chunks positivos y negativos, con
-ambos modos de hemisferio, varios centros y radios. No inicia NeoForge.
-En juego deben comprobarse las juntas, los materiales transparentes y opacos,
-la luz al guardar/cargar, el terreno en Y=319 y los puentes con centros altos.
-
 ### Paso 5: biome source wrapper y biomas
 
 El JSON del preset decodifica `BiosphereBiomeSource` con dos campos:
@@ -557,7 +521,6 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 | `center_y` | `ConfigValue<Number>` | `62` | carvers, density function, estructuras, aquifer, heightmap y spawn handler | Altura Y del centro de cada esfera y referencia vertical de varias comprobaciones. |
 | `sphere_block` | `ConfigValue<List<? extends String>>` | `["minecraft:glass"]` | `SphereCarver.getSphereBlockState`, `SphereUtil`, `PlayerSpawnHandler`, `MixinHeightmap` | Lista de ids de bloques posibles para el cascarón; la celda selecciona uno determinísticamente. Se valida contra `BuiltInRegistries.ITEM`, aunque luego se usa como bloque. |
 | `only_upper_hemisphere` | `ConfigValue<Boolean>` | `false` | `SphereCarver.carve` | Activa el modo de hemisferio superior y sus reglas especiales de reemplazo bajo Y 55. |
-| `close_open_top` | `BooleanValue` | `false` | `SphereCarver.carve` y geometría pura de `SphereLayout` | Tapa plana en Y=319 del material del cascarón para esferas que superan Y=320. Elimina la salida natural para aeronaves; con material opaco reduce la luz interior. |
 | `generate_bridge` | `ConfigValue<Boolean>` | `true` | `SphereBridgeCarver.carve` | Activa o desactiva la colocación de puentes entre centros vecinos. |
 | `bridge_block` | `ConfigValue<String>` | `"minecraft:oak_planks"` | `SphereBridgeCarver.carve` | Id del bloque usado por los puentes. |
 | `bridge_radius` | `ConfigValue<Number>` | `1` | `SphereBridgeCarver.carveBridge` | Grosor radial del tubo de puente. |
