@@ -37,6 +37,11 @@ puede demostrar leyendo el código, se marca como **No verificado:**.
 - `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SphereLayout.java` —
   caché por celda de la esfera principal y de sus satélites; `satellitesAtCell`
   e `isInsideSatellite` se cortocircuitan cuando los satélites están apagados.
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SatelliteLayers.java` —
+  geometría pura de las capas del satélite (cascarón, piedra, magma y núcleo) y
+  selección determinista del mineral sobre una lista inmutable de candidatos
+  `(blockId, peso, densidad en milésimas)`. La lista vanilla es solo el valor por
+  defecto de la etapa 2; la selección no la tiene cableada.
 - `src/main/java/mx/issacinzunza/biosphereworlds/density/MultipleSpheresDistanceFunction.java` —
   `DensityFunction.SimpleFunction` registrada como
   `biosphereworlds:multiple_spheres`; devuelve la distancia cuadrática

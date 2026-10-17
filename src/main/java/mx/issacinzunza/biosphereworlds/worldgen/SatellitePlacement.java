@@ -126,7 +126,7 @@ public final class SatellitePlacement {
             return null;
         }
 
-        return new SphereLayout.Satellite(centerX, centerY, centerZ, satelliteRadius);
+        return new SphereLayout.Satellite(centerX, centerY, centerZ, satelliteRadius, seed);
     }
 
     private static boolean isValid(SphereLayout.Satellite candidate,

@@ -336,7 +336,7 @@ y pasan después.
 
 ---
 
-## 8. Satélites (ETAPA 1: cascarón y cuerpo de piedra)
+## 8. Satélites (ETAPA 2: cascarón, piedra, magma y núcleo)
 
 Implementado en:
 
@@ -346,11 +346,17 @@ Implementado en:
   No lee configuración ni toca Minecraft, así que es determinista y se prueba con
   JUnit.
 - `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SphereLayout.java` —
-  `Satellite` (centro y radio), `satellitesAtCell(cellX, cellZ)` con caché
-  `AtomicReferenceArray` por celda, e `isInsideSatellite(x, y, z)`.
+  `Satellite` (centro, radio y semilla de colocación), `satellitesAtCell(cellX, cellZ)`
+  con caché `AtomicReferenceArray` por celda, e `isInsideSatellite(x, y, z)`.
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SatelliteLayers.java` —
+  geometría pura de las capas y selección del mineral: `layers(int)`,
+  `regionAt(...)`, `selectMineral(seed, candidates)`, `isOre(...)` y
+  `countOre(...)`. Los candidatos son inmutables y se ordenan de forma estable
+  por id de bloque.
 - `src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereCarver.java` —
-  `carveSatellite` pinta el cascarón con el bloque de la principal y el interior
-  con `minecraft:stone`.
+  `carveSatellite` pinta el cascarón con el bloque de la principal, el cuerpo de
+  piedra, la capa de `minecraft:magma_block` y el núcleo de piedra con vetas del
+  mineral elegido.
 - `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinHeightmap.java` —
   todo el volumen de un satélite se trata como aire al actualizar o primar
   heightmaps.
@@ -374,6 +380,47 @@ Reglas de colocación:
   consulta la celda que contiene el punto (no las nueve) y dos satélites de
   celdas distintas no pueden solaparse.
 
+Capas, de fuera hacia dentro: cascarón de 2 bloques (sin cambios respecto a la
+etapa 1), cuerpo de piedra de 1 bloque, magma de `clamp(R/6, 2, 4)` bloques y
+núcleo `core = R - 3 - espesor_magma`. Si `core < 2` el satélite se queda en
+cascarón más cuerpo de piedra (`R <= 6` con estos espesores). La tabla de la
+etapa 2 es:
+
+| Radio | Vidrio interior | Magma exterior | Núcleo |
+|---:|---:|---:|---:|
+| 8 | 6 | 5 | 3 |
+| 10 | 8 | 7 | 5 |
+| 13 | 11 | 10 | 8 |
+| 20 | 18 | 17 | 14 |
+
+El magma es un anillo completo: todo bloque con `core² < d² <= magmaOuter²` es
+`minecraft:magma_block`, sin lava ni huecos. El núcleo elige **un** mineral por
+satélite con `selectMineral(semilla, candidatos)`; la semilla viene de
+`SatellitePlacement` (celda, índice, intento) y se guarda en `Satellite.seed`.
+Cada bloque del núcleo es mineral si `isOre(semilla, x, y, z, densidad)` cae por
+debajo de la densidad en milésimas; si no, es piedra. Densidades por defecto:
+carbón 200, cobre 160, hierro 120, oro 40, redstone 30, lapis 20, diamante 10 y
+esmeralda 5 milésimas (20 %, 16 %, 12 %, 4 %, 3 %, 2 %, 1 % y 0,5 %).
+
+Cantidades esperadas de bloque de mineral, condicionadas al mineral elegido
+(núcleos calculados por retícula; los centros reales son `double` y el conteo
+varía ~1 %):
+
+| Núcleo | Carbón | Cobre | Hierro | Oro | Redstone | Lapis | Diamante | Esmeralda |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| r=3 (R=8) | 24.6 | 19.7 | 14.8 | 4.9 | 3.7 | 2.5 | 1.2 | 0.6 |
+| r=5 (R=10) | 103.0 | 82.4 | 61.8 | 20.6 | 15.5 | 10.3 | 5.2 | 2.6 |
+| r=8 (R=13) | 421.8 | 337.4 | 253.1 | 84.4 | 63.3 | 42.2 | 21.1 | 10.5 |
+| r=14 (R=20) | 2302.6 | 1842.1 | 1381.6 | 460.5 | 345.4 | 230.3 | 115.1 | 57.6 |
+
+Media de mineral total sobre la elección de mineral: 11,52 % del núcleo
+(14,2 / 59,3 / 243,0 / 1326,3 bloques para R=8/10/13/20). Los núcleos pequeños
+tienen mucha varianza: un satélite puede salir con poco o ningún mineral.
+
+La lista de candidatos es una constante vanilla ordenada (`VANILLA_MINERALS`),
+pero la selección es genérica: la etapa 3 puede pasar otra lista inmutable de
+`(blockId, weight, densityPermille)` sin tocar la función.
+
 Con `satellites_enabled = false`:
 
 - `SphereLayout` no reserva la caché de satélites (`satelliteCache == null`).
@@ -391,9 +438,9 @@ su principal, así que `sphereContaining` sigue devolviendo la principal,
 bioma interior es `minecraft:the_void`, sin mobs. El filtro de estructuras solo
 acepta inicios dentro de la principal, de modo que ya rechaza los satélites.
 
-Heightmaps: se ignoran **todos** los bloques del volumen del satélite (cascarón y
-cuerpo de piedra) en `Heightmap.update` y `Heightmap.primeHeightmaps`, no solo
-los bloques de cascarón por encima de `center_y`. Así un satélite sobre una
+Heightmaps: se ignoran **todos** los bloques del volumen del satélite (cascarón,
+piedra, magma y mineral) en `Heightmap.update` y `Heightmap.primeHeightmaps`, no
+solo los bloques de cascarón por encima de `center_y`. Así un satélite sobre una
 esfera no contamina `WORLD_SURFACE_WG` ni `OCEAN_FLOOR_WG` y no altera calles de
 aldea ni vegetación de abajo.
 

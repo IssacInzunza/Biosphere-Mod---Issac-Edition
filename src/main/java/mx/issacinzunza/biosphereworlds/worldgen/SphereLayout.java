@@ -111,8 +111,12 @@ public final class SphereLayout {
     public record Sphere(int cellX, int cellZ, double centerX, double centerY, double centerZ, int radius) {
     }
 
-    /** Satelite de una esfera principal. Inmutable. */
-    public record Satellite(double centerX, double centerY, double centerZ, int radius) {
+    /**
+     * Satelite de una esfera principal. Inmutable. {@code seed} sale de la celda,
+     * el indice y el intento de colocacion, no de la posicion en coma flotante: es
+     * la base estable del mineral y del hash por bloque.
+     */
+    public record Satellite(double centerX, double centerY, double centerZ, int radius, long seed) {
     }
 
     private record SatelliteCell(int cellX, int cellZ, List<Satellite> satellites) {

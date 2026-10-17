@@ -3,6 +3,7 @@ package mx.issacinzunza.biosphereworlds.carver;
 import mx.issacinzunza.biosphereworlds.BiosphereWorlds;
 import mx.issacinzunza.biosphereworlds.config.SphereConfig;
 import mx.issacinzunza.biosphereworlds.config.SphereConfig.BedrockMode;
+import mx.issacinzunza.biosphereworlds.worldgen.SatelliteLayers;
 import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -188,18 +189,29 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
     }
 
     /**
-     * Pinta un satelite de la etapa 1: cascaron del mismo bloque que su principal y
-     * cuerpo solido de piedra. No aplica tapa, forro de bedrock ni
-     * {@code only_upper_hemisphere}: los satelites son siempre esferas completas y
-     * la colocacion ya garantiza que caben en los limites del mundo.
+     * Pinta un satelite de la etapa 2: cascaron del mismo bloque que su principal,
+     * cuerpo de piedra, capa de magma y nucleo de piedra con vetas de un unico
+     * mineral. No aplica tapa, forro de bedrock ni {@code only_upper_hemisphere}:
+     * los satelites son siempre esferas completas y la colocacion ya garantiza que
+     * caben en los limites del mundo.
+     *
+     * <p>El umbral del cascaron es el mismo de la etapa 1
+     * ({@code d^2 > (radius - SHELL_THICKNESS)^2}), asi que el vidrio queda
+     * identico.</p>
      */
     private boolean carveSatellite(ChunkAccess chunk, SphereLayout.Satellite satellite,
                                    BlockState shellState,
                                    int chunkStartX, int chunkEndX, int chunkStartZ, int chunkEndZ) {
         double radius = satellite.radius();
-        double innerRadius = Math.max(0.0, radius - SphereLayout.SHELL_THICKNESS);
-        double innerRadiusSq = innerRadius * innerRadius;
         double outerRadiusSq = radius * radius;
+
+        SatelliteLayers.Layers layers = SatelliteLayers.layers(satellite.radius());
+        SatelliteLayers.Mineral mineral = layers.hasCore()
+                ? SatelliteLayers.selectMineral(satellite.seed(), SatelliteLayers.VANILLA_MINERALS)
+                : null;
+        BlockState oreState = mineral == null
+                ? null
+                : BuiltInRegistries.BLOCK.get(ResourceLocation.parse(mineral.blockId())).defaultBlockState();
 
         int minX = Math.max(chunkStartX, (int) Math.floor(satellite.centerX() - radius));
         int maxX = Math.min(chunkEndX, (int) Math.ceil(satellite.centerX() + radius));
@@ -209,6 +221,7 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
         int maxY = Math.min(chunk.getMaxBuildHeight() - 1, (int) Math.ceil(satellite.centerY() + radius));
 
         BlockState bodyState = Blocks.STONE.defaultBlockState();
+        BlockState magmaState = Blocks.MAGMA_BLOCK.defaultBlockState();
         boolean generated = false;
 
         for (int x = minX; x <= maxX; x++) {
@@ -229,7 +242,14 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                     if (distanceSq > outerRadiusSq) {
                         continue;
                     }
-                    BlockState state = distanceSq > innerRadiusSq ? shellState : bodyState;
+
+                    BlockState state = switch (SatelliteLayers.regionAt(layers, distanceSq)) {
+                        case SHELL -> shellState;
+                        case MAGMA -> magmaState;
+                        case STONE -> bodyState;
+                        case CORE -> SatelliteLayers.isOre(satellite.seed(), x, y, z,
+                                mineral.densityPermille()) ? oreState : bodyState;
+                    };
                     chunk.setBlockState(new BlockPos(x, y, z), state, false);
                     generated = true;
                 }
@@ -239,18 +259,37 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
         return generated;
     }
 
-    /** Log DEBUG con las posiciones y radios de los satelites de la celda (0,0). */
+    /** Log DEBUG con las capas, el mineral y el mineral contado de la celda (0,0). */
     private static void logSatellitesCellZero(List<SphereLayout.Satellite> satellites) {
         StringBuilder message = new StringBuilder("satellites cell=(0,0) count=")
                 .append(satellites.size());
         for (SphereLayout.Satellite satellite : satellites) {
-            message.append(" [x=").append(String.format(java.util.Locale.ROOT, "%.2f", satellite.centerX()))
-                    .append(" y=").append(String.format(java.util.Locale.ROOT, "%.2f", satellite.centerY()))
-                    .append(" z=").append(String.format(java.util.Locale.ROOT, "%.2f", satellite.centerZ()))
+            SatelliteLayers.Layers layers = SatelliteLayers.layers(satellite.radius());
+            message.append(" [x=").append(format(satellite.centerX()))
+                    .append(" y=").append(format(satellite.centerY()))
+                    .append(" z=").append(format(satellite.centerZ()))
                     .append(" r=").append(satellite.radius())
-                    .append(']');
+                    .append(" inner=").append(layers.innerRadius())
+                    .append(" magmaOuter=").append(layers.magmaOuterRadius());
+            if (layers.hasCore()) {
+                SatelliteLayers.Mineral mineral = SatelliteLayers.selectMineral(
+                        satellite.seed(), SatelliteLayers.VANILLA_MINERALS);
+                int oreBlocks = SatelliteLayers.countOre(satellite.seed(), layers,
+                        mineral.densityPermille(),
+                        satellite.centerX(), satellite.centerY(), satellite.centerZ());
+                message.append(" core=").append(layers.coreRadius())
+                        .append(" mineral=").append(mineral.blockId())
+                        .append(" oreBlocks=").append(oreBlocks);
+            } else {
+                message.append(" core=none mineral=none oreBlocks=0");
+            }
+            message.append(']');
         }
         BiosphereWorlds.LOGGER.debug(message.toString());
+    }
+
+    private static String format(double value) {
+        return String.format(java.util.Locale.ROOT, "%.2f", value);
     }
 
     /**
