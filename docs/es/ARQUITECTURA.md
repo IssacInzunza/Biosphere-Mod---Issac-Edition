@@ -42,6 +42,13 @@ puede demostrar leyendo el código, se marca como **No verificado:**.
   selección determinista del mineral sobre una lista inmutable de candidatos
   `(blockId, peso, densidad en milésimas)`. La lista vanilla es solo el valor por
   defecto de la etapa 2; la selección no la tiene cableada.
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/MineralCatalog.java` —
+  ensamblado puro de candidatos: vanilla primero, mods ordenados por id,
+  exclusiones y deduplicación.
+- `src/main/java/mx/issacinzunza/biosphereworlds/event/SatelliteMineralCatalog.java` —
+  catálogo `volatile` e inmutable reconstruido en `TagsUpdatedEvent`; descubre
+  menas de piedra por `#c:ores_in_ground/stone`, resuelve inclusión/exclusión y
+  escribe un INFO por reconstrucción.
 - `src/main/java/mx/issacinzunza/biosphereworlds/density/MultipleSpheresDistanceFunction.java` —
   `DensityFunction.SimpleFunction` registrada como
   `biosphereworlds:multiple_spheres`; devuelve la distancia cuadrática
@@ -579,6 +586,10 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 | `satellites_min_gap_blocks` | `IntValue` | `16` (rango `0..1024`) | `SatellitePlacement.place` | Hueco mínimo absoluto con la principal y margen de seguridad respecto al borde de la celda y a otros satélites. |
 | `satellites_min_elevation_degrees` | `IntValue` | `30` (rango `0..90`) | `SatellitePlacement.candidate` | Ángulo de elevación mínimo sobre el centro de la principal. |
 | `satellites_max_elevation_degrees` | `IntValue` | `55` (rango `0..90`) | `SatellitePlacement.candidate` | Ángulo de elevación máximo sobre el centro de la principal. |
+| `satellites_excluded_ores` | `ConfigValue<List<? extends String>>` | debris, cuarzo y oro del Nether, `#c:ores_in_ground/deepslate` | `SatelliteMineralCatalog.rebuild` | Ids o `#tags` que nunca se eligen para el núcleo. Entradas inválidas se ignoran con aviso. |
+| `satellites_included_ores` | `ConfigValue<List<? extends String>>` | vacía | `SatelliteMineralCatalog.rebuild` | Ids o `#tags` añadidos aunque no estén en `#c:ores_in_ground/stone`, para mods sin tags. |
+| `satellites_mod_ore_weight` | `IntValue` | `3` (rango `0..1000`) | `SatelliteMineralCatalog.rebuild` | Peso de selección de minerales de mods; los vanilla conservan el suyo. |
+| `satellites_mod_ore_density_permille` | `IntValue` | `20` (rango `0..1000`) | `SatelliteMineralCatalog.rebuild` | Bloques de mineral por 1000 del núcleo para minerales de mods. |
 
 La validación de `sphere_block` y `bridge_block` está en
 `SphereConfig.validateItemName(Object)`: exige un `String` y que el

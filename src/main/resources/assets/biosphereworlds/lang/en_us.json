@@ -81,5 +81,17 @@
   "biosphereworlds.configuration.satellites_min_elevation_degrees.tooltip": "Minimum elevation angle of the satellites above the main sphere center, in degrees (0-90). Only affects newly generated worlds.",
 
   "biosphereworlds.configuration.satellites_max_elevation_degrees": "Maximum satellite elevation",
-  "biosphereworlds.configuration.satellites_max_elevation_degrees.tooltip": "Maximum elevation angle of the satellites above the main sphere center, in degrees (0-90). Only affects newly generated worlds."
+  "biosphereworlds.configuration.satellites_max_elevation_degrees.tooltip": "Maximum elevation angle of the satellites above the main sphere center, in degrees (0-90). Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.satellites_excluded_ores": "Excluded satellite ores",
+  "biosphereworlds.configuration.satellites_excluded_ores.tooltip": "Block ids or #tags that must never be chosen for a satellite core (default: ancient debris, nether quartz, nether gold and #c:ores_in_ground/deepslate). Invalid entries are ignored with a warning. Changes apply when the world is reopened or with /reload: the catalog is rebuilt only when the game tags update.",
+
+  "biosphereworlds.configuration.satellites_included_ores": "Extra satellite ores",
+  "biosphereworlds.configuration.satellites_included_ores.tooltip": "Block ids or #tags added to the satellite core candidates even when they are not in #c:ores_in_ground/stone. Invalid entries are ignored with a warning. Changes apply when the world is reopened or with /reload: the catalog is rebuilt only when the game tags update.",
+
+  "biosphereworlds.configuration.satellites_mod_ore_weight": "Mod ore selection weight",
+  "biosphereworlds.configuration.satellites_mod_ore_weight.tooltip": "Selection weight for ores added by other mods; vanilla ores keep their own weights. Changes apply when the world is reopened or with /reload: the catalog is rebuilt only when the game tags update.",
+
+  "biosphereworlds.configuration.satellites_mod_ore_density_permille": "Mod ore density (per mille)",
+  "biosphereworlds.configuration.satellites_mod_ore_density_permille.tooltip": "Ore blocks per 1000 core blocks for ores added by other mods (20 = 2%). Vanilla ores keep their own densities. Changes apply when the world is reopened or with /reload: the catalog is rebuilt only when the game tags update."
 }

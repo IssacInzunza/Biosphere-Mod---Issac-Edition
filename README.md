@@ -68,6 +68,15 @@ satellites_max_gap_percent = 75
 satellites_min_gap_blocks = 16
 satellites_min_elevation_degrees = 30
 satellites_max_elevation_degrees = 55
+satellites_excluded_ores = [
+  "minecraft:ancient_debris",
+  "minecraft:nether_quartz_ore",
+  "minecraft:nether_gold_ore",
+  "#c:ores_in_ground/deepslate"
+]
+satellites_included_ores = []
+satellites_mod_ore_weight = 3
+satellites_mod_ore_density_permille = 20
 ```
 
 - `radius`: Maximum sphere radius.
@@ -93,6 +102,16 @@ satellites_max_elevation_degrees = 55
 - `satellites_min_gap_percent` / `satellites_max_gap_percent`: Gap between the satellite and main sphere surfaces, as a percentage of the main radius (`0..1000`). The absolute minimum is `satellites_min_gap_blocks`.
 - `satellites_min_gap_blocks`: Absolute minimum gap in blocks with the main sphere, and also the safety margin from the cell border and from other satellites (`0..1024`).
 - `satellites_min_elevation_degrees` / `satellites_max_elevation_degrees`: Elevation angle of the satellites above the main sphere center (`0..90`). Satellite centers are always at or above the main sphere center.
+- `satellites_excluded_ores`: Block ids or `#tags` that must never be chosen for a satellite core. Defaults: `minecraft:ancient_debris`, `minecraft:nether_quartz_ore`, `minecraft:nether_gold_ore` and `#c:ores_in_ground/deepslate`. Invalid entries are ignored with a warning.
+- `satellites_included_ores`: Block ids or `#tags` added to the candidates even when they are not in `#c:ores_in_ground/stone`, for mods that do not tag their ores. Empty by default. Invalid entries are ignored with a warning.
+- `satellites_mod_ore_weight`: Selection weight for ores added by other mods (`0..1000`, default `3`). Vanilla ores keep their stage-2 weights.
+- `satellites_mod_ore_density_permille`: Ore blocks per 1000 core blocks for mod ores (`0..1000`, default `20` = 2 %). Vanilla ores keep their stage-2 densities.
+
+Mod ores are discovered dynamically from the `#c:ores_in_ground/stone` block tag: that tag contains exactly the ores whose host ground is stone, so deepslate, netherrack, Nether, End and ancient debris variants stay out. The exclusion list is an extra safety net and the inclusion list covers mods that do not tag their ores. Candidates are ordered vanilla first (unchanged) and then mod ores sorted by block id; the exclusion list wins over tags and inclusion. Only blocks with a usable default state are accepted: no air, no fluids, no block entity, and a full solid cube (`canOcclude`).
+
+The catalog is a `volatile` immutable snapshot rebuilt only when the game tags update. **Changes to these lists, the mod ore weight or density apply when the world is reopened or with `/reload`**, not immediately after editing the TOML. The rebuild writes one INFO line with the final candidates `(id, weight, density)` plus the excluded and ignored entries; use it to build your exclusion list. If the snapshot is not ready yet, the game uses the stage-2 vanilla list and logs a warning.
+
+If you install or remove mods, or change these lists between sessions, **a satellite that was only partially generated can show more than one mineral**: chunks generated under the old candidate list keep their mineral, and chunks generated later use the new one.
 
 Satellite placement is deterministic and depends only on the cell coordinates and the options above: no world seed, chunk generation order or shared state. Each satellite is validated with its full volume: it must fit inside its main sphere's cell with the safety margin, stay between Y -64 and 319, and not overlap the main sphere, neighbouring main spheres or the other satellites of the same cell. If no valid position is found after a limited number of attempts, that satellite is skipped without an error.
 

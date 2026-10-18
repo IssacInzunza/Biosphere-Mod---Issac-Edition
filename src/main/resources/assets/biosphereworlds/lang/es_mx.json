@@ -81,5 +81,17 @@
   "biosphereworlds.configuration.satellites_min_elevation_degrees.tooltip": "Ángulo de elevación mínimo de los satélites sobre el centro de la esfera principal, en grados (0-90). Solo afecta a mundos nuevos.",
 
   "biosphereworlds.configuration.satellites_max_elevation_degrees": "Elevación máxima de los satélites",
-  "biosphereworlds.configuration.satellites_max_elevation_degrees.tooltip": "Ángulo de elevación máximo de los satélites sobre el centro de la esfera principal, en grados (0-90). Solo afecta a mundos nuevos."
+  "biosphereworlds.configuration.satellites_max_elevation_degrees.tooltip": "Ángulo de elevación máximo de los satélites sobre el centro de la esfera principal, en grados (0-90). Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.satellites_excluded_ores": "Minerales excluidos de los satélites",
+  "biosphereworlds.configuration.satellites_excluded_ores.tooltip": "Ids de bloque o tags con # que nunca se elegirán para el núcleo de un satélite (por defecto: debris antiguo, cuarzo del Nether, oro del Nether y #c:ores_in_ground/deepslate). Las entradas inválidas se ignoran con un aviso. Los cambios se aplican al reabrir el mundo o con /reload: el catálogo solo se reconstruye cuando se actualizan los tags del juego.",
+
+  "biosphereworlds.configuration.satellites_included_ores": "Minerales extra de los satélites",
+  "biosphereworlds.configuration.satellites_included_ores.tooltip": "Ids de bloque o tags con # que se añaden a los candidatos del núcleo aunque no estén en #c:ores_in_ground/stone. Las entradas inválidas se ignoran con un aviso. Los cambios se aplican al reabrir el mundo o con /reload: el catálogo solo se reconstruye cuando se actualizan los tags del juego.",
+
+  "biosphereworlds.configuration.satellites_mod_ore_weight": "Peso de los minerales de mods",
+  "biosphereworlds.configuration.satellites_mod_ore_weight.tooltip": "Peso de selección de los minerales añadidos por otros mods; los vanilla conservan sus pesos. Los cambios se aplican al reabrir el mundo o con /reload: el catálogo solo se reconstruye cuando se actualizan los tags del juego.",
+
+  "biosphereworlds.configuration.satellites_mod_ore_density_permille": "Densidad de los minerales de mods (milésimas)",
+  "biosphereworlds.configuration.satellites_mod_ore_density_permille.tooltip": "Bloques de mineral por cada 1000 del núcleo para minerales de otros mods (20 = 2 %). Los vanilla conservan sus densidades. Los cambios se aplican al reabrir el mundo o con /reload: el catálogo solo se reconstruye cuando se actualizan los tags del juego."
 }

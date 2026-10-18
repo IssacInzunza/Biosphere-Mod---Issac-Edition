@@ -36,6 +36,10 @@ public class SphereConfig {
     public static final ModConfigSpec.IntValue SATELLITES_MIN_GAP_BLOCKS;
     public static final ModConfigSpec.IntValue SATELLITES_MIN_ELEVATION_DEGREES;
     public static final ModConfigSpec.IntValue SATELLITES_MAX_ELEVATION_DEGREES;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> SATELLITES_EXCLUDED_ORES;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> SATELLITES_INCLUDED_ORES;
+    public static final ModConfigSpec.IntValue SATELLITES_MOD_ORE_WEIGHT;
+    public static final ModConfigSpec.IntValue SATELLITES_MOD_ORE_DENSITY_PERMILLE;
 
     static {
         BUILDER.push("Settings");
@@ -65,6 +69,14 @@ public class SphereConfig {
         SATELLITES_MIN_GAP_BLOCKS = BUILDER.comment("Absolute minimum gap, in blocks, with the main sphere; also the safety margin from the cell border and other satellites").defineInRange("satellites_min_gap_blocks", 16, 0, 1024);
         SATELLITES_MIN_ELEVATION_DEGREES = BUILDER.comment("Minimum elevation angle of the satellites above the main sphere center, in degrees").defineInRange("satellites_min_elevation_degrees", 30, 0, 90);
         SATELLITES_MAX_ELEVATION_DEGREES = BUILDER.comment("Maximum elevation angle of the satellites above the main sphere center, in degrees").defineInRange("satellites_max_elevation_degrees", 55, 0, 90);
+        SATELLITES_EXCLUDED_ORES = BUILDER.comment("Ore block ids or #tags (for example #c:ores_in_ground/deepslate) that must never be chosen for a satellite core. Invalid entries are ignored with a warning. Changes apply when the world is reopened or with /reload.").defineListAllowEmpty("satellites_excluded_ores", java.util.List.of(
+                "minecraft:ancient_debris",
+                "minecraft:nether_quartz_ore",
+                "minecraft:nether_gold_ore",
+                "#c:ores_in_ground/deepslate"), SphereConfig::validateOreListEntry);
+        SATELLITES_INCLUDED_ORES = BUILDER.comment("Ore block ids or #tags to add to the satellite core candidates even when they are not in #c:ores_in_ground/stone. Invalid entries are ignored with a warning. Changes apply when the world is reopened or with /reload.").defineListAllowEmpty("satellites_included_ores", java.util.List.of(), SphereConfig::validateOreListEntry);
+        SATELLITES_MOD_ORE_WEIGHT = BUILDER.comment("Selection weight for ores added by other mods (vanilla ores keep their own weights). Changes apply when the world is reopened or with /reload.").defineInRange("satellites_mod_ore_weight", 3, 0, 1000);
+        SATELLITES_MOD_ORE_DENSITY_PERMILLE = BUILDER.comment("Ore blocks per 1000 core blocks for ores added by other mods, in permille (20 = 2%). Changes apply when the world is reopened or with /reload.").defineInRange("satellites_mod_ore_density_permille", 20, 0, 1000);
         SPEC = BUILDER.build();
     }
 
@@ -77,6 +89,19 @@ public class SphereConfig {
 
     private static boolean validateItemName(final Object obj) {
         return obj instanceof String itemName && BuiltInRegistries.ITEM.containsKey(ResourceLocation.parse(itemName));
+    }
+
+    /**
+     * Acepta un id de bloque o un tag con prefijo {@code #}. No resuelve contra
+     * registros ni tags: eso se hace al reconstruir el catalogo, cuando los datos
+     * ya estan cargados.
+     */
+    private static boolean validateOreListEntry(final Object obj) {
+        if (!(obj instanceof String entry)) {
+            return false;
+        }
+        String id = entry.startsWith("#") ? entry.substring(1) : entry;
+        return !id.isBlank() && ResourceLocation.tryParse(id) != null;
     }
 
     public static void setup(ModContainer modContainer)

@@ -2,6 +2,7 @@ package mx.issacinzunza.biosphereworlds.carver;
 
 import mx.issacinzunza.biosphereworlds.BiosphereWorlds;
 import mx.issacinzunza.biosphereworlds.config.SphereConfig;
+import mx.issacinzunza.biosphereworlds.event.SatelliteMineralCatalog;
 import mx.issacinzunza.biosphereworlds.config.SphereConfig.BedrockMode;
 import mx.issacinzunza.biosphereworlds.worldgen.SatelliteLayers;
 import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
@@ -207,7 +208,7 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
 
         SatelliteLayers.Layers layers = SatelliteLayers.layers(satellite.radius());
         SatelliteLayers.Mineral mineral = layers.hasCore()
-                ? SatelliteLayers.selectMineral(satellite.seed(), SatelliteLayers.VANILLA_MINERALS)
+                ? SatelliteLayers.selectMineral(satellite.seed(), SatelliteMineralCatalog.candidates())
                 : null;
         BlockState oreState = mineral == null
                 ? null
@@ -273,7 +274,7 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                     .append(" magmaOuter=").append(layers.magmaOuterRadius());
             if (layers.hasCore()) {
                 SatelliteLayers.Mineral mineral = SatelliteLayers.selectMineral(
-                        satellite.seed(), SatelliteLayers.VANILLA_MINERALS);
+                        satellite.seed(), SatelliteMineralCatalog.candidates());
                 int oreBlocks = SatelliteLayers.countOre(satellite.seed(), layers,
                         mineral.densityPermille(),
                         satellite.centerX(), satellite.centerY(), satellite.centerZ());

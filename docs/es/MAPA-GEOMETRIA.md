@@ -417,9 +417,30 @@ Media de mineral total sobre la elección de mineral: 11,52 % del núcleo
 (14,2 / 59,3 / 243,0 / 1326,3 bloques para R=8/10/13/20). Los núcleos pequeños
 tienen mucha varianza: un satélite puede salir con poco o ningún mineral.
 
-La lista de candidatos es una constante vanilla ordenada (`VANILLA_MINERALS`),
-pero la selección es genérica: la etapa 3 puede pasar otra lista inmutable de
-`(blockId, weight, densityPermille)` sin tocar la función.
+La lista de candidatos es una constante vanilla ordenada (`VANILLA_MINERALS`) y
+la etapa 3 la amplía con un catálogo dinámico:
+
+- `worldgen/MineralCatalog.java` — ensamblado puro. Recibe los vanilla, las
+  menas ya resueltas por tag, las inclusiones y las exclusiones. Los vanilla van
+  primero y en su orden; después los de mods por id. La exclusión gana y los
+  duplicados se unen.
+- `event/SatelliteMineralCatalog.java` — reconstruye el catálogo en
+  `TagsUpdatedEvent` (solo con `shouldUpdateStaticData()`), resuelve ids y tags
+  contra `Registries.BLOCK`, descarta bloques con block entity, fluidos, aire o
+  sin `canOcclude()`, y publica una lista inmutable en un campo `volatile`.
+  Mientras no hay snapshot, el carver usa `VANILLA_MINERALS` y avisa una vez.
+- Descubrimiento: `#c:ores_in_ground/stone` (jar de NeoForge 21.1.216:
+  `data/c/tags/block/ores_in_ground/stone.json`). Ese tag contiene solo las
+  menas de piedra; deepslate, netherrack, Nether, End y debris quedan fuera.
+- Opciones: `satellites_excluded_ores`, `satellites_included_ores`,
+  `satellites_mod_ore_weight` (3) y `satellites_mod_ore_density_permille` (20).
+  Se reconstruye solo al arrancar o al recargar tags, así que los cambios se
+  aplican al reabrir el mundo o con `/reload`.
+- Log INFO una vez por reconstrucción con candidatos `(id, peso, densidad)`,
+  excluidos e ignorados.
+- Cambiar mods o listas entre sesiones puede dejar un satélite a medio generar
+  con más de un mineral: los chunks viejos conservan el mineral anterior y los
+  nuevos usan el catálogo nuevo.
 
 Con `satellites_enabled = false`:
 
