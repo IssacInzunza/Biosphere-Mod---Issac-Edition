@@ -155,6 +155,12 @@ Biosphere Worlds is designed to support most terrain/ecology mod setups, but wor
 
 Choose **Biospheres - Issac Edition** in the Create World screen to use the biosphere generator. The standard vanilla presets, including Overworld, Large Biomes, and Amplified, retain their normal terrain generation.
 
+### TerraBlender and Biomes O' Plenty
+
+The Biospheres preset uses a plain `minecraft:multi_noise` biome source, so TerraBlender can initialize its Overworld regions and TerraBlender-based biomes (for example Biomes O' Plenty) can generate inside the spheres. The old `biosphereworlds:biospheres` biome source remains registered so worlds created by previous versions still load.
+
+**This fix only applies to new worlds.** A world created before this version stores the old biome source wrapper in its `level.dat`; TerraBlender still skips that wrapper, so the world will not generate TerraBlender or Biomes O' Plenty biomes. Create a new world to use the fix. Existing chunks are not regenerated either way.
+
 ## FAQ
 
 ### 1. Why does my old world look incomplete?
