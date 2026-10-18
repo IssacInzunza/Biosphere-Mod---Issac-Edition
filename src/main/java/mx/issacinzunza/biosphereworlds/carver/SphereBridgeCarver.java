@@ -1,6 +1,7 @@
 package mx.issacinzunza.biosphereworlds.carver;
 
 import mx.issacinzunza.biosphereworlds.config.SphereConfig;
+import mx.issacinzunza.biosphereworlds.worldgen.BiosphereWorldgen;
 import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
@@ -30,6 +31,10 @@ public class SphereBridgeCarver extends SphereCarver {
                          @NotNull ChunkAccess chunk, @NotNull Function<BlockPos, Holder<Biome>> biomeAccessor,
                          @NotNull RandomSource random, @NotNull Aquifer aquifer, @NotNull ChunkPos chunkPos,
                          @NotNull CarvingMask carvingMask) {
+
+        if (!BiosphereWorldgen.isBiosphereChunk(chunk)) {
+            return false;
+        }
 
         SphereLayout layout = SphereLayout.current();
         int spacing = layout.params().spacing();

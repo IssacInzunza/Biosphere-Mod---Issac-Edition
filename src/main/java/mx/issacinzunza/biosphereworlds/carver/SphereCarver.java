@@ -4,6 +4,7 @@ import mx.issacinzunza.biosphereworlds.BiosphereWorlds;
 import mx.issacinzunza.biosphereworlds.config.SphereConfig;
 import mx.issacinzunza.biosphereworlds.event.SatelliteMineralCatalog;
 import mx.issacinzunza.biosphereworlds.config.SphereConfig.BedrockMode;
+import mx.issacinzunza.biosphereworlds.worldgen.BiosphereWorldgen;
 import mx.issacinzunza.biosphereworlds.worldgen.SatelliteLayers;
 import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
 import com.mojang.serialization.Codec;
@@ -60,6 +61,11 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                          @NotNull ChunkAccess chunk, @NotNull Function<BlockPos, Holder<Biome>> biomeAccessor,
                          @NotNull RandomSource random, @NotNull Aquifer aquifer, @NotNull ChunkPos chunkPos,
                          @NotNull CarvingMask carvingMask) {
+
+        boolean biosphereChunk = BiosphereWorldgen.isBiosphereChunk(chunk);
+        if (!biosphereChunk) {
+            return false;
+        }
 
         SphereLayout layout = SphereLayout.current();
         boolean closeOpenTop = SphereConfig.CLOSE_OPEN_TOP.get();
@@ -172,7 +178,7 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                 // esfera principal) sigue enumerando esta celda gracias a
                 // firstCellIndex/lastCellIndex, y aqui no hay ninguna poda por
                 // distancia al centro de la principal.
-                if (layout.params().satellitesEnabled()) {
+                if (SphereLayout.satellitesAllowed(biosphereChunk, layout.params().satellitesEnabled())) {
                     List<SphereLayout.Satellite> satellites = layout.satellitesAtCell(gridX, gridZ);
                     for (SphereLayout.Satellite satellite : satellites) {
                         generated |= carveSatellite(chunk, satellite, blockState,

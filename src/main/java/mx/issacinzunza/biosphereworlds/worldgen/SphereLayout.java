@@ -270,6 +270,16 @@ public final class SphereLayout {
     // ------------------------------------------------------------------
 
     /**
+     * Predicado puro de la puerta de los satelites: solo se calculan en un chunk
+     * marcado por un generador Biospheres y con la opcion activa. La marca del chunk
+     * la pone {@code MixinNoiseBasedChunkGenerator.createNoiseChunk} antes del
+     * estado CARVERS; en un generador vanilla nunca se pone.
+     */
+    public static boolean satellitesAllowed(boolean biosphereChunk, boolean satellitesEnabled) {
+        return biosphereChunk && satellitesEnabled;
+    }
+
+    /**
      * Satelites de una celda, en orden estable. Devuelve una lista inmutable y
      * vacia cuando los satelites estan apagados, sin tocar ninguna cache.
      *
