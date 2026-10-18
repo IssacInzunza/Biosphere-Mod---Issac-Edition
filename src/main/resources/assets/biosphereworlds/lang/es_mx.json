@@ -54,5 +54,44 @@
   "biosphereworlds.configuration.edge_ocean_width.tooltip": "Ancho de la banda de océano, como porcentaje del radio de la esfera (0-100). Solo afecta a mundos nuevos.",
 
   "biosphereworlds.configuration.edge_ocean_depth": "Profundidad del océano de borde",
-  "biosphereworlds.configuration.edge_ocean_depth.tooltip": "Profundidad del fondo oceánico por debajo del nivel del mar (63), en bloques (0-100). Solo afecta a mundos nuevos."
+  "biosphereworlds.configuration.edge_ocean_depth.tooltip": "Profundidad del fondo oceánico por debajo del nivel del mar (63), en bloques (0-100). Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.satellites_enabled": "Satélites",
+  "biosphereworlds.configuration.satellites_enabled.tooltip": "Genera esferas satélite pequeñas por encima de cada esfera principal. Los satélites son siempre esferas completas con cascarón de vidrio y cuerpo de piedra. Con center_y = 62 solo caben si el radio principal es menor de unos 200-300 bloques. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.satellites_max_count": "Máximo de satélites por esfera",
+  "biosphereworlds.configuration.satellites_max_count.tooltip": "Número máximo de satélites alrededor de cada esfera principal (0-64). 0 los desactiva aunque satellites_enabled esté activo. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.satellites_min_size_percent": "Tamaño mínimo de los satélites",
+  "biosphereworlds.configuration.satellites_min_size_percent.tooltip": "Radio mínimo de los satélites, como porcentaje del radio de la esfera principal (1-100, por defecto 8). Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.satellites_max_size_percent": "Tamaño máximo de los satélites",
+  "biosphereworlds.configuration.satellites_max_size_percent.tooltip": "Radio máximo de los satélites, como porcentaje del radio de la esfera principal (1-100, por defecto 12). Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.satellites_min_gap_percent": "Hueco mínimo de los satélites",
+  "biosphereworlds.configuration.satellites_min_gap_percent.tooltip": "Hueco mínimo entre las superficies del satélite y de la esfera principal, como porcentaje del radio principal. El mínimo absoluto es satellites_min_gap_blocks. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.satellites_max_gap_percent": "Hueco máximo de los satélites",
+  "biosphereworlds.configuration.satellites_max_gap_percent.tooltip": "Hueco máximo entre las superficies del satélite y de la esfera principal, como porcentaje del radio principal. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.satellites_min_gap_blocks": "Hueco mínimo en bloques",
+  "biosphereworlds.configuration.satellites_min_gap_blocks.tooltip": "Hueco mínimo absoluto, en bloques, entre las superficies del satélite y de la esfera principal. También es el margen de seguridad respecto al borde de la celda y a otros satélites. Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.satellites_min_elevation_degrees": "Elevación mínima de los satélites",
+  "biosphereworlds.configuration.satellites_min_elevation_degrees.tooltip": "Ángulo de elevación mínimo de los satélites sobre el centro de la esfera principal, en grados (0-90). Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.satellites_max_elevation_degrees": "Elevación máxima de los satélites",
+  "biosphereworlds.configuration.satellites_max_elevation_degrees.tooltip": "Ángulo de elevación máximo de los satélites sobre el centro de la esfera principal, en grados (0-90). Solo afecta a mundos nuevos.",
+
+  "biosphereworlds.configuration.satellites_excluded_ores": "Minerales excluidos de los satélites",
+  "biosphereworlds.configuration.satellites_excluded_ores.tooltip": "Ids de bloque o tags con # que nunca se elegirán para el núcleo de un satélite (por defecto: debris antiguo, cuarzo del Nether, oro del Nether y #c:ores_in_ground/deepslate). Las entradas inválidas se ignoran con un aviso. Los cambios se aplican al reabrir el mundo o con /reload: el catálogo solo se reconstruye cuando se actualizan los tags del juego.",
+
+  "biosphereworlds.configuration.satellites_included_ores": "Minerales extra de los satélites",
+  "biosphereworlds.configuration.satellites_included_ores.tooltip": "Ids de bloque o tags con # que se añaden a los candidatos del núcleo aunque no estén en #c:ores_in_ground/stone. Las entradas inválidas se ignoran con un aviso. Los cambios se aplican al reabrir el mundo o con /reload: el catálogo solo se reconstruye cuando se actualizan los tags del juego.",
+
+  "biosphereworlds.configuration.satellites_mod_ore_weight": "Peso de los minerales de mods",
+  "biosphereworlds.configuration.satellites_mod_ore_weight.tooltip": "Peso de selección de los minerales añadidos por otros mods; los vanilla conservan sus pesos. Los cambios se aplican al reabrir el mundo o con /reload: el catálogo solo se reconstruye cuando se actualizan los tags del juego.",
+
+  "biosphereworlds.configuration.satellites_mod_ore_density_permille": "Densidad de los minerales de mods (milésimas)",
+  "biosphereworlds.configuration.satellites_mod_ore_density_permille.tooltip": "Bloques de mineral por cada 1000 del núcleo para minerales de otros mods (20 = 2 %). Los vanilla conservan sus densidades. Los cambios se aplican al reabrir el mundo o con /reload: el catálogo solo se reconstruye cuando se actualizan los tags del juego."
 }

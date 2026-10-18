@@ -54,5 +54,44 @@
   "biosphereworlds.configuration.edge_ocean_width.tooltip": "Width of the ocean band, as a percentage of the sphere radius (0-100). Only affects newly generated worlds.",
 
   "biosphereworlds.configuration.edge_ocean_depth": "Edge ocean depth",
-  "biosphereworlds.configuration.edge_ocean_depth.tooltip": "Depth of the ocean floor below sea level (63), in blocks (0-100). Only affects newly generated worlds."
+  "biosphereworlds.configuration.edge_ocean_depth.tooltip": "Depth of the ocean floor below sea level (63), in blocks (0-100). Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.satellites_enabled": "Satellites",
+  "biosphereworlds.configuration.satellites_enabled.tooltip": "Generate small satellite spheres above each main sphere. Satellites are always complete spheres with a glass shell and a stone body. With center_y = 62 they only fit when the main radius is below roughly 200-300 blocks. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.satellites_max_count": "Maximum satellites per sphere",
+  "biosphereworlds.configuration.satellites_max_count.tooltip": "Maximum number of satellites around each main sphere (0-64). 0 disables them even when satellites_enabled is true. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.satellites_min_size_percent": "Minimum satellite size",
+  "biosphereworlds.configuration.satellites_min_size_percent.tooltip": "Minimum satellite radius, as a percentage of the main sphere radius (1-100, default 8). Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.satellites_max_size_percent": "Maximum satellite size",
+  "biosphereworlds.configuration.satellites_max_size_percent.tooltip": "Maximum satellite radius, as a percentage of the main sphere radius (1-100, default 12). Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.satellites_min_gap_percent": "Minimum satellite gap",
+  "biosphereworlds.configuration.satellites_min_gap_percent.tooltip": "Minimum gap between the satellite and main sphere surfaces, as a percentage of the main radius. The absolute minimum is satellites_min_gap_blocks. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.satellites_max_gap_percent": "Maximum satellite gap",
+  "biosphereworlds.configuration.satellites_max_gap_percent.tooltip": "Maximum gap between the satellite and main sphere surfaces, as a percentage of the main radius. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.satellites_min_gap_blocks": "Minimum satellite gap in blocks",
+  "biosphereworlds.configuration.satellites_min_gap_blocks.tooltip": "Absolute minimum gap, in blocks, between the satellite and main sphere surfaces. It is also the safety margin from the cell border and from other satellites. Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.satellites_min_elevation_degrees": "Minimum satellite elevation",
+  "biosphereworlds.configuration.satellites_min_elevation_degrees.tooltip": "Minimum elevation angle of the satellites above the main sphere center, in degrees (0-90). Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.satellites_max_elevation_degrees": "Maximum satellite elevation",
+  "biosphereworlds.configuration.satellites_max_elevation_degrees.tooltip": "Maximum elevation angle of the satellites above the main sphere center, in degrees (0-90). Only affects newly generated worlds.",
+
+  "biosphereworlds.configuration.satellites_excluded_ores": "Excluded satellite ores",
+  "biosphereworlds.configuration.satellites_excluded_ores.tooltip": "Block ids or #tags that must never be chosen for a satellite core (default: ancient debris, nether quartz, nether gold and #c:ores_in_ground/deepslate). Invalid entries are ignored with a warning. Changes apply when the world is reopened or with /reload: the catalog is rebuilt only when the game tags update.",
+
+  "biosphereworlds.configuration.satellites_included_ores": "Extra satellite ores",
+  "biosphereworlds.configuration.satellites_included_ores.tooltip": "Block ids or #tags added to the satellite core candidates even when they are not in #c:ores_in_ground/stone. Invalid entries are ignored with a warning. Changes apply when the world is reopened or with /reload: the catalog is rebuilt only when the game tags update.",
+
+  "biosphereworlds.configuration.satellites_mod_ore_weight": "Mod ore selection weight",
+  "biosphereworlds.configuration.satellites_mod_ore_weight.tooltip": "Selection weight for ores added by other mods; vanilla ores keep their own weights. Changes apply when the world is reopened or with /reload: the catalog is rebuilt only when the game tags update.",
+
+  "biosphereworlds.configuration.satellites_mod_ore_density_permille": "Mod ore density (per mille)",
+  "biosphereworlds.configuration.satellites_mod_ore_density_permille.tooltip": "Ore blocks per 1000 core blocks for ores added by other mods (20 = 2%). Vanilla ores keep their own densities. Changes apply when the world is reopened or with /reload: the catalog is rebuilt only when the game tags update."
 }

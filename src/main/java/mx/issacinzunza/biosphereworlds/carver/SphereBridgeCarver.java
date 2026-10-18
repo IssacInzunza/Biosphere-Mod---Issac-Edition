@@ -1,6 +1,7 @@
 package mx.issacinzunza.biosphereworlds.carver;
 
 import mx.issacinzunza.biosphereworlds.config.SphereConfig;
+import mx.issacinzunza.biosphereworlds.worldgen.BiosphereWorldgen;
 import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
@@ -31,9 +32,12 @@ public class SphereBridgeCarver extends SphereCarver {
                          @NotNull RandomSource random, @NotNull Aquifer aquifer, @NotNull ChunkPos chunkPos,
                          @NotNull CarvingMask carvingMask) {
 
+        if (!BiosphereWorldgen.isBiosphereChunk(chunk)) {
+            return false;
+        }
+
         SphereLayout layout = SphereLayout.current();
         int spacing = layout.params().spacing();
-        int centerY = layout.params().centerY();
         int bridgeRadius = SphereConfig.BRIDGE_RADIUS.get().intValue();
         boolean enableBridges = SphereConfig.GENERATE_BRIDGE.get();
 
@@ -59,13 +63,13 @@ public class SphereBridgeCarver extends SphereCarver {
                 double centerZ = sphere.centerZ();
 
                 if (enableBridges) {
-                    generated |= carveBridge(chunk, layout, centerX, centerZ, centerY,
-                            centerX + spacing, centerZ, centerY,
+                    generated |= carveBridge(chunk, layout, centerX, centerZ, sphere.centerY(),
+                            centerX + spacing, centerZ, layout.sphereAtCell(gridX + 1, gridZ).centerY(),
                             bridgeRadius, bridgeState,
                             chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
 
-                    generated |= carveBridge(chunk, layout, centerX, centerZ, centerY,
-                            centerX, centerZ + spacing, centerY,
+                    generated |= carveBridge(chunk, layout, centerX, centerZ, sphere.centerY(),
+                            centerX, centerZ + spacing, layout.sphereAtCell(gridX, gridZ + 1).centerY(),
                             bridgeRadius, bridgeState,
                             chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
                 }
@@ -124,7 +128,7 @@ public class SphereBridgeCarver extends SphereCarver {
 
                     if (distSq <= bridgeRadiusSq && distSq >= bridgeRadiusMinusOneSq) {
                         BlockPos pos = new BlockPos(x, y, z);
-                        if (!layout.isInside(x, y, z)) {
+                        if (!layout.isInside(x, y, z) && !layout.isInsideSatellite(x, y, z)) {
                             if (chunk.getBlockState(pos).isAir()) {
                                 chunk.setBlockState(pos, bridgeState, false);
                                 generated = true;

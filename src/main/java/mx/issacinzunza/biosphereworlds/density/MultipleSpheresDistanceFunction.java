@@ -31,7 +31,7 @@ public record MultipleSpheresDistanceFunction(
 
         // Calculate distance to nearest sphere center
         double dx = context.blockX() - sphere.centerX();
-        double dy = context.blockY() - layout.params().centerY();
+        double dy = context.blockY() - sphere.centerY();
         double dz = context.blockZ() - sphere.centerZ();
 
         double distance = dx * dx + dy * dy + dz * dz;

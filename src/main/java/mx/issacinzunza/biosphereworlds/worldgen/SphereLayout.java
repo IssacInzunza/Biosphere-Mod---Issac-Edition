@@ -47,21 +47,79 @@ public final class SphereLayout {
     private final Params params;
     private final AtomicReferenceArray<Sphere> cache = new AtomicReferenceArray<>(CACHE_SIZE);
 
+    /**
+     * Cache por celda de los satelites. Es {@code null} cuando los satelites estan
+     * apagados, de modo que esa ruta no reserva memoria ni calcula nada.
+     */
+    private final AtomicReferenceArray<SatelliteCell> satelliteCache;
+
     public SphereLayout(Params params) {
         this.params = params;
+        this.satelliteCache = params.satellitesEnabled()
+                ? new AtomicReferenceArray<>(CACHE_SIZE)
+                : null;
     }
 
     /** Instantanea de los parametros de la cuadricula. Inmutable. */
-    public record Params(int spacing, int centerY, int minRadius, int maxRadius) {
+    public record Params(int spacing, int centerY, int minRadius, int maxRadius,
+                         boolean satellitesEnabled, int satellitesMaxCount,
+                         int satellitesMinSizePercent, int satellitesMaxSizePercent,
+                         int satellitesMinGapPercent, int satellitesMaxGapPercent,
+                         int satellitesMinGapBlocks,
+                         int satellitesMinElevationDegrees, int satellitesMaxElevationDegrees) {
+
         public Params {
             if (spacing <= 0) {
                 throw new IllegalArgumentException("spacing must be > 0, got " + spacing);
             }
+            satellitesMaxCount = Math.max(0, satellitesMaxCount);
+            satellitesMinSizePercent = clamp(satellitesMinSizePercent, 1, 100);
+            satellitesMaxSizePercent = clamp(satellitesMaxSizePercent, 1, 100);
+            if (satellitesMinSizePercent > satellitesMaxSizePercent) {
+                satellitesMinSizePercent = satellitesMaxSizePercent;
+            }
+            satellitesMinGapPercent = clamp(satellitesMinGapPercent, 0, 1000);
+            satellitesMaxGapPercent = clamp(satellitesMaxGapPercent, 0, 1000);
+            if (satellitesMinGapPercent > satellitesMaxGapPercent) {
+                satellitesMinGapPercent = satellitesMaxGapPercent;
+            }
+            satellitesMinGapBlocks = Math.max(0, satellitesMinGapBlocks);
+            satellitesMinElevationDegrees = clamp(satellitesMinElevationDegrees, 0, 90);
+            satellitesMaxElevationDegrees = clamp(satellitesMaxElevationDegrees, 0, 90);
+            if (satellitesMinElevationDegrees > satellitesMaxElevationDegrees) {
+                satellitesMinElevationDegrees = satellitesMaxElevationDegrees;
+            }
+        }
+
+        /**
+         * Parametros sin satelites. Es el constructor que usan las pruebas de
+         * equivalencia: con {@code satellitesEnabled == false} toda la geometria
+         * nueva se corta antes de tocar la cache de satelites.
+         */
+        public Params(int spacing, int centerY, int minRadius, int maxRadius) {
+            this(spacing, centerY, minRadius, maxRadius, false, 0, 8, 12, 25, 75, 16, 30, 55);
         }
     }
 
-    /** Una esfera concreta de la cuadricula. Inmutable. */
-    public record Sphere(int cellX, int cellZ, double centerX, double centerZ, int radius) {
+    /**
+     * Una esfera concreta de la cuadricula. Inmutable.
+     *
+     * <p>{@code centerY} es propio de cada esfera. Hoy todas las principales usan el
+     * mismo valor de configuracion, pero la prueba de pertenencia lee el centro de la
+     * esfera y no el global, para que los satelites puedan tener su propia altura.</p>
+     */
+    public record Sphere(int cellX, int cellZ, double centerX, double centerY, double centerZ, int radius) {
+    }
+
+    /**
+     * Satelite de una esfera principal. Inmutable. {@code seed} sale de la celda,
+     * el indice y el intento de colocacion, no de la posicion en coma flotante: es
+     * la base estable del mineral y del hash por bloque.
+     */
+    public record Satellite(double centerX, double centerY, double centerZ, int radius, long seed) {
+    }
+
+    private record SatelliteCell(int cellX, int cellZ, List<Satellite> satellites) {
     }
 
     // ------------------------------------------------------------------
@@ -70,27 +128,63 @@ public final class SphereLayout {
 
     /**
      * Devuelve la instancia que refleja la configuracion actual, creandola o
-     * reemplazandola solo cuando algun parametro cambia. En el caso normal esto son
-     * cuatro lecturas de config y ninguna reserva de memoria.
+     * reemplazandola solo cuando algun parametro cambia. La comparacion usa el
+     * {@link Params} ya normalizado, de modo que tambien detecta los cambios de las
+     * opciones de satelites.
      */
     public static SphereLayout current() {
         int spacing = SphereConfig.SPACING.get().intValue();
         int centerY = SphereConfig.CENTER_Y.get().intValue();
         int minRadius = SphereConfig.MIN_RADIUS.get().intValue();
         int maxRadius = SphereConfig.RADIUS.get().intValue();
+        boolean satellitesEnabled = SphereConfig.SATELLITES_ENABLED.get();
+        int satellitesMaxCount = Math.max(0, SphereConfig.SATELLITES_MAX_COUNT.get());
+        int satellitesMinSizePercent = clamp(SphereConfig.SATELLITES_MIN_SIZE_PERCENT.get(), 1, 100);
+        int satellitesMaxSizePercent = clamp(SphereConfig.SATELLITES_MAX_SIZE_PERCENT.get(), 1, 100);
+        if (satellitesMinSizePercent > satellitesMaxSizePercent) {
+            satellitesMinSizePercent = satellitesMaxSizePercent;
+        }
+        int satellitesMinGapPercent = clamp(SphereConfig.SATELLITES_MIN_GAP_PERCENT.get(), 0, 1000);
+        int satellitesMaxGapPercent = clamp(SphereConfig.SATELLITES_MAX_GAP_PERCENT.get(), 0, 1000);
+        if (satellitesMinGapPercent > satellitesMaxGapPercent) {
+            satellitesMinGapPercent = satellitesMaxGapPercent;
+        }
+        int satellitesMinGapBlocks = Math.max(0, SphereConfig.SATELLITES_MIN_GAP_BLOCKS.get());
+        int satellitesMinElevation = clamp(SphereConfig.SATELLITES_MIN_ELEVATION_DEGREES.get(), 0, 90);
+        int satellitesMaxElevation = clamp(SphereConfig.SATELLITES_MAX_ELEVATION_DEGREES.get(), 0, 90);
+        if (satellitesMinElevation > satellitesMaxElevation) {
+            satellitesMinElevation = satellitesMaxElevation;
+        }
 
         SphereLayout layout = current;
         if (layout != null) {
             Params p = layout.params;
             if (p.spacing() == spacing && p.centerY() == centerY
-                    && p.minRadius() == minRadius && p.maxRadius() == maxRadius) {
+                    && p.minRadius() == minRadius && p.maxRadius() == maxRadius
+                    && p.satellitesEnabled() == satellitesEnabled
+                    && p.satellitesMaxCount() == satellitesMaxCount
+                    && p.satellitesMinSizePercent() == satellitesMinSizePercent
+                    && p.satellitesMaxSizePercent() == satellitesMaxSizePercent
+                    && p.satellitesMinGapPercent() == satellitesMinGapPercent
+                    && p.satellitesMaxGapPercent() == satellitesMaxGapPercent
+                    && p.satellitesMinGapBlocks() == satellitesMinGapBlocks
+                    && p.satellitesMinElevationDegrees() == satellitesMinElevation
+                    && p.satellitesMaxElevationDegrees() == satellitesMaxElevation) {
                 return layout;
             }
         }
 
-        SphereLayout fresh = new SphereLayout(new Params(spacing, centerY, minRadius, maxRadius));
+        SphereLayout fresh = new SphereLayout(new Params(spacing, centerY, minRadius, maxRadius,
+                satellitesEnabled, satellitesMaxCount,
+                satellitesMinSizePercent, satellitesMaxSizePercent,
+                satellitesMinGapPercent, satellitesMaxGapPercent, satellitesMinGapBlocks,
+                satellitesMinElevation, satellitesMaxElevation));
         current = fresh;
         return fresh;
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     public Params params() {
@@ -161,7 +255,7 @@ public final class SphereLayout {
         if (cached != null && cached.cellX() == cellX && cached.cellZ() == cellZ) {
             return cached;
         }
-        Sphere fresh = new Sphere(cellX, cellZ, centerX(cellX), centerZ(cellZ), radiusAt(cellX, cellZ));
+        Sphere fresh = new Sphere(cellX, cellZ, centerX(cellX), params.centerY(), centerZ(cellZ), radiusAt(cellX, cellZ));
         cache.set(slot, fresh);
         return fresh;
     }
@@ -169,6 +263,89 @@ public final class SphereLayout {
     /** Esfera de la celda que contiene la posicion de bloque indicada. */
     public Sphere sphereContaining(double x, double z) {
         return sphereAtCell(cellX(x), cellZ(z));
+    }
+
+    // ------------------------------------------------------------------
+    // Satelites
+    // ------------------------------------------------------------------
+
+    /**
+     * Predicado puro de la puerta de los satelites: solo se calculan en un chunk
+     * marcado por un generador Biospheres y con la opcion activa. La marca del chunk
+     * la pone {@code MixinNoiseBasedChunkGenerator.createNoiseChunk} antes del
+     * estado CARVERS; en un generador vanilla nunca se pone.
+     */
+    public static boolean satellitesAllowed(boolean biosphereChunk, boolean satellitesEnabled) {
+        return biosphereChunk && satellitesEnabled;
+    }
+
+    /**
+     * Satelites de una celda, en orden estable. Devuelve una lista inmutable y
+     * vacia cuando los satelites estan apagados, sin tocar ninguna cache.
+     *
+     * <p>La lista se calcula una sola vez por celda. Una carrera entre dos hilos
+     * puede calcularla dos veces, pero ambos resultados son iguales porque la
+     * colocacion es una funcion pura de la celda y de los parametros, y la lista
+     * que se publica es inmutable.</p>
+     */
+    public List<Satellite> satellitesAtCell(int cellX, int cellZ) {
+        AtomicReferenceArray<SatelliteCell> cache = this.satelliteCache;
+        if (cache == null) {
+            return List.of();
+        }
+
+        int slot = slot(cellX, cellZ);
+        SatelliteCell cached = cache.get(slot);
+        if (cached != null && cached.cellX() == cellX && cached.cellZ() == cellZ) {
+            return cached.satellites();
+        }
+
+        Sphere principal = sphereAtCell(cellX, cellZ);
+        List<Sphere> neighbours = new ArrayList<>(8);
+        for (int gx = cellX - 1; gx <= cellX + 1; gx++) {
+            for (int gz = cellZ - 1; gz <= cellZ + 1; gz++) {
+                if (gx != cellX || gz != cellZ) {
+                    neighbours.add(sphereAtCell(gx, gz));
+                }
+            }
+        }
+
+        // La celda de una esfera es el conjunto de puntos cuyo Math.round los asigna
+        // a su indice: centro +- spacing/2.
+        double half = params.spacing() / 2.0;
+        SatellitePlacement.Bounds bounds = new SatellitePlacement.Bounds(
+                principal.centerX() - half, principal.centerX() + half,
+                principal.centerZ() - half, principal.centerZ() + half);
+
+        List<Satellite> placed = SatellitePlacement.place(principal, neighbours, params, bounds);
+        SatelliteCell fresh = new SatelliteCell(cellX, cellZ, List.copyOf(placed));
+        cache.set(slot, fresh);
+
+        return fresh.satellites();
+    }
+
+    /**
+     * {@code true} si la posicion cae dentro del volumen completo de un satelite,
+     * cascaron incluido.
+     *
+     * <p>Solo consulta los satelites de la celda que contiene el punto: la
+     * colocacion garantiza que cada satelite cabe entero en su celda, asi que las
+     * celdas vecinas no pueden aportar ninguno.</p>
+     */
+    public boolean isInsideSatellite(double x, double y, double z) {
+        if (satelliteCache == null) {
+            return false;
+        }
+        for (Satellite satellite : satellitesAtCell(cellX(x), cellZ(z))) {
+            double dx = x - satellite.centerX();
+            double dy = y - satellite.centerY();
+            double dz = z - satellite.centerZ();
+            double radius = satellite.radius();
+            if (dx * dx + dy * dy + dz * dz <= radius * radius) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------
@@ -224,7 +401,6 @@ public final class SphereLayout {
     public boolean isInside(double x, double y, double z, double edgeMargin) {
         int gridX = cellX(x);
         int gridZ = cellZ(z);
-        double centerY = params.centerY();
         for (int gx = gridX - 1; gx <= gridX + 1; gx++) {
             for (int gz = gridZ - 1; gz <= gridZ + 1; gz++) {
                 if (contains(sphereAtCell(gx, gz), x, y, z, edgeMargin)) {
@@ -252,13 +428,12 @@ public final class SphereLayout {
     public double distanceToEdge(double x, double y, double z) {
         int gridX = cellX(x);
         int gridZ = cellZ(z);
-        double centerY = params.centerY();
         double best = Double.NEGATIVE_INFINITY;
         for (int gx = gridX - 1; gx <= gridX + 1; gx++) {
             for (int gz = gridZ - 1; gz <= gridZ + 1; gz++) {
                 Sphere sphere = sphereAtCell(gx, gz);
                 double dx = x - sphere.centerX();
-                double dy = y - centerY;
+                double dy = y - sphere.centerY();
                 double dz = z - sphere.centerZ();
                 double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                 double toEdge = (sphere.radius() - SHELL_THICKNESS) - distance;
@@ -276,7 +451,7 @@ public final class SphereLayout {
 
     private boolean contains(Sphere sphere, double x, double y, double z, double edgeMargin) {
         double dx = x - sphere.centerX();
-        double dy = y - params.centerY();
+        double dy = y - sphere.centerY();
         double dz = z - sphere.centerZ();
         double effectiveRadius = sphere.radius() - SHELL_THICKNESS - edgeMargin;
         double innerRadiusSq = effectiveRadius * effectiveRadius;

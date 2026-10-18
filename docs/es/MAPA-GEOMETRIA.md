@@ -333,3 +333,139 @@ y pasan después.
   `BiosphereBiomeSource` (que sí usa D2 en la ruta más caliente) es el punto que
   TerraBlender podría envolver; al no cambiar su contrato ni su predicado, el
   riesgo es bajo. **No verificado.**
+
+---
+
+## 8. Satélites (ETAPA 2: cascarón, piedra, magma y núcleo)
+
+Implementado en:
+
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SatellitePlacement.java` —
+  colocación pura. Recibe la esfera principal, las principales vecinas, la
+  instantánea de `SphereLayout.Params` y los límites horizontales de la celda.
+  No lee configuración ni toca Minecraft, así que es determinista y se prueba con
+  JUnit.
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SphereLayout.java` —
+  `Satellite` (centro, radio y semilla de colocación), `satellitesAtCell(cellX, cellZ)`
+  con caché `AtomicReferenceArray` por celda, e `isInsideSatellite(x, y, z)`.
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SatelliteLayers.java` —
+  geometría pura de las capas y selección del mineral: `layers(int)`,
+  `regionAt(...)`, `selectMineral(seed, candidates)`, `isOre(...)` y
+  `countOre(...)`. Los candidatos son inmutables y se ordenan de forma estable
+  por id de bloque.
+- `src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereCarver.java` —
+  `carveSatellite` pinta el cascarón con el bloque de la principal, el cuerpo de
+  piedra, la capa de `minecraft:magma_block` y el núcleo de piedra con vetas del
+  mineral elegido.
+- `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinHeightmap.java` —
+  todo el volumen de un satélite se trata como aire al actualizar o primar
+  heightmaps.
+
+Reglas de colocación:
+
+- Hash de 64 bits propio (constantes distintas del hash del radio), derivado solo
+  de `(cellX, cellZ, índice, intento)`. El radio y el caso
+  `Math.abs(Integer.MIN_VALUE)` no se tocan.
+- Ángulo base por celda + paso áureo por índice + jitter: los satélites de una
+  celda no pueden quedar todos en la misma dirección.
+- Tamaño en `[min_size, max_size]` por ciento del radio principal (por defecto
+  8–12 %); hueco en `[min_gap, max_gap]` con mínimo absoluto
+  `satellites_min_gap_blocks`.
+- Elevación en `[min_elevation, max_elevation]` grados sobre el centro.
+- Validación con el volumen completo: celda horizontal con margen, Y entre -64 y
+  319, sin solape con la principal, las principales vecinas ni los satélites ya
+  colocados de la misma celda. Máximo 16 intentos por satélite; si ninguno vale,
+  se omite sin error.
+- Cada satélite cabe entero en su celda, así que `isInsideSatellite` solo
+  consulta la celda que contiene el punto (no las nueve) y dos satélites de
+  celdas distintas no pueden solaparse.
+
+Capas, de fuera hacia dentro: cascarón de 2 bloques (sin cambios respecto a la
+etapa 1), cuerpo de piedra de 1 bloque, magma de `clamp(R/6, 2, 4)` bloques y
+núcleo `core = R - 3 - espesor_magma`. Si `core < 2` el satélite se queda en
+cascarón más cuerpo de piedra (`R <= 6` con estos espesores). La tabla de la
+etapa 2 es:
+
+| Radio | Vidrio interior | Magma exterior | Núcleo |
+|---:|---:|---:|---:|
+| 8 | 6 | 5 | 3 |
+| 10 | 8 | 7 | 5 |
+| 13 | 11 | 10 | 8 |
+| 20 | 18 | 17 | 14 |
+
+El magma es un anillo completo: todo bloque con `core² < d² <= magmaOuter²` es
+`minecraft:magma_block`, sin lava ni huecos. El núcleo elige **un** mineral por
+satélite con `selectMineral(semilla, candidatos)`; la semilla viene de
+`SatellitePlacement` (celda, índice, intento) y se guarda en `Satellite.seed`.
+Cada bloque del núcleo es mineral si `isOre(semilla, x, y, z, densidad)` cae por
+debajo de la densidad en milésimas; si no, es piedra. Densidades por defecto:
+carbón 200, cobre 160, hierro 120, oro 40, redstone 30, lapis 20, diamante 10 y
+esmeralda 5 milésimas (20 %, 16 %, 12 %, 4 %, 3 %, 2 %, 1 % y 0,5 %).
+
+Cantidades esperadas de bloque de mineral, condicionadas al mineral elegido
+(núcleos calculados por retícula; los centros reales son `double` y el conteo
+varía ~1 %):
+
+| Núcleo | Carbón | Cobre | Hierro | Oro | Redstone | Lapis | Diamante | Esmeralda |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| r=3 (R=8) | 24.6 | 19.7 | 14.8 | 4.9 | 3.7 | 2.5 | 1.2 | 0.6 |
+| r=5 (R=10) | 103.0 | 82.4 | 61.8 | 20.6 | 15.5 | 10.3 | 5.2 | 2.6 |
+| r=8 (R=13) | 421.8 | 337.4 | 253.1 | 84.4 | 63.3 | 42.2 | 21.1 | 10.5 |
+| r=14 (R=20) | 2302.6 | 1842.1 | 1381.6 | 460.5 | 345.4 | 230.3 | 115.1 | 57.6 |
+
+Media de mineral total sobre la elección de mineral: 11,52 % del núcleo
+(14,2 / 59,3 / 243,0 / 1326,3 bloques para R=8/10/13/20). Los núcleos pequeños
+tienen mucha varianza: un satélite puede salir con poco o ningún mineral.
+
+La lista de candidatos es una constante vanilla ordenada (`VANILLA_MINERALS`) y
+la etapa 3 la amplía con un catálogo dinámico:
+
+- `worldgen/MineralCatalog.java` — ensamblado puro. Recibe los vanilla, las
+  menas ya resueltas por tag, las inclusiones y las exclusiones. Los vanilla van
+  primero y en su orden; después los de mods por id. La exclusión gana y los
+  duplicados se unen.
+- `event/SatelliteMineralCatalog.java` — reconstruye el catálogo en
+  `TagsUpdatedEvent` (solo con `shouldUpdateStaticData()`), resuelve ids y tags
+  contra `Registries.BLOCK`, descarta bloques con block entity, fluidos, aire o
+  sin `canOcclude()`, y publica una lista inmutable en un campo `volatile`.
+  Mientras no hay snapshot, el carver usa `VANILLA_MINERALS` y avisa una vez.
+- Descubrimiento: `#c:ores_in_ground/stone` (jar de NeoForge 21.1.216:
+  `data/c/tags/block/ores_in_ground/stone.json`). Ese tag contiene solo las
+  menas de piedra; deepslate, netherrack, Nether, End y debris quedan fuera.
+- Opciones: `satellites_excluded_ores`, `satellites_included_ores`,
+  `satellites_mod_ore_weight` (3) y `satellites_mod_ore_density_permille` (20).
+  Se reconstruye solo al arrancar o al recargar tags, así que los cambios se
+  aplican al reabrir el mundo o con `/reload`.
+- Log INFO una vez por reconstrucción con candidatos `(id, peso, densidad)`,
+  excluidos e ignorados.
+- Cambiar mods o listas entre sesiones puede dejar un satélite a medio generar
+  con más de un mineral: los chunks viejos conservan el mineral anterior y los
+  nuevos usan el catálogo nuevo.
+
+Con `satellites_enabled = false`:
+
+- `SphereLayout` no reserva la caché de satélites (`satelliteCache == null`).
+- `satellitesAtCell` devuelve `List.of()` e `isInsideSatellite` devuelve `false`
+  antes de cualquier cálculo.
+- `SphereCarver` no entra en el bucle de satélites y `MixinHeightmap` comprueba
+  la opción antes de llamar a `SphereLayout`.
+- La geometría de las principales es bit a bit la misma; las pruebas de
+  equivalencia usan el constructor de cuatro argumentos de `Params`, que deja
+  los satélites apagados.
+
+Densidad, bioma y estructuras no cambian: un satélite está íntegramente fuera de
+su principal, así que `sphereContaining` sigue devolviendo la principal,
+`MultipleSpheresDistanceFunction` da `> 1` (vacío) y el acuífero da aire. El
+bioma interior es `minecraft:the_void`, sin mobs. El filtro de estructuras solo
+acepta inicios dentro de la principal, de modo que ya rechaza los satélites.
+
+Heightmaps: se ignoran **todos** los bloques del volumen del satélite (cascarón,
+piedra, magma y mineral) en `Heightmap.update` y `Heightmap.primeHeightmaps`, no
+solo los bloques de cascarón por encima de `center_y`. Así un satélite sobre una
+esfera no contamina `WORLD_SURFACE_WG` ni `OCEAN_FLOOR_WG` y no altera calles de
+aldea ni vegetación de abajo.
+
+Limitación numérica: con `center_y = 62` y los valores por defecto solo caben
+satélites si el radio principal es menor de unos 200-300 bloques. A 55° el límite
+es el techo (319); a 30° es el ancho de la celda (spacing/2). Por encima de ese
+radio la colocación omite satélites sin error.

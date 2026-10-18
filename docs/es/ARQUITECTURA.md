@@ -30,6 +30,25 @@ puede demostrar leyendo el código, se marca como **No verificado:**.
 - `src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereBridgeCarver.java` —
   subclase del carver que une centros vecinos con un tubo hueco de bloques,
   respetando `generate_bridge`, `bridge_block` y `bridge_radius`.
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SatellitePlacement.java` —
+  colocación pura y determinista de los satélites de una esfera principal
+  (tamaño, hueco, elevación y ángulo por hash propio). No depende de Minecraft,
+  de la semilla ni del orden de generación.
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SphereLayout.java` —
+  caché por celda de la esfera principal y de sus satélites; `satellitesAtCell`
+  e `isInsideSatellite` se cortocircuitan cuando los satélites están apagados.
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/SatelliteLayers.java` —
+  geometría pura de las capas del satélite (cascarón, piedra, magma y núcleo) y
+  selección determinista del mineral sobre una lista inmutable de candidatos
+  `(blockId, peso, densidad en milésimas)`. La lista vanilla es solo el valor por
+  defecto de la etapa 2; la selección no la tiene cableada.
+- `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/MineralCatalog.java` —
+  ensamblado puro de candidatos: vanilla primero, mods ordenados por id,
+  exclusiones y deduplicación.
+- `src/main/java/mx/issacinzunza/biosphereworlds/event/SatelliteMineralCatalog.java` —
+  catálogo `volatile` e inmutable reconstruido en `TagsUpdatedEvent`; descubre
+  menas de piedra por `#c:ores_in_ground/stone`, resuelve inclusión/exclusión y
+  escribe un INFO por reconstrucción.
 - `src/main/java/mx/issacinzunza/biosphereworlds/density/MultipleSpheresDistanceFunction.java` —
   `DensityFunction.SimpleFunction` registrada como
   `biosphereworlds:multiple_spheres`; devuelve la distancia cuadrática
@@ -558,6 +577,19 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 | `edge_ocean_enabled` | `BooleanValue` | `false` | `SphereEdgeOceanFunction` | Inunda de océano la banda junto al cascarón: el terreno se aplana hasta un fondo plano para que el agua alcance el cristal. Solo afecta a mundos nuevos. |
 | `edge_ocean_width` | `IntValue` | `20` (rango `0..100`) | `SphereEdgeOceanFunction` | Ancho de la banda de océano, como porcentaje del radio de la esfera. Solo afecta a mundos nuevos. |
 | `edge_ocean_depth` | `IntValue` | `20` (rango `0..100`) | `SphereEdgeOceanFunction` | Profundidad del fondo oceánico por debajo del nivel del mar (63), en bloques. Solo afecta a mundos nuevos. |
+| `satellites_enabled` | `BooleanValue` | `true` | `SphereLayout.current`, `SphereCarver.carve`, `MixinHeightmap` | Genera satélites sobre cada esfera principal. Con `false` no se reserva la caché de satélites y toda la ruta nueva se corta antes de calcular. |
+| `satellites_max_count` | `IntValue` | `3` (rango `0..64`) | `SatellitePlacement.place` | Número máximo de satélites por esfera; cada celda elige entre 0 y este valor. `0` los desactiva aunque `satellites_enabled` sea `true`. |
+| `satellites_min_size_percent` | `IntValue` | `8` (rango `1..100`) | `SatellitePlacement.candidate` | Radio mínimo del satélite como porcentaje del radio principal. |
+| `satellites_max_size_percent` | `IntValue` | `12` (rango `1..100`) | `SatellitePlacement.candidate` | Radio máximo del satélite como porcentaje del radio principal. |
+| `satellites_min_gap_percent` | `IntValue` | `25` (rango `0..1000`) | `SatellitePlacement.candidate` | Hueco mínimo entre superficies como porcentaje del radio principal. |
+| `satellites_max_gap_percent` | `IntValue` | `75` (rango `0..1000`) | `SatellitePlacement.candidate` | Hueco máximo entre superficies como porcentaje del radio principal. |
+| `satellites_min_gap_blocks` | `IntValue` | `16` (rango `0..1024`) | `SatellitePlacement.place` | Hueco mínimo absoluto con la principal y margen de seguridad respecto al borde de la celda y a otros satélites. |
+| `satellites_min_elevation_degrees` | `IntValue` | `30` (rango `0..90`) | `SatellitePlacement.candidate` | Ángulo de elevación mínimo sobre el centro de la principal. |
+| `satellites_max_elevation_degrees` | `IntValue` | `55` (rango `0..90`) | `SatellitePlacement.candidate` | Ángulo de elevación máximo sobre el centro de la principal. |
+| `satellites_excluded_ores` | `ConfigValue<List<? extends String>>` | debris, cuarzo y oro del Nether, `#c:ores_in_ground/deepslate` | `SatelliteMineralCatalog.rebuild` | Ids o `#tags` que nunca se eligen para el núcleo. Entradas inválidas se ignoran con aviso. |
+| `satellites_included_ores` | `ConfigValue<List<? extends String>>` | vacía | `SatelliteMineralCatalog.rebuild` | Ids o `#tags` añadidos aunque no estén en `#c:ores_in_ground/stone`, para mods sin tags. |
+| `satellites_mod_ore_weight` | `IntValue` | `3` (rango `0..1000`) | `SatelliteMineralCatalog.rebuild` | Peso de selección de minerales de mods; los vanilla conservan el suyo. |
+| `satellites_mod_ore_density_permille` | `IntValue` | `20` (rango `0..1000`) | `SatelliteMineralCatalog.rebuild` | Bloques de mineral por 1000 del núcleo para minerales de mods. |
 
 La validación de `sphere_block` y `bridge_block` está en
 `SphereConfig.validateItemName(Object)`: exige un `String` y que el
@@ -565,6 +597,12 @@ La validación de `sphere_block` y `bridge_block` está en
 código no comprueba explícitamente el registro de bloques durante la carga;
 un id que sea item pero no un bloque podría producir un estado de bloque no
 válido al leerlo desde `BuiltInRegistries.BLOCK`.
+
+Las parejas `min`/`max` de los satélites se validan en el constructor de
+`SphereLayout.Params`: cada valor se recorta a su rango y, si el mínimo supera al
+máximo, el mínimo toma el valor del máximo. La comparación de `SphereLayout.current()`
+usa esos valores ya normalizados, así que una configuración invertida no provoca
+recreaciones de caché en cada llamada.
 
 ## 6. Cómo compilar y probar
 

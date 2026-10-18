@@ -283,6 +283,29 @@ class SphereLayoutEquivalenceTest {
     }
 
     /**
+     * Cada esfera lleva su propio centro vertical. En la parte A todas las principales
+     * usan el {@code center_y} de la configuracion, asi que el valor debe coincidir
+     * exactamente con el global y con el que usa la lógica vieja.
+     */
+    @Test
+    void centerYPropioCoincideConLaLogicaVieja() {
+        for (Config config : CONFIGS) {
+            SphereLayout layout = new SphereLayout(params(config));
+            for (int gx = -200; gx <= 200; gx += 7) {
+                for (int gz = -200; gz <= 200; gz += 11) {
+                    final int cellX = gx;
+                    final int cellZ = gz;
+                    SphereLayout.Sphere sphere = layout.sphereAtCell(gx, gz);
+                    assertEquals(config.centerY(), sphere.centerY(), 0.0,
+                            () -> config.name() + " centerY en la celda (" + cellX + "," + cellZ + ")");
+                    assertEquals(layout.params().centerY(), sphere.centerY(), 0.0,
+                            () -> config.name() + " centerY debe ser el global en la parte A");
+                }
+            }
+        }
+    }
+
+    /**
      * El caso patologico del hash: cuando {@code hash == Integer.MIN_VALUE},
      * {@code Math.abs} lo deja negativo y el radio puede quedar por debajo de
      * {@code minRadius}. No se arregla; se comprueba que el caso se alcanza y que la

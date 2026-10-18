@@ -12,6 +12,7 @@ Biosphere Worlds generates the Overworld as floating glass biospheres surrounded
 - Per-sphere variety: each sphere gets a random size and block type from configurable lists, while remaining deterministic across world reloads.
 - Optional upper-hemisphere mode for sky-island or challenge-style gameplay.
 - Automatic sphere-to-sphere bridges for smoother exploration.
+- Up to three elevated satellite spheres per main sphere, with glass shells, a stone body, a continuous magma layer and a mixed mineral core, that force players to build upward paths.
 - Compatibility-oriented implementation via Biome Modifier and noise routing integration.
 - Opt-in world preset that leaves vanilla worlds untouched.
 - Biomes outside the spheres are `minecraft:the_void`, so `/locate biome` and biome compasses only find biomes inside spheres.
@@ -58,6 +59,24 @@ debug_biome_lookups = false
 edge_ocean_enabled = false
 edge_ocean_width = 20
 edge_ocean_depth = 20
+satellites_enabled = true
+satellites_max_count = 3
+satellites_min_size_percent = 8
+satellites_max_size_percent = 12
+satellites_min_gap_percent = 25
+satellites_max_gap_percent = 75
+satellites_min_gap_blocks = 16
+satellites_min_elevation_degrees = 30
+satellites_max_elevation_degrees = 55
+satellites_excluded_ores = [
+  "minecraft:ancient_debris",
+  "minecraft:nether_quartz_ore",
+  "minecraft:nether_gold_ore",
+  "#c:ores_in_ground/deepslate"
+]
+satellites_included_ores = []
+satellites_mod_ore_weight = 3
+satellites_mod_ore_density_permille = 20
 ```
 
 - `radius`: Maximum sphere radius.
@@ -77,6 +96,30 @@ edge_ocean_depth = 20
 - `edge_ocean_enabled`: Flood the band next to the sphere shell with ocean: the terrain is clamped down to a flat floor so water reaches the glass.
 - `edge_ocean_width`: Width of the ocean band, as a percentage of the sphere radius (range `0..100`).
 - `edge_ocean_depth`: Depth of the ocean floor below sea level (63), in blocks (range `0..100`).
+- `satellites_enabled`: Generate small satellite spheres above each main sphere. Satellites are always complete spheres: a glass shell using the same block as their main sphere, a one-block stone body, a continuous `minecraft:magma_block` layer and a mixed stone/mineral core. They ignore `only_upper_hemisphere`, `close_open_top`, `bedrock_mode` and bridges.
+- `satellites_max_count`: Maximum satellites per main sphere (`0..64`). `0` disables them even when `satellites_enabled` is `true`. Each main sphere deterministically gets between 0 and this value.
+- `satellites_min_size_percent` / `satellites_max_size_percent`: Satellite radius as a percentage of the main sphere radius (`1..100`; defaults `8` and `12`). If the minimum is greater than the maximum, the maximum is used for both.
+- `satellites_min_gap_percent` / `satellites_max_gap_percent`: Gap between the satellite and main sphere surfaces, as a percentage of the main radius (`0..1000`). The absolute minimum is `satellites_min_gap_blocks`.
+- `satellites_min_gap_blocks`: Absolute minimum gap in blocks with the main sphere, and also the safety margin from the cell border and from other satellites (`0..1024`).
+- `satellites_min_elevation_degrees` / `satellites_max_elevation_degrees`: Elevation angle of the satellites above the main sphere center (`0..90`). Satellite centers are always at or above the main sphere center.
+- `satellites_excluded_ores`: Block ids or `#tags` that must never be chosen for a satellite core. Defaults: `minecraft:ancient_debris`, `minecraft:nether_quartz_ore`, `minecraft:nether_gold_ore` and `#c:ores_in_ground/deepslate`. Invalid entries are ignored with a warning.
+- `satellites_included_ores`: Block ids or `#tags` added to the candidates even when they are not in `#c:ores_in_ground/stone`, for mods that do not tag their ores. Empty by default. Invalid entries are ignored with a warning.
+- `satellites_mod_ore_weight`: Selection weight for ores added by other mods (`0..1000`, default `3`). Vanilla ores keep their stage-2 weights.
+- `satellites_mod_ore_density_permille`: Ore blocks per 1000 core blocks for mod ores (`0..1000`, default `20` = 2 %). Vanilla ores keep their stage-2 densities.
+
+Mod ores are discovered dynamically from the `#c:ores_in_ground/stone` block tag: that tag contains exactly the ores whose host ground is stone, so deepslate, netherrack, Nether, End and ancient debris variants stay out. The exclusion list is an extra safety net and the inclusion list covers mods that do not tag their ores. Candidates are ordered vanilla first (unchanged) and then mod ores sorted by block id; the exclusion list wins over tags and inclusion. Only blocks with a usable default state are accepted: no air, no fluids, no block entity, and a full solid cube (`canOcclude`).
+
+The catalog is a `volatile` immutable snapshot rebuilt only when the game tags update. **Changes to these lists, the mod ore weight or density apply when the world is reopened or with `/reload`**, not immediately after editing the TOML. The rebuild writes one INFO line with the final candidates `(id, weight, density)` plus the excluded and ignored entries; use it to build your exclusion list. If the snapshot is not ready yet, the game uses the stage-2 vanilla list and logs a warning.
+
+If you install or remove mods, or change these lists between sessions, **a satellite that was only partially generated can show more than one mineral**: chunks generated under the old candidate list keep their mineral, and chunks generated later use the new one.
+
+Satellite placement is deterministic and depends only on the cell coordinates and the options above: no world seed, chunk generation order or shared state. Each satellite is validated with its full volume: it must fit inside its main sphere's cell with the safety margin, stay between Y -64 and 319, and not overlap the main sphere, neighbouring main spheres or the other satellites of the same cell. If no valid position is found after a limited number of attempts, that satellite is skipped without an error.
+
+Each satellite picks one mineral for its whole core, deterministically from its placement seed. The vanilla candidates and their densities (ore blocks per core block) are coal 20%, copper 16%, iron 12%, gold 4%, redstone 3%, lapis 2%, diamond 1% and emerald 0.5%; the rest of the core is stone. A satellite whose interior is too small for the three regions keeps only the glass shell and the stone body.
+
+**Small cores have high variance.** A default-size satellite usually holds a few dozen to a few hundred ore blocks, but a small or unlucky one can end up with very little or even no mineral of its chosen type. That is intentional: the ore is a per-block hash, not a guaranteed payout.
+
+With `center_y = 62`, satellites only fit when the main radius is below roughly 200-300 blocks (at 55 degrees the build limit is the constraint; at 30 degrees the cell width is). Larger main spheres simply generate few or no satellites. The exact ceiling depends on the size, gap and elevation ranges.
 
 ### Tuning Notes
 

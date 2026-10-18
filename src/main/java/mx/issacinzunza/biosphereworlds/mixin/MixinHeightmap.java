@@ -3,6 +3,7 @@ package mx.issacinzunza.biosphereworlds.mixin;
 import mx.issacinzunza.biosphereworlds.config.SphereConfig;
 import mx.issacinzunza.biosphereworlds.util.SphereUtil;
 import mx.issacinzunza.biosphereworlds.worldgen.BiosphereWorldgen;
+import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -29,7 +30,17 @@ public class MixinHeightmap {
             ordinal = 0
     )
     private BlockState onUpdateBlockState(BlockState state, int x, int y, int z) {
-        if (BiosphereWorldgen.isBiosphereChunk(this.chunk) && SphereUtil.isSphereBlock(state) && y > SphereConfig.CENTER_Y.get().intValue()) {
+        if (!BiosphereWorldgen.isBiosphereChunk(this.chunk)) {
+            return state;
+        }
+        if (SphereUtil.isSphereBlock(state) && y > SphereConfig.CENTER_Y.get().intValue()) {
+            return Blocks.AIR.defaultBlockState();
+        }
+        // Todo el volumen de un satelite se comporta como aire: cascaron, cuerpo de
+        // piedra y cualquier bloque que ocupe su interior. Si no, un satelite sobre
+        // una esfera contaminaria WORLD_SURFACE_WG / OCEAN_FLOOR_WG y cambiaria las
+        // calles de aldea y la vegetacion de abajo.
+        if (SphereConfig.SATELLITES_ENABLED.get() && SphereLayout.current().isInsideSatellite(x, y, z)) {
             return Blocks.AIR.defaultBlockState();
         }
         return state;
@@ -44,7 +55,14 @@ public class MixinHeightmap {
     )
     private static BlockState onPrimeGetBlockState(ChunkAccess instance, BlockPos pos) {
         BlockState original = instance.getBlockState(pos);
-        if (BiosphereWorldgen.isBiosphereChunk(instance) && SphereUtil.isSphereBlock(original) && pos.getY() > SphereConfig.CENTER_Y.get().intValue()) {
+        if (!BiosphereWorldgen.isBiosphereChunk(instance)) {
+            return original;
+        }
+        if (SphereUtil.isSphereBlock(original) && pos.getY() > SphereConfig.CENTER_Y.get().intValue()) {
+            return Blocks.AIR.defaultBlockState();
+        }
+        if (SphereConfig.SATELLITES_ENABLED.get()
+                && SphereLayout.current().isInsideSatellite(pos.getX(), pos.getY(), pos.getZ())) {
             return Blocks.AIR.defaultBlockState();
         }
         return original;

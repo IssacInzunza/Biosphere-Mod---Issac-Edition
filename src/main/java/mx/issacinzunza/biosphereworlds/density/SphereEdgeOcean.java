@@ -70,7 +70,7 @@ public final class SphereEdgeOcean {
         }
 
         double dx = blockX - sphere.centerX();
-        double dy = blockY - layout.params().centerY();
+        double dy = blockY - sphere.centerY();
         double dz = blockZ - sphere.centerZ();
         double s = Math.sqrt(dx * dx + dy * dy + dz * dz) / radius;
 
