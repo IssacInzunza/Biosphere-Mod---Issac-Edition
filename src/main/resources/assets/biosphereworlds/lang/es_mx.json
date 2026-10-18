@@ -3,7 +3,10 @@
 
   "biosphereworlds.configuration.title": "Configuración de Biosphere Worlds",
   "biosphereworlds.configuration.section.biosphereworlds.toml.title": "Configuración de Biosphere Worlds",
+  "biosphereworlds.configuration.section.biosphereworlds.toml": "Ajustes de Biosphere Worlds",
   "biosphereworlds.configuration.Settings": "Ajustes de las esferas",
+  "biosphereworlds.configuration.Settings.button": "Editar",
+  "biosphereworlds.configuration.Settings.tooltip": "Tamaño y separación de las esferas, bloques del cascarón y de los puentes, estructuras, océano de borde y satélites.",
 
   "biosphereworlds.configuration.radius": "Radio máximo de las esferas",
   "biosphereworlds.configuration.radius.tooltip": "Radio máximo de las esferas, en bloques (128 por defecto). Solo afecta a mundos nuevos.",
@@ -19,6 +22,7 @@
 
   "biosphereworlds.configuration.sphere_block": "Bloques del cascarón",
   "biosphereworlds.configuration.sphere_block.tooltip": "Ids de bloque usados para los cascarones; cada esfera elige uno de forma determinista según su posición en la cuadrícula. En esta pantalla puedes editar, reordenar o eliminar las entradas existentes, pero las entradas nuevas hay que añadirlas a mano en el archivo de configuración. Solo afecta a mundos nuevos.",
+  "biosphereworlds.configuration.sphere_block.button": "Editar",
 
   "biosphereworlds.configuration.only_upper_hemisphere": "Solo hemisferio superior",
   "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Genera solo la mitad superior de cada esfera. Solo afecta a mundos nuevos.",
@@ -85,9 +89,11 @@
 
   "biosphereworlds.configuration.satellites_excluded_ores": "Minerales excluidos de los satélites",
   "biosphereworlds.configuration.satellites_excluded_ores.tooltip": "Ids de bloque o tags con # que nunca se elegirán para el núcleo de un satélite (por defecto: debris antiguo, cuarzo del Nether, oro del Nether y #c:ores_in_ground/deepslate). Las entradas inválidas se ignoran con un aviso. Los cambios se aplican al reabrir el mundo o con /reload: el catálogo solo se reconstruye cuando se actualizan los tags del juego.",
+  "biosphereworlds.configuration.satellites_excluded_ores.button": "Editar",
 
   "biosphereworlds.configuration.satellites_included_ores": "Minerales extra de los satélites",
   "biosphereworlds.configuration.satellites_included_ores.tooltip": "Ids de bloque o tags con # que se añaden a los candidatos del núcleo aunque no estén en #c:ores_in_ground/stone. Las entradas inválidas se ignoran con un aviso. Los cambios se aplican al reabrir el mundo o con /reload: el catálogo solo se reconstruye cuando se actualizan los tags del juego.",
+  "biosphereworlds.configuration.satellites_included_ores.button": "Editar",
 
   "biosphereworlds.configuration.satellites_mod_ore_weight": "Peso de los minerales de mods",
   "biosphereworlds.configuration.satellites_mod_ore_weight.tooltip": "Peso de selección de los minerales añadidos por otros mods; los vanilla conservan sus pesos. Los cambios se aplican al reabrir el mundo o con /reload: el catálogo solo se reconstruye cuando se actualizan los tags del juego.",

@@ -3,7 +3,10 @@
 
   "biosphereworlds.configuration.title": "Biosphere Worlds Configuration",
   "biosphereworlds.configuration.section.biosphereworlds.toml.title": "Biosphere Worlds Configuration",
+  "biosphereworlds.configuration.section.biosphereworlds.toml": "Biosphere Worlds settings",
   "biosphereworlds.configuration.Settings": "Sphere Settings",
+  "biosphereworlds.configuration.Settings.button": "Edit",
+  "biosphereworlds.configuration.Settings.tooltip": "Sphere size and spacing, shell and bridge blocks, structures, edge ocean and satellites.",
 
   "biosphereworlds.configuration.radius": "Maximum sphere radius",
   "biosphereworlds.configuration.radius.tooltip": "Maximum radius of the spheres, in blocks (128 = default). Only affects newly generated worlds.",
@@ -19,6 +22,7 @@
 
   "biosphereworlds.configuration.sphere_block": "Sphere shell blocks",
   "biosphereworlds.configuration.sphere_block.tooltip": "Block ids used for the sphere shells; each sphere picks one deterministically from its grid position. On this screen you can edit, reorder or remove the existing entries, but new entries must be added to the config file by hand. Only affects newly generated worlds.",
+  "biosphereworlds.configuration.sphere_block.button": "Edit",
 
   "biosphereworlds.configuration.only_upper_hemisphere": "Upper hemisphere only",
   "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Generate only the upper half of each sphere. Only affects newly generated worlds.",
@@ -85,9 +89,11 @@
 
   "biosphereworlds.configuration.satellites_excluded_ores": "Excluded satellite ores",
   "biosphereworlds.configuration.satellites_excluded_ores.tooltip": "Block ids or #tags that must never be chosen for a satellite core (default: ancient debris, nether quartz, nether gold and #c:ores_in_ground/deepslate). Invalid entries are ignored with a warning. Changes apply when the world is reopened or with /reload: the catalog is rebuilt only when the game tags update.",
+  "biosphereworlds.configuration.satellites_excluded_ores.button": "Edit",
 
   "biosphereworlds.configuration.satellites_included_ores": "Extra satellite ores",
   "biosphereworlds.configuration.satellites_included_ores.tooltip": "Block ids or #tags added to the satellite core candidates even when they are not in #c:ores_in_ground/stone. Invalid entries are ignored with a warning. Changes apply when the world is reopened or with /reload: the catalog is rebuilt only when the game tags update.",
+  "biosphereworlds.configuration.satellites_included_ores.button": "Edit",
 
   "biosphereworlds.configuration.satellites_mod_ore_weight": "Mod ore selection weight",
   "biosphereworlds.configuration.satellites_mod_ore_weight.tooltip": "Selection weight for ores added by other mods; vanilla ores keep their own weights. Changes apply when the world is reopened or with /reload: the catalog is rebuilt only when the game tags update.",
