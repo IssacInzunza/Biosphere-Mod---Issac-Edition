@@ -58,9 +58,11 @@ puede demostrar leyendo el código, se marca como **No verificado:**.
   `FeatureConfiguration`. El propio archivo la marca como `Not in use`; el
   worldgen activo usa `SphereCarver`.
 - `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereBiomeSource.java` —
-  wrapper de `BiomeSource` con Codec propio. Delega el bioma original dentro
-  de una esfera y devuelve `minecraft:the_void` fuera; también filtra las
-  consultas de búsqueda de biomas.
+  wrapper histórico de `BiomeSource` con Codec propio. Los mundos nuevos ya no lo
+  usan: el preset declara `minecraft:multi_noise` directamente. Se conserva
+  registrado para cargar mundos antiguos, que guardaron el wrapper en su
+  `level.dat`; en esos mundos sigue devolviendo `minecraft:the_void` fuera de las
+  esferas y sigue filtrando las consultas de búsqueda de biomas.
 - `src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereWorldgen.java` —
   almacén de marcas para identificar biome sources, generators, noise chunks,
   aquifers y chunks asociados al preset de biosferas.
@@ -136,10 +138,11 @@ puede demostrar leyendo el código, se marca como **No verificado:**.
   actualizar o inicializar heightmaps.
 - `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinMultiNoiseBiomeSource.java` —
   marca un `MultiNoiseBiomeSource` y sustituye por `the_void` las consultas
-  fuera de las esferas.
+  fuera de las esferas. Usa prioridad `500` para ejecutarse antes que
+  TerraBlender (`1000`) en el mismo punto de inyección.
 - `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinMultiNoiseBiomeSourceParameterList.java` —
   captura el `HolderGetter<Biome>` durante la construcción de la lista preset
-  de multi-noise y lo entrega a `ModBiomeAccess`.
+  de multi-noise y lo entrega a `ModBiomeAccess.LOOKUP` (volatile).
 - `src/main/java/mx/issacinzunza/biosphereworlds/mixin/MixinNoiseBasedAquifer.java` —
   identifica aquifers del worldgen de biosferas y fuerza aire cerca del borde
   interior para evitar que el aquifer rellene el vacío.
@@ -164,8 +167,9 @@ puede demostrar leyendo el código, se marca como **No verificado:**.
 - `src/main/resources/assets/biosphereworlds/lang/en_us.json` — nombre visible
   del preset en inglés.
 - `src/main/resources/data/biosphereworlds/worldgen/world_preset/biospheres.json` —
-  preset opt-in: solo cambia el Overworld a generator noise con el biome source
-  wrapper y settings propios; Nether y End conservan generators vanilla.
+  preset opt-in: solo cambia el Overworld a generator noise con
+  `minecraft:multi_noise` (preset `minecraft:overworld`) y settings propios;
+  Nether y End conservan generators vanilla.
 - `src/main/resources/data/biosphereworlds/worldgen/noise_settings/biospheres.json` —
   settings de ruido basados en Overworld; su `final_density` usa
   `biosphereworlds:multiple_spheres` y contiene los `spawn_target`.
@@ -218,8 +222,10 @@ del directorio `build/` como código fuente mantenible.
 El preset se selecciona en la pantalla de creación de mundos y se serializa
 desde `src/main/resources/data/biosphereworlds/worldgen/world_preset/biospheres.json`.
 El Overworld usa `minecraft:noise`, con `biosphereworlds:biospheres` como
-`NoiseGeneratorSettings` y `biosphereworlds:biospheres` como `BiomeSource`
-wrapper. Nether y End siguen apuntando a sus settings vanilla.
+`NoiseGeneratorSettings` y un `minecraft:multi_noise` con preset
+`minecraft:overworld` como `BiomeSource`. El wrapper
+`biosphereworlds:biospheres` sigue registrado solo para cargar mundos antiguos.
+Nether y End siguen apuntando a sus settings vanilla.
 
 ### Paso 1: posición y celda de la cuadrícula
 
@@ -326,27 +332,46 @@ puede sustituir sin tocar el JSON:
   cascarón. Con `only_upper_hemisphere` el forro no se genera y `shell` se
   comporta como `floor`.
 
-### Paso 5: biome source wrapper y biomas
+### Paso 5: biome source y biomas
 
-El JSON del preset decodifica `BiosphereBiomeSource` con dos campos:
-`source`, el `minecraft:multi_noise` de Overworld, y `void_biome`, que es
-`minecraft:the_void`. En `getNoiseBiome`, el wrapper convierte las coordenadas
-de cuarto de bloque recibidas por Minecraft con `QuartPos.toBlock`, llama al
-source original y devuelve el resultado solo si
-`SphereCarver.isInsideAnySphere(blockX, blockY, blockZ)`. Fuera devuelve
-`voidBiome`.
+En los mundos nuevos el preset declara directamente:
 
-Sus tres métodos de búsqueda (`findBiomeHorizontal`, ambas sobrecargas, y
-`findClosestBiome3d`) delegan primero en el source original y convierten en
-`null` los resultados cuya posición no esté dentro de una esfera. Así se evita
-que consultas como `/locate biome` acepten un resultado fuera del espacio
-jugable.
+```json
+{
+  "type": "minecraft:multi_noise",
+  "preset": "minecraft:overworld"
+}
+```
 
-Además, `MixinMultiNoiseBiomeSource` cubre el caso en que Minecraft llega
-directamente al `MultiNoiseBiomeSource`: cuando está marcado por
-`BiosphereWorldgen.markBiomeSource`, intercepta `getNoiseBiome` y devuelve el
-holder de `Biomes.THE_VOID` fuera. `MixinChunkGeneratorBiomeSource` y
-`MixinNoiseBasedChunkGenerator` son los que propagan esa marca.
+`MixinNoiseBasedChunkGenerator` marca ese `MultiNoiseBiomeSource` a partir de la
+clave de sus `NoiseGeneratorSettings` (`biosphereworlds:biospheres`), en el
+constructor y al principio de `createBiomes`. `MixinChunkGeneratorBiomeSource`
+repite la marca al devolver `getBiomeSource`. `MixinMultiNoiseBiomeSource` usa
+esa marca, con prioridad `500`, para sustituir por `Biomes.THE_VOID` las
+consultas de `getNoiseBiome` fuera de las esferas. El predicado es el mismo de
+siempre: `SphereLayout.current().isInside(x, y, z, -4)`.
+
+La prioridad `500` es deliberada: TerraBlender inyecta en el mismo
+`getNoiseBiome` con prioridad por defecto `1000` y es cancelable. Un valor menor
+hace que nuestro handler corra primero; fuera de la esfera cancela antes de que
+TerraBlender devuelva su bioma, y dentro no cancela, de modo que TerraBlender
+puede aplicar su región. El filtro solo se activa en generadores con settings
+`biosphereworlds:biospheres`; un Overworld vanilla o el Nether llevan otra clave
+y no se marcan.
+
+Al ser un `MultiNoiseBiomeSource` real, TerraBlender inicializa sus regiones de
+Overworld, añade sus biomas a `possibleBiomes()` y aplica sus reglas de
+superficie. Eso es lo que permite que los biomas de Biomes O' Plenty aparezcan
+dentro de las esferas. `/locate` y las brújulas siguen pasando por
+`getNoiseBiome`, así que el filtro de `the_void` también las cubre.
+
+Los mundos antiguos siguen deserializando `BiosphereBiomeSource` con sus campos
+`source` y `void_biome`. Ese wrapper conserva sus tres métodos de búsqueda
+(`findBiomeHorizontal`, ambas sobrecargas, y `findClosestBiome3d`), que delegan
+en el source original y convierten en `null` los resultados fuera de una esfera.
+**TerraBlender sigue sin inicializar ese wrapper**, de modo que los mundos ya
+creados no generan biomas de TerraBlender/BOP; el arreglo solo se aplica a
+mundos nuevos.
 
 ### Paso 6: estructuras
 
@@ -414,7 +439,7 @@ NoiseBasedChunkGenerator -- settings --> noise_settings/biospheres.json
               |                                  +--> MultipleSpheresDistanceFunction
               |                                  +--> spawn_target
               v
-BiomeSource: BiosphereBiomeSource(source=MultiNoise, void=the_void)
+BiomeSource: MultiNoise (mundos nuevos) / BiosphereBiomeSource (mundos antiguos)
               |
               +--> posición (x,y,z)
               |      -> celda round(x/spacing), round(z/spacing)
@@ -422,6 +447,7 @@ BiomeSource: BiosphereBiomeSource(source=MultiNoise, void=the_void)
               |      -> dentro: bioma + densidad vanilla
               |      -> fuera: densidad vacía + the_void
               |
+              +--> TerraBlender (solo MultiNoise de mundos nuevos): regiones, biomas y surface rules
               +--> applyCarvers
               |      -> SphereCarver: cascarón
               |      -> SphereBridgeCarver: puentes
@@ -433,25 +459,24 @@ BiomeSource: BiosphereBiomeSource(source=MultiNoise, void=the_void)
 
 ## 3. Decisiones de diseño y por qué
 
-### Wrapper del `BiomeSource` en lugar de un mixin como mecanismo principal
+### Wrapper del `BiomeSource` conservado para mundos antiguos
 
-El preset declara explícitamente `biosphereworlds:biospheres` y conserva el
-`minecraft:multi_noise` original dentro del campo `source`. Esto permite que
-la decisión "dentro de esfera usa los biomas normales; fuera usa
-`the_void`" sea un objeto serializable del worldgen, igual que una estrategia
-de selección declarativa.
+Los mundos nuevos usan un `minecraft:multi_noise` normal. Eso permite que
+TerraBlender lo reconozca e inicialice sus regiones; el wrapper
+`biosphereworlds:biospheres` ya no participa en la generación nueva.
 
-El wrapper también puede filtrar las APIs de búsqueda de biomas, no solo el
-lookup puntual de `getNoiseBiome`. Esto es importante para que una consulta
-espacial no encuentre un bioma en una posición exterior.
+El wrapper se conserva registrado porque un mundo antiguo guarda su biome source
+en el `level.dat`. Al cargarlo, el juego sigue decodificando
+`BiosphereBiomeSource` con `source` y `void_biome`, y el comportamiento de las
+esferas no cambia. La contrapartida conocida es que TerraBlender no inicializa
+ese wrapper: los mundos antiguos no reciben biomas de TerraBlender/BOP. Para
+tenerlos hay que crear un mundo nuevo.
 
-Los mixins de `MixinMultiNoiseBiomeSource` y
-`MixinChunkGeneratorBiomeSource` siguen existiendo como integración defensiva:
-marcan el source y cubren la ruta directa del `MultiNoiseBiomeSource`. Por el
-código se puede afirmar que el wrapper es la configuración principal y los
-mixins son una segunda capa de enrutamiento/identificación. **No verificado:**
-no hay un comentario de diseño que explique si esa segunda capa se añadió por
-un bug histórico concreto o por compatibilidad futura.
+El filtro de `the_void` en los mundos nuevos vive en `MixinMultiNoiseBiomeSource`
+y se apoya en una marca por instancia que sobrevive al clon que TerraBlender
+hace por generador. El wrapper antiguo conserva además el filtrado de las APIs
+de búsqueda de biomas, que en los mundos nuevos ya no hace falta porque
+`findBiomeHorizontal` y `findClosestBiome3d` pasan por `getNoiseBiome`.
 
 ### Restricción de estructuras
 
@@ -514,8 +539,10 @@ desde aquí cómo se comporta su memoria durante muchos mundos o recargas.
   [`SphereCarver.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/carver/SphereCarver.java).
 - **BiomeSource** — componente que responde qué bioma corresponde a
   coordenadas de bioma; es análogo a un proveedor de lectura espacial, no a
-  una tabla estática de entidades. El wrapper está en
-  [`BiosphereBiomeSource.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereBiomeSource.java).
+  una tabla estática de entidades. Los mundos nuevos usan
+  `minecraft:multi_noise`; el wrapper histórico está en
+  [`BiosphereBiomeSource.java`](../../src/main/java/mx/issacinzunza/biosphereworlds/worldgen/BiosphereBiomeSource.java)
+  y solo se decodifica en mundos antiguos.
 - **DensityFunction** — función numérica que el generador de ruido evalúa por
   posición para decidir densidad de terreno, cuevas y transiciones. La
   implementación del mod es
@@ -770,8 +797,10 @@ válidos tanto como bloque como item.
 
 Sigue la ruta en este orden:
 
-1. Confirma que el mundo usa el preset nuevo y no un preset vanilla:
-   `world_preset/biospheres.json`.
+1. Confirma que el mundo es **nuevo**. Un mundo antiguo guarda el wrapper
+   `biosphereworlds:biospheres` en el `level.dat` y no recibe el arreglo de
+   TerraBlender; en ese caso el source es `BiosphereBiomeSource`, no
+   `MultiNoiseBiomeSource`.
 2. Verifica que el generator tiene settings
    `biosphereworlds:biospheres`; `MixinNoiseBasedChunkGenerator` identifica el
    generator comparando esa `ResourceKey`.
@@ -784,14 +813,14 @@ Sigue la ruta en este orden:
    y busca en el log `biome-route=ChunkGenerator#getBiomeSource` y
    `biome-route=MultiNoiseBiomeSource#getNoiseBiome`.
 4. Revisa que `MixinMultiNoiseBiomeSourceParameterList` haya capturado un
-   `HolderGetter<Biome>` en `ModBiomeAccess.LOOKUP`. Si el holder de
+   `HolderGetter<Biome>` en `ModBiomeAccess.LOOKUP` (volatile). Si el holder de
    `Biomes.THE_VOID` no está bound, el mixin no fuerza el resultado.
 5. Comprueba las coordenadas de depuración: Minecraft entrega coordenadas de
-   cuarto de bloque al `BiomeSource`; `BiosphereBiomeSource` y el mixin deben
-   convertirlas con `QuartPos.toBlock`.
-6. Compara la geometría con `SphereCarver.isInsideAnySphere`, incluyendo
-   `spacing`, `center_y`, radios variables y el margen `-4` que usa el
-   `BiomeSource`.
+   cuarto de bloque al `BiomeSource`; el mixin debe convertirlas con
+   `QuartPos.toBlock`. En mundos nuevos el source es `MultiNoiseBiomeSource`;
+   el wrapper solo aparece en mundos antiguos.
+6. Compara la geometría con `SphereLayout.isInside(..., -4)`, incluyendo
+   `spacing`, `center_y` y radios variables.
 7. Si el bioma es correcto pero el terreno no es vacío, inspecciona
    `noise_settings/biospheres.json`, en particular `final_density` y
    `multiple_spheres`, y después `MixinNoiseBasedAquifer`/`MixinHeightmap`.
@@ -839,10 +868,10 @@ durante worldgen.
   momento en que se conectan al `IEventBus` en
   `BiosphereWorlds` son parte del ciclo de carga de NeoForge. Cambios en el
   evento o en los tipos genéricos pueden impedir que los codecs se resuelvan.
-- **Holder y resolución de biomas.** `ModBiomeAccess.LOOKUP` se rellena desde
-  el constructor de `MultiNoiseBiomeSourceParameterList`. Si ese constructor
-  deja de recibir `HolderGetter<Biome>`, la resolución de `Biomes.THE_VOID` y
-  la defensa del mixin dejan de funcionar.
+- **Holder y resolución de biomas.** `ModBiomeAccess.LOOKUP` es `volatile` y se
+  rellena desde el constructor de `MultiNoiseBiomeSourceParameterList`. Si ese
+  constructor deja de recibir `HolderGetter<Biome>`, la resolución de
+  `Biomes.THE_VOID` y la defensa del mixin dejan de funcionar.
 - **Semántica de carvers.** `SphereCarver` depende de que `WorldCarver` siga
   permitiendo `isStartChunk`, `canReplaceBlock`, escritura en `ChunkAccess` y
   la combinación con `CarvingMask`. Cambiar la semántica de carving puede
