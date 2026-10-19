@@ -8,9 +8,7 @@ import mx.issacinzunza.biosphereworlds.worldgen.BiosphereBiomeSourceAccess;
 import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
-import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
 import org.spongepowered.asm.mixin.Mixin;
@@ -42,8 +40,8 @@ public abstract class MixinMultiNoiseBiomeSource implements BiosphereBiomeSource
                 biosphereworlds$isBiosphereBiomeSource());
         }
         if (outsideSphere) {
-            Holder<Biome> voidBiome = ModBiomeAccess.LOOKUP.getOrThrow(Biomes.THE_VOID);
-            if(voidBiome.isBound())
+            Holder<Biome> voidBiome = ModBiomeAccess.voidBiome();
+            if (voidBiome != null && voidBiome.isBound())
                 cir.setReturnValue(voidBiome);
         }
     }
