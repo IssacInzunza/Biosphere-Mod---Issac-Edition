@@ -77,27 +77,12 @@ public final class SatelliteMineralCatalog {
                 .registry(Registries.BLOCK)
                 .orElse(BuiltInRegistries.BLOCK);
 
-        Set<String> ignored = new LinkedHashSet<>();
-        Set<String> excluded = new LinkedHashSet<>();
-        for (String entry : SphereConfig.SATELLITES_EXCLUDED_ORES.get()) {
-            resolve(entry, registry, excluded, ignored);
-        }
-
-        Set<String> included = new LinkedHashSet<>();
-        for (String entry : SphereConfig.SATELLITES_INCLUDED_ORES.get()) {
-            resolve(entry, registry, included, ignored);
-        }
-
-        Set<String> tagOres = new LinkedHashSet<>();
-        addTag(ORES_IN_STONE, registry, tagOres, ignored);
-
-        List<SatelliteLayers.Mineral> rebuilt = MineralCatalog.assemble(
-                SatelliteLayers.VANILLA_MINERALS,
-                tagOres,
-                included,
-                excluded,
-                SphereConfig.SATELLITES_MOD_ORE_WEIGHT.get(),
+        var resolved = resolve(registry, SphereConfig.SATELLITES_INCLUDED_ORES.get(),
+                SphereConfig.SATELLITES_EXCLUDED_ORES.get(), SphereConfig.SATELLITES_MOD_ORE_WEIGHT.get(),
                 SphereConfig.SATELLITES_MOD_ORE_DENSITY_PERMILLE.get());
+        var ignored = resolved.ignored();
+        var excluded = resolved.excluded();
+        List<SatelliteLayers.Mineral> rebuilt = resolved.candidates();
         if (rebuilt.isEmpty()) {
             BiosphereWorlds.LOGGER.warn(
                     "satellite mineral catalog would be empty; falling back to the vanilla list");
@@ -107,6 +92,45 @@ public final class SatelliteMineralCatalog {
         candidates = rebuilt;
         BiosphereWorlds.LOGGER.info("satellite minerals rebuilt: candidates={} excluded={} ignored={}",
                 describe(rebuilt), excluded, ignored);
+    }
+
+    /**
+     * Immutable resolution result shared by both presets; fallback remains the caller's policy.
+     * @param candidates mineral choices in stable selection order
+     * @param excluded resolved block ids removed by the exclusion rules
+     * @param ignored rejected ids/tags and their diagnostic reasons
+     */
+    public record Resolved(List<SatelliteLayers.Mineral> candidates, Set<String> excluded, Set<String> ignored) {
+        public Resolved {
+            candidates = List.copyOf(candidates);
+            excluded = java.util.Collections.unmodifiableSet(new LinkedHashSet<>(excluded));
+            ignored = java.util.Collections.unmodifiableSet(new LinkedHashSet<>(ignored));
+        }
+    }
+
+    /**
+     * Resolves the common ore tag and explicit ids/tags using one validation policy.
+     * Does not read global configuration, update caches or load chunks. Callers must
+     * skip this operation entirely when satellites are disabled.
+     *
+     * @param registry block registry from the current tag snapshot
+     * @param includes additional ore ids or #tags
+     * @param excludes ids or #tags taking precedence over every inclusion
+     * @param modWeight selection weight for non-vanilla ores
+     * @param modDensity ore blocks per thousand core blocks
+     * @return stable mineral order and diagnostics, all immutable
+     */
+    public static Resolved resolve(Registry<Block> registry, List<? extends String> includes,
+                                   List<? extends String> excludes, int modWeight, int modDensity) {
+        Set<String> ignored = new LinkedHashSet<>();
+        Set<String> excluded = new LinkedHashSet<>();
+        for (String entry : excludes) resolve(entry, registry, excluded, ignored);
+        Set<String> included = new LinkedHashSet<>();
+        for (String entry : includes) resolve(entry, registry, included, ignored);
+        Set<String> tagOres = new LinkedHashSet<>();
+        addTag(ORES_IN_STONE, registry, tagOres, ignored);
+        return new Resolved(MineralCatalog.assemble(SatelliteLayers.VANILLA_MINERALS,
+                tagOres, included, excluded, modWeight, modDensity), excluded, ignored);
     }
 
     private static void resolve(String rawEntry, Registry<Block> registry,

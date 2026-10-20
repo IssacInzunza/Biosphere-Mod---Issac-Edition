@@ -1,12 +1,51 @@
 package mx.issacinzunza.biosphereworlds.worldgen.solar;
 
-/** Pure terrain decisions; zero means preserve the original block exactly. */
+/** Pure Solar terrain rules and vertical reservations, expressed in global block coordinates. */
 public final class SolarTerrain {
+    /** Inclusive upper Y reserved for the complete central Stronghold. */
+    public static final int STRONGHOLD_MAX_Y = 48;
+    /** Inclusive lowest Y at which the central magma/ice profile can modify terrain. */
+    public static final int CENTRAL_HAZARD_MIN_Y = 56;
+    /** Surface depth below the top block; inclusive, so the treatment spans six blocks. */
+    private static final int CENTRAL_SURFACE_DEPTH = 5;
+    /** Minimum interior clearance, in blocks, required by a complete Stronghold. */
+    public static final int STRONGHOLD_INTERIOR_MARGIN = 5;
+    /** Inner edge of the optional bedrock liner, measured from the outer sphere radius. */
+    private static final int BEDROCK_INNER_MARGIN = 5;
+
     private SolarTerrain() { }
-    /** Keep the complete stronghold envelope (max Y=48) below the altered surface. */
-    public static boolean centralSurface(int y, int surfaceY) { return y >= 56 && y <= surfaceY && y >= surfaceY - 5; }
-    public static boolean centralFluid(int y, boolean water) { return y >= 56 && water; }
-    /** Historical block override, retained only for saved layouts 1–4. New worlds use the Biospheres router. */
+
+    /**
+     * Keeps surface treatment above the complete Stronghold reservation.
+     * @param y global block Y being considered
+     * @param surfaceY highest solid surface in the current column
+     * @return whether the block belongs to the central surface treatment
+     */
+    public static boolean centralSurface(int y, int surfaceY) {
+        return y >= CENTRAL_HAZARD_MIN_Y && y <= surfaceY && y >= surfaceY - CENTRAL_SURFACE_DEPTH;
+    }
+
+    /**
+     * @param y global block Y being considered
+     * @param water whether the original block is water
+     * @return whether central heat/cold may replace that water block
+     */
+    public static boolean centralFluid(int y, boolean water) {
+        return y >= CENTRAL_HAZARD_MIN_Y && water;
+    }
+
+    /**
+     * Historical block override for saved layouts 1–4; v5 uses the shared noise router.
+     * @param body sphere containing the candidate block
+     * @param x global block X
+     * @param y global block Y
+     * @param z global block Z
+     * @param enabled saved edge-ocean switch
+     * @param width radial ocean-band width percentage
+     * @param depth floor depth below sea level, in blocks
+     * @param seaLevel template water level, in global blocks
+     * @return 0 to preserve the block, 1 for air, or 2 for water
+     */
     public static int legacyOceanOverride(SolarLayout.Body body, int x, int y, int z,
                                     boolean enabled, int width, int depth, int seaLevel) {
         if (!enabled || width == 0 || y <= seaLevel - depth || !body.contains(x, y, z, 2)) return 0;
@@ -19,7 +58,16 @@ public final class SolarTerrain {
         if (dx * dx + dz * dz < start * start) return 0;
         return y <= seaLevel ? 2 : 1;
     }
+
+    /**
+     * @param body sphere containing the candidate block
+     * @param x global block X
+     * @param y global block Y
+     * @param z global block Z
+     * @param enabled saved liner switch; false returns an exact no-op
+     * @return whether the block belongs to the lower inner bedrock band
+     */
     public static boolean bedrockLiner(SolarLayout.Body body, int x, int y, int z, boolean enabled) {
-        return enabled && y <= body.y() && body.contains(x, y, z, 2) && !body.contains(x, y, z, 5);
+        return enabled && y <= body.y() && body.contains(x, y, z, 2) && !body.contains(x, y, z, BEDROCK_INNER_MARGIN);
     }
 }

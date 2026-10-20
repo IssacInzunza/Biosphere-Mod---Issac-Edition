@@ -6,7 +6,17 @@ import mx.issacinzunza.biosphereworlds.config.SolarConfig;
 import mx.issacinzunza.biosphereworlds.config.SphereConfig;
 import java.util.List;
 
-/** Codec snapshots are saved with the generator, rather than rereading geometry on restart. */
+/**
+ * Immutable world snapshot, serialized with the generator instead of rereading config on restart.
+ * Layout versions select compatibility behavior; refactors must preserve their defaults and codecs.
+ * @param geometry orbital distances, sizes and climate-band proportions
+ * @param climateEnabled whether orbital biomes use the selected temperature bands
+ * @param centralClimate independent heat/cold profile of the central sphere
+ * @param guardians saved central-defense switch and legacy interval settings
+ * @param environment saved ocean and bedrock-liner options
+ * @param general independent Solar sphere, shell and satellite options
+ * @param layoutVersion persisted compatibility revision, from 1 through 5
+ */
 public record SolarSettings(SolarLayout.Params geometry, boolean climateEnabled,
                             SolarLayout.Climate centralClimate, Guardians guardians, Environment environment,
                             General general, int layoutVersion) {
@@ -18,6 +28,17 @@ public record SolarSettings(SolarLayout.Params geometry, boolean climateEnabled,
         this(geometry, climateEnabled, centralClimate, guardians, environment, General.defaults(), 2);
     }
 
+    /**
+     * Satellite sizing and mineral selection, with immutable id/tag lists.
+     * @param minSize minimum radius as a percentage of the parent radius
+     * @param maxSize maximum radius as a percentage of the parent radius
+     * @param minGapPercent minimum gap as a percentage of the parent radius
+     * @param maxGapPercent maximum gap as a percentage of the parent radius
+     * @param included additional block ids or tags prefixed with #
+     * @param excluded excluded ids/tags, taking precedence over inclusions
+     * @param modWeight selection weight of additional ores
+     * @param modDensity ore density per thousand core blocks
+     */
     public record Satellites(int minSize, int maxSize, int minGapPercent, int maxGapPercent,
                              List<String> included, List<String> excluded, int modWeight, int modDensity) {
         public Satellites {
@@ -38,6 +59,14 @@ public record SolarSettings(SolarLayout.Params geometry, boolean climateEnabled,
         ).apply(i, Satellites::new));
     }
 
+    /**
+     * General sphere values belonging exclusively to this Solar world's snapshot.
+     * @param centerY orbital planet center Y, in global block coordinates
+     * @param shellBlocks shell palette of block ids, preserving selection order
+     * @param bedrockMode shared bedrock policy, with independent Solar values
+     * @param satellites satellite sizing and mineral choices
+     * @param closeOpenTop whether spheres crossing the build ceiling receive a cap
+     */
     public record General(int centerY, List<String> shellBlocks, SphereConfig.BedrockMode bedrockMode, Satellites satellites, boolean closeOpenTop) {
         public General(int centerY, List<String> shellBlocks, SphereConfig.BedrockMode bedrockMode, Satellites satellites) {
             this(centerY, shellBlocks, bedrockMode, satellites, false);
@@ -86,6 +115,18 @@ public record SolarSettings(SolarLayout.Params geometry, boolean climateEnabled,
             Codec.INT.fieldOf("satellite_gap").forGetter(SolarLayout.Params::satelliteGap)
     ).apply(i, SolarLayout.Params::new));
 
+    /**
+     * Persisted compatibility data: enabled applies to every layout. The remaining
+     * fields drive interval spawning in layouts 1–3; cage policies live in SolarGuardians.
+     * Radius is in blocks and interval is in server ticks (20 ticks per second).
+     * @param enabled whether this world's central defenses are enabled
+     * @param ghasts legacy interval-spawn ghast switch
+     * @param phantoms legacy interval-spawn phantom switch
+     * @param radius legacy spawn band outside the sun, in blocks
+     * @param ghastMax legacy ghast population limit
+     * @param phantomMax legacy phantom population limit
+     * @param interval legacy interval between attempts, in server ticks
+     */
     public record Guardians(boolean enabled, boolean ghasts, boolean phantoms,
                             int radius, int ghastMax, int phantomMax, int interval) {
         public Guardians {
@@ -105,6 +146,13 @@ public record SolarSettings(SolarLayout.Params geometry, boolean climateEnabled,
         ).apply(i, Guardians::new));
     }
 
+    /**
+     * Immutable terrain options interpreted according to the saved layout version.
+     * @param edgeOceanEnabled whether the orbital edge-ocean treatment is active
+     * @param edgeOceanWidth ocean-band width percentage
+     * @param edgeOceanDepth ocean depth in blocks below sea level
+     * @param bedrockLiner whether the lower inner shell receives a bedrock liner
+     */
     public record Environment(boolean edgeOceanEnabled, int edgeOceanWidth, int edgeOceanDepth, boolean bedrockLiner) {
         public Environment {
             if (edgeOceanWidth < 0 || edgeOceanWidth > 100 || edgeOceanDepth < 0 || edgeOceanDepth > 100) {

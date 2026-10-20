@@ -9,6 +9,15 @@ import net.minecraft.world.level.levelgen.structure.structures.StrongholdPieces;
 public final class SolarStronghold {
     private SolarStronghold() { }
 
+    /**
+     * Builds the full vanilla graph and fits it below the central surface reservation.
+     * Vanilla piece weights are protected by their class monitor; randomness and retry
+     * ordering stay unchanged so existing seeds retain their generated pieces.
+     * @param builder engine-owned piece builder, cleared between attempts
+     * @param context seeded vanilla structure context
+     * @param generator bound Solar generator supplying central geometry
+     * @throws IllegalStateException if the start is outside the center or no complete graph fits
+     */
     public static void generate(StructurePiecesBuilder builder, Structure.GenerationContext context, SolarChunkGenerator generator) {
         var body = generator.layout().systemAtBlock(context.chunkPos().getMiddleBlockX(), context.chunkPos().getMiddleBlockZ()).central();
         if (context.chunkPos().x != Math.floorDiv((int) body.x(), 16)
@@ -32,12 +41,12 @@ public final class SolarStronghold {
                 var box = builder.getBoundingBox();
                 int dx = (int) body.x() - box.getCenter().getX();
                 int dz = (int) body.z() - box.getCenter().getZ();
-                int dy = 48 - box.maxY();
+                int dy = SolarTerrain.STRONGHOLD_MAX_Y - box.maxY();
                 for (var piece : builder.build().pieces()) piece.move(dx, dy, dz);
                 box = builder.getBoundingBox();
                 if (box.minY() >= context.heightAccessor().getMinBuildHeight()
                         && box.maxY() < context.heightAccessor().getMaxBuildHeight()
-                        && body.containsBox(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ(), 5)) return;
+                        && body.containsBox(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ(), SolarTerrain.STRONGHOLD_INTERIOR_MARGIN)) return;
             }
         }
         builder.clear();

@@ -5,7 +5,7 @@
   "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml.title": "Configuración de Solar System",
   "generator.biosphereworlds.solar_systems": "Solar System - Issac Edition",
   "biosphereworlds.configuration.solar_guardians_enabled": "Jaulas de guardianes del centro",
-  "biosphereworlds.configuration.solar_guardians_enabled.tooltip": "Genera hasta tres pequeños pedestales orbitales con jaulas de ghasts, phantoms y blazes. Se activan a 96 bloques del jugador; un mob por ciclo, cada 30–60 segundos. Límites del entorno del sistema: 2 ghasts, 3 phantoms y 3 blazes. Phantoms solo de noche. Sin guardianes en Pacífico ni con aparición de mobs desactivada. Las jaulas destruidas no se reconstruyen. Solo para mundos Solar nuevos.",
+  "biosphereworlds.configuration.solar_guardians_enabled.tooltip": "Genera doce jaulas alrededor de todo el sol, incluidos los polos. Alcance: 136 bloques. Un guardián por ciclo, cada 20–40 segundos. Límites: cuatro guardianes cerca del jugador y 24 por sol. Ghasts y blazes defienden de día; los phantoms también pueden aparecer de noche. Las apariciones lejanas quedan a distancia de combate del jugador. Pacífico y aparición de mobs desactivada pausan las jaulas. Las jaulas destruidas no se reconstruyen. Solo en chunks Solar nuevos con diseño v5.",
   "biosphereworlds.configuration.SolarOrbits": "Sistema solar",
   "biosphereworlds.configuration.SolarOrbits.tooltip": "Planetas, distancias, temperatura numérica y jaulas de guardianes. Los ajustes generales tienen valores independientes en SolarSystems.toml. Puentes automáticos, cuadrícula clásica y hemisferios desactivados. El sol no tiene lunas. Se aplica a mundos nuevos.",
   "biosphereworlds.configuration.solar_planet_count": "Planetas por sistema solar",

@@ -8,11 +8,25 @@ import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.DensityFunctions;
 import net.minecraft.world.level.levelgen.NoiseRouter;
 
-/** Runtime adapter of the original Biospheres router to immutable, per-world Solar geometry. */
+/**
+ * Runtime adapter of the original Biospheres router to per-world Solar geometry.
+ * It is never serialized; the generator saves the original noise-settings holder.
+ * @param input wrapped function, visited recursively by mapAll
+ * @param layout immutable world geometry with bounded snapshot caches
+ * @param environment saved ocean options, independent of global configuration
+ * @param kind distance, terrain-floor, or climate adaptation
+ */
 public record SolarDensityFunction(DensityFunction input, SolarLayout layout,
                                    SolarSettings.Environment environment, Kind kind) implements DensityFunction {
     public enum Kind { DISTANCE, FLOOR, CLIMATE }
 
+    /**
+     * Replaces only the original Biospheres distance/ocean wrappers in a noise template.
+     * @param template original router, left unchanged
+     * @param layout geometry belonging to the bound Solar world
+     * @param environment saved Solar terrain options
+     * @return router with runtime Solar wrappers and all other functions preserved
+     */
     public static NoiseRouter adapt(NoiseRouter template, SolarLayout layout, SolarSettings.Environment environment) {
         return template.mapAll(function -> {
             if (function instanceof MultipleSpheresDistanceFunction) {

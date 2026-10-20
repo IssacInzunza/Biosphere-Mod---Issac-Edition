@@ -13,6 +13,66 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class SolarLayoutTest {
     @Test
+    void moonGeometryMatchesLiteralGenerationAndHeightmapBoundaries() {
+        var random = new java.util.Random(1996);
+        for (int radius : new int[]{1, 2, 15, 128, 512}) {
+            var sphere = new SphereLayout.Satellite(-1234.5, 67.25, 2199.75, radius, 81);
+            var moon = new SolarLayout.Moon(17, sphere);
+            for (int sample = 0; sample < 50_000; sample++) {
+                double x = sphere.centerX() + random.nextDouble() * radius * 4 - radius * 2;
+                double y = sphere.centerY() + random.nextDouble() * radius * 4 - radius * 2;
+                double z = sphere.centerZ() + random.nextDouble() * radius * 4 - radius * 2;
+                // Literal formula used by both previous volume-writing paths.
+                double previous = Math.pow(x - sphere.centerX(), 2) + Math.pow(y - sphere.centerY(), 2)
+                        + Math.pow(z - sphere.centerZ(), 2);
+                boolean inside = previous <= (double) sphere.radius() * sphere.radius();
+                assertEquals(Double.doubleToRawLongBits(previous), Double.doubleToRawLongBits(moon.squaredDistanceTo(x, y, z)));
+                assertEquals(inside, moon.containsSquaredDistance(previous));
+                assertEquals(inside, moon.contains(x, y, z));
+            }
+            double edge = sphere.centerX() + radius;
+            assertTrue(moon.contains(edge, sphere.centerY(), sphere.centerZ()));
+            assertTrue(moon.contains(Math.nextDown(edge), sphere.centerY(), sphere.centerZ()));
+            assertFalse(moon.contains(Math.nextUp(edge), sphere.centerY(), sphere.centerZ()));
+        }
+    }
+
+    @Test
+    void guardianCoverageIncludesPolesAndEverySampledSurfaceDirection() {
+        // The farthest direction in an icosahedron's Voronoi cell is a face center.
+        // This bound covers the continuous surface, including directions between samples.
+        double phi = (1 + Math.sqrt(5)) / 2;
+        double faceY = 1 + 2 * phi;
+        double cosAngle = (faceY + phi * phi)
+                / Math.sqrt((1 + phi * phi) * (faceY * faceY + phi * phi));
+        for (int radius = 170; radius <= 190; radius++) {
+            double orbit = radius + 24;
+            double farthest = Math.sqrt(radius * radius + orbit * orbit - 2 * radius * orbit * cosAngle);
+            // Rounded cage coordinates, block-center activation, and one block of player height.
+            assertTrue(farthest + Math.sqrt(3) + 1 < SolarLayout.GUARDIAN_ACTIVATION_RANGE);
+        }
+        for (int radius : new int[]{170, 180, 190}) for (long seed = 0; seed < 30; seed++) {
+            var p = SolarLayout.Params.defaults();
+            var params = new SolarLayout.Params(p.systemRadius(), p.systemGap(), p.planetCount(), p.minRadius(), p.maxRadius(),
+                    radius, p.minGap(), p.maxGap(), p.coldInside(), p.innerPercent(), p.middlePercent(), p.outerPercent(),
+                    p.satelliteCount(), p.satelliteMinElevation(), p.satelliteMaxElevation(), p.satelliteGap());
+            var layout = new SolarLayout(seed, params, 5, SolarLayout.PlacementOptions.defaults());
+            var system = layout.systemAtCell(0, 0);
+            var center = system.central();
+            var posts = layout.guardianPosts(system);
+            assertEquals(12, posts.size());
+            for (int latitude = -90; latitude <= 90; latitude += 3) for (int longitude = 0; longitude < 360; longitude += 3) {
+                double a = Math.toRadians(latitude), b = Math.toRadians(longitude);
+                double x = center.x() + radius * Math.cos(a) * Math.cos(b);
+                double y = center.y() + radius * Math.sin(a);
+                double z = center.z() + radius * Math.cos(a) * Math.sin(b);
+                assertTrue(posts.stream().anyMatch(post -> Math.pow(post.x()-x,2)+Math.pow(post.y()-y,2)+Math.pow(post.z()-z,2)
+                        <= (double) SolarLayout.GUARDIAN_ACTIVATION_RANGE * SolarLayout.GUARDIAN_ACTIVATION_RANGE), "Every approach, including both poles, must activate a cage");
+            }
+        }
+    }
+
+    @Test
     void newSunsHaveNoMoonsAndSafeSpawnerPostsWithoutMovingPlanets() {
         for (long seed = 0; seed < 100; seed++) {
             var oldLayout = new SolarLayout(seed, SolarLayout.Params.defaults(), 3, SolarLayout.PlacementOptions.defaults());

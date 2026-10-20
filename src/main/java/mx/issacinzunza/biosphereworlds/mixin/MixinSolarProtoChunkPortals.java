@@ -19,7 +19,6 @@ public abstract class MixinSolarProtoChunkPortals {
         if (!state.is(Blocks.END_PORTAL) && !state.is(Blocks.END_PORTAL_FRAME)) return;
         var geometry = ((SolarChunkAccess) this).biosphereworlds$solarLayout();
         if (geometry == null) return;
-        var body = geometry.bodyAt(pos.getX(), pos.getY(), pos.getZ(), 3);
-        if (!SolarPortalGuard.allows(pos) || body == null || !body.central()) cir.setReturnValue(null);
+        if (!SolarPortalGuard.allowsNaturalPortal(geometry, pos)) cir.setReturnValue(null);
     }
 }

@@ -30,7 +30,6 @@ public abstract class MixinSolarPortalPlacement {
         }
         if (state.isAir()) return;
         if (!state.is(Blocks.END_PORTAL) && !state.is(Blocks.END_PORTAL_FRAME)) return;
-        var body = solar.layout().bodyAt(pos.getX(), pos.getY(), pos.getZ(), 3);
-        if (!SolarPortalGuard.allows(pos) || body == null || !body.central()) cir.setReturnValue(false);
+        if (!SolarPortalGuard.allowsNaturalPortal(solar.layout(), pos)) cir.setReturnValue(false);
     }
 }

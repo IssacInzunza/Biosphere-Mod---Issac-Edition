@@ -46,7 +46,15 @@ public final class SolarLayout {
         }
     }
 
-    /** Extra general settings, kept pure so layout tests never bootstrap NeoForge. */
+    /**
+     * Pure placement values; no Minecraft registries or global configuration are accessed.
+     * @param centerY orbital center Y, in global blocks
+     * @param minSize minimum moon radius as a percentage of its parent's radius
+     * @param maxSize maximum moon radius as a percentage of its parent's radius
+     * @param minGapPercent minimum moon gap as a percentage of its parent's radius
+     * @param maxGapPercent maximum moon gap as a percentage of its parent's radius
+     * @param closeOpenTop whether spheres crossing the build ceiling receive a cap
+     */
     public record PlacementOptions(int centerY, int minSize, int maxSize, int minGapPercent, int maxGapPercent, boolean closeOpenTop) {
         public PlacementOptions(int centerY, int minSize, int maxSize, int minGapPercent, int maxGapPercent) {
             this(centerY, minSize, maxSize, minGapPercent, maxGapPercent, false);
@@ -89,7 +97,44 @@ public final class SolarLayout {
         }
     }
 
-    public record Moon(long planetId, SphereLayout.Satellite sphere) { }
+    /**
+     * Immutable moon geometry with its parent planet's stable id.
+     * @param planetId id of the parent orbital body
+     * @param sphere satellite coordinates, radius and mineral-selection seed
+     */
+    public record Moon(long planetId, SphereLayout.Satellite sphere) {
+        /**
+         * Preserves the original squared-distance arithmetic used by blocks and heightmaps.
+         * @param x finite global block X coordinate
+         * @param y finite global block Y coordinate
+         * @param z finite global block Z coordinate
+         * @return squared distance to the moon center, in square blocks
+         */
+        public double squaredDistanceTo(double x, double y, double z) {
+            return Math.pow(x - sphere.centerX(), 2) + Math.pow(y - sphere.centerY(), 2)
+                    + Math.pow(z - sphere.centerZ(), 2);
+        }
+
+        /**
+         * Reuses a distance already computed for mineral-layer selection.
+         * @param squaredDistance nonnegative squared distance to this moon's center
+         * @return whether that distance lies on or inside the moon's boundary
+         */
+        public boolean containsSquaredDistance(double squaredDistance) {
+            return squaredDistance <= (double) sphere.radius() * sphere.radius();
+        }
+
+        /**
+         * Tests the same inclusive boundary used by moon block generation.
+         * @param x finite global block X coordinate
+         * @param y finite global block Y coordinate
+         * @param z finite global block Z coordinate
+         * @return whether the point is on or inside the moon
+         */
+        public boolean contains(double x, double y, double z) {
+            return containsSquaredDistance(squaredDistanceTo(x, y, z));
+        }
+    }
     public record System(long id, int cellX, int cellZ, List<Body> bodies, List<Moon> moons) {
         public System { bodies = List.copyOf(bodies); moons = List.copyOf(moons); }
         public Body central() { return bodies.getFirst(); }
@@ -100,6 +145,8 @@ public final class SolarLayout {
     private final int version;
     private final PlacementOptions options;
     private final AtomicReferenceArray<System> cache = new AtomicReferenceArray<>(256);
+    private record GuardianSites(long systemId, List<GuardianPost> posts) { }
+    private final AtomicReferenceArray<GuardianSites> guardianCache = new AtomicReferenceArray<>(256);
 
     public SolarLayout(long seed, Params params) {
         this(seed, params, 2, PlacementOptions.defaults());
@@ -302,8 +349,66 @@ public final class SolarLayout {
 
     public record GuardianPost(int index, int x, int y, int z) { }
 
-    /** Three small spawner pedestals, outside the sun and clear of planets and moons. */
+    /** Activation radius in blocks, including a rounding margin for the twelve surface-covering posts. */
+    public static final int GUARDIAN_ACTIVATION_RANGE = 136;
+
+    /**
+     * Returns twelve cage sites covering the sun in three dimensions for current worlds.
+     * The sites follow icosahedron vertices, rotated deterministically around Y. Whole-set
+     * rotations retain coverage while avoiding planets and moons. Older layouts keep their
+     * three original equatorial sites. Impossible packing fails explicitly, never leaving
+     * a silently unguarded sector. Call only when guardian generation is enabled.
+     *
+     * @param system immutable system whose sun is defended
+     * @return immutable cage positions, in block coordinates, cached per layout (at most 256 systems)
+     */
     public List<GuardianPost> guardianPosts(System system) {
+        int slot = (int) system.id() & 255;
+        var cached = guardianCache.get(slot);
+        if (cached != null && cached.systemId() == system.id()) return cached.posts();
+        var posts = computeGuardianPosts(system);
+        guardianCache.set(slot, new GuardianSites(system.id(), posts));
+        return posts;
+    }
+
+    private List<GuardianPost> computeGuardianPosts(System system) {
+        if (version < 5) return legacyGuardianPosts(system);
+        var center = system.central();
+        double phi = (1 + Math.sqrt(5)) / 2;
+        double length = Math.sqrt(1 + phi * phi);
+        double phase = unit(mix(center.id + 53)) * Math.PI * 2;
+        for (int gap : new int[]{24, 16}) for (int rotation = 0; rotation < 64; rotation++) {
+            double angle = phase + rotation * Math.PI * 2 / 64;
+            double cos = Math.cos(angle), sin = Math.sin(angle);
+            double radius = center.radius + gap;
+            List<GuardianPost> posts = new ArrayList<>(12);
+            for (int index = 0; index < 12; index++) {
+                // Four sign combinations for each vertex group: (0,a,b), (a,b,0), (b,0,a).
+                double a = (index % 2 == 0 ? -1 : 1) / length;
+                double b = (index % 4 < 2 ? -phi : phi) / length;
+                double dx = index / 4 == 0 ? 0 : index / 4 == 1 ? a : b;
+                double dy = index / 4 == 0 ? a : index / 4 == 1 ? b : 0;
+                double dz = index / 4 == 0 ? b : index / 4 == 1 ? 0 : a;
+                int x = (int) Math.round(center.x + radius * (cos * dx - sin * dz));
+                int y = (int) Math.round(center.y + radius * dy);
+                int z = (int) Math.round(center.z + radius * (sin * dx + cos * dz));
+                boolean clear = y - 1 >= MIN_Y && y + 6 <= MAX_Y;
+                for (var body : system.bodies()) {
+                    if (squared(x-body.x, y-body.y, z-body.z) < (body.radius+16.0)*(body.radius+16.0)) { clear = false; break; }
+                }
+                for (var moon : system.moons()) {
+                    var m = moon.sphere();
+                    if (squared(x-m.centerX(), y-m.centerY(), z-m.centerZ()) < (m.radius()+16.0)*(m.radius()+16.0)) { clear = false; break; }
+                }
+                if (!clear) break;
+                posts.add(new GuardianPost(index, x, y, z));
+            }
+            if (posts.size() == 12) return List.copyOf(posts);
+        }
+        throw new IllegalArgumentException("Solar guardian cages cannot cover the sun without collisions; increase planet_gap or disable guardians");
+    }
+
+    private List<GuardianPost> legacyGuardianPosts(System system) {
         if (version < 4) return List.of();
         List<GuardianPost> posts = new ArrayList<>();
         var center = system.central();

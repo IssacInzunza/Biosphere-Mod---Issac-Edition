@@ -1,6 +1,76 @@
 # Solar System - Issac Edition — progreso
 
-## Revisión actual — reutilización del terreno Biospheres
+## Revisión actual — reglas compartidas y contratos del código
+
+- SolarPortalGuard.allowsNaturalPortal concentra la autorización completa: sala
+  activa en el hilo, posición dentro de ella y margen de tres bloques en el centro.
+  Ambos mixins conservan sus filtros de preset/chunk y tipo de bloque antes de
+  delegar. La restauración del ThreadLocal sigue protegida por finally.
+- SolarLayout.Moon concentra la distancia al cuadrado y la frontera inclusiva que
+  usan el escritor de bloques y los heightmaps. Conserva Math.pow y el orden de
+  sumas; el escritor reutiliza la distancia para las capas, sin calcularla dos veces.
+- SolarTerrain da nombre a la reserva del Stronghold (Y máximo 48), inicio del
+  perfil peligroso (Y mínimo 56), profundidad superficial y márgenes. El margen
+  del Stronghold y el de bedrock tienen nombres distintos: compartir el valor 5
+  no significa que representen la misma regla.
+- Javadocs ampliados en contratos de portales, terreno, geometría lunar, parámetros
+  de colocación, instantáneas Solar, densidad y escritura/filtrado de bloques.
+  No se añadieron clases, opciones ni cambios de codec o versión en este bloque.
+- Verificación: 250 000 puntos lunares comparados bit a bit con la fórmula literal,
+  fronteras y sus doubles adyacentes; reglas de superficie comparadas con los
+  predicados anteriores para las 147 456 combinaciones de Y/superficie.
+- El GameTest de portales ahora prueba autorización positiva/negativa, sala central,
+  sala orbital, ausencia de sala, frontera a dos/tres bloques, lunas, vacío y
+  escrituras de portal/marco en ProtoChunks marcados; la ruta no Solar sigue intacta.
+- Se mantienen las 192 comparaciones de fases contra el escritor literal anterior,
+  incluyendo igualdad de bloques y datos crudos de heightmaps. Evidencia de la
+  validación de este bloque: run/logs/solar-debt-policy-final.log.
+- Resultado final: build, suite JUnit, generación de Javadoc y los catorce
+  GameTests aprobados; git diff --check sin errores. Los tiempos diagnósticos
+  fluctúan entre ejecuciones y no demuestran una mejora de rendimiento de este bloque.
+- Pendientes: Javadocs de otras APIs del proyecto siguen produciendo advertencias;
+  el informe no representa deuda técnica global cerrada. Activación del portal,
+  ojos/locate en una partida completa y generación concurrente con C2ME requieren
+  aceptación en juego. Este refactor conserva la política, no certifica esas rutas.
+
+## Revisión anterior — cobertura de guardianes y refactor modular
+
+- Doce jaulas alrededor del centro, incluidos los polos; alcance 136 bloques,
+  un guardián cada 400–800 ticks, máximo cuatro cerca del jugador y 24 por sol.
+  Ghast/blaze de día y también phantom de noche. No se reparan jaulas rotas.
+- SolarGuardians reúne construcción, eventos de spawn, población y compatibilidad.
+  SolarEvents solo enruta sus eventos tras verificar el generador. La marca se añade
+  al finalizar el spawn para conservar la inicialización vanilla de los tres mobs.
+- SolarChunkGenerator coordina el motor; BoundWorld publica juntos sus recursos
+  derivados de la semilla. SolarVolumePainter concentra los bloques y heightmaps.
+  SatelliteMineralCatalog resuelve ids/tags para ambos presets sin duplicar esa lógica.
+- Optimizaciones: paleta de cascarón resuelta una vez, caché acotada de posiciones,
+  descarte de chunks lejanos antes de calcular jaulas, sin consultas de población
+  durante cooldown, sin resolver minerales con satélites apagados y sin recorrer
+  aire por encima de bloques existentes y cuerpos. Se conserva el primado de heightmaps.
+- Verificación: `build` y `runGameTestServer --no-configuration-cache` correctos;
+  JUnit y catorce GameTests aprobados. Javadoc se genera con advertencias de
+  documentación incompleta en otras APIs del proyecto.
+- La rutina literal anterior de volumen existe solo como baseline de GameTest;
+  se verificó que su cuerpo coincide exactamente con HEAD antes del refactor.
+  192 fases comparadas: todos los bloques y datos crudos de heightmaps idénticos.
+  Incluye layouts 1/2/4/5, calor/frío, paleta inválida, bordes, lunas, vacío y
+  un bloque alto existente que el recorrido acotado también debe borrar.
+- Cobertura: radios 170–190 con cota continua de icosaedro y margen de redondeo;
+  muestreo cada tres grados para tres radios y 30 semillas. Jaulas apagadas no
+  escriben bloques ni block entities. Reaparición real de cada especie tras dos
+  muertes a 132 bloques; los candidatos quedan a 32 bloques del jugador (12 para
+  phantom), dentro de su rango de combate y sin omitir colisiones. El jugador
+  simulado carga primero su vecindad y espera a que las secciones de entidades
+  estén listas; la carga forzada pertenece exclusivamente al fixture de GameTest.
+- Medición diagnóstica de las 192 fases: literal 2205 ms, refactor 1537 ms en
+  una ejecución; no representa rendimiento de un mundo ni certificación con C2ME.
+- Pendiente manual: línea de visión, persecución, combate y distancias de simulación
+  habituales en un mundo Solar completo. No se promete combate obligatorio en cada
+  punto por cobertura geométrica. Chunks existentes no se modifican: usar un mundo
+  nuevo para evaluar las doce jaulas. Layouts 1–4 conservan sus reglas anteriores.
+
+## Revisión anterior — reutilización del terreno Biospheres
 
 - Solar v5 usa el holder biosphereworlds:biospheres, sin tocar biospheres.json.
 - Se sustituye el océano recortado por bloques por los mismos cálculos de densidad

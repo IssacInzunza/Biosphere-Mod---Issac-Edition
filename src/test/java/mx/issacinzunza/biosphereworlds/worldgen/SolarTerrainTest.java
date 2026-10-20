@@ -7,6 +7,19 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SolarTerrainTest {
+    @Test
+    void namedReservationsPreserveLiteralSurfaceRules() {
+        for (int surface = -64; surface <= 319; surface++) {
+            for (int y = -64; y <= 319; y++) {
+                assertEquals(y >= 56 && y <= surface && y >= surface - 5, SolarTerrain.centralSurface(y, surface));
+                assertEquals(y >= 56, SolarTerrain.centralFluid(y, true));
+                assertFalse(SolarTerrain.centralFluid(y, false));
+            }
+        }
+        assertEquals(48, SolarTerrain.STRONGHOLD_MAX_Y);
+        assertEquals(5, SolarTerrain.STRONGHOLD_INTERIOR_MARGIN);
+    }
+
     @Test void centralHazardsStayAboveTheCompleteStrongholdVolume() {
         for (int surface = 56; surface <= 319; surface++) {
             for (int y = -64; y <= 48; y++) {

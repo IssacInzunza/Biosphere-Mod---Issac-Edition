@@ -5,7 +5,7 @@
   "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml.title": "Solar System configuration",
   "generator.biosphereworlds.solar_systems": "Solar System - Issac Edition",
   "biosphereworlds.configuration.solar_guardians_enabled": "Central guardian cages",
-  "biosphereworlds.configuration.solar_guardians_enabled.tooltip": "Generate up to three small orbital pedestals with ghast, phantom and blaze spawners. Active within 96 blocks of a player; one mob per cycle, 30–60 seconds between cycles. Nearby system limits: 2 ghasts, 3 phantoms, 3 blazes. Phantoms only at night. No guardians in Peaceful or with mob spawning disabled. Cages can be destroyed and are not rebuilt. New Solar worlds only.",
+  "biosphereworlds.configuration.solar_guardians_enabled.tooltip": "Generate twelve cages around the entire sun, including its poles. Activation range: 136 blocks. One guardian per cycle, every 20–40 seconds. Limits: four guardians near a player and 24 per sun. Ghasts and blazes defend by day; phantoms may also appear at night. Distant cage spawns appear within combat range of the player. Peaceful and disabled mob spawning pause the cages. Destroyed cages are not rebuilt. Newly generated Solar chunks with layout v5 only.",
   "biosphereworlds.configuration.SolarOrbits": "Solar system",
   "biosphereworlds.configuration.SolarOrbits.tooltip": "Solar-only planets, distances, numeric temperature and guardian cages. General sphere values are independent in SolarSystems.toml. Automatic bridges, classic grid spacing and hemispheres are disabled. The sun has no moons. Applies to new worlds.",
   "biosphereworlds.configuration.solar_planet_count": "Planets per solar system",

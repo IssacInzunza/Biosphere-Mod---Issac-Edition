@@ -58,15 +58,24 @@ Stronghold conserva su envolvente completa en Y<=48. El centro mantiene radio 18
 y altura 127 automáticamente. La banda orbital intermedia permanece templada.
 
 Los porcentajes climáticos y el radio del sistema no se exponen.
-`guardians_enabled` controla hasta tres pedestales orbitales con jaulas vanilla
-para ghasts, phantoms y blazes, colocadas al terminar la decoración. SolarLayout
-elige posiciones sin colisión con cuerpos ni lunas. Cada jaula genera un mob,
-con demora de 600–1200 ticks y RequiredPlayerRange=96; reglas explícitas evitan
-restricciones de dimensión/luz incompatibles, manteniendo colisiones y Pacífico.
-MixinSolarSpawner solo controla jaulas marcadas en Solar: limita el entorno del
-sistema a 2 ghasts, 3 phantoms y 3 blazes, pausa phantoms de día y respeta
-Peaceful/doMobSpawning. No fuerza chunks para aparecer. Las jaulas rotas no se
-reconstruyen. Los mobs llevan la marca que protege el cascarón de explosiones.
+`guardians_enabled` controla doce pedestales con jaulas distribuidos alrededor de
+toda la esfera central, incluidos los polos. SolarLayout conserva posiciones
+inmutables en una caché acotada; las calcula solo si se solicitan guardianes.
+Las posiciones usan los vértices de un icosaedro y rotaciones del conjunto completo
+para evitar cuerpos y lunas sin perder cobertura. Si no caben, falla explícitamente.
+SolarGuardians centraliza construcción, demoras y población: un mob por ciclo,
+400–800 ticks, alcance 136 bloques, máximo cuatro guardianes marcados a 96 bloques
+del jugador y 24 alrededor del sol. De día elige ghast/blaze; de noche también
+phantom. La marca se añade en FinalizeSpawnEvent, conservando la inicialización
+vanilla. PositionCheck coloca candidatos distantes a 32 bloques del jugador
+(12 para phantom) para entrar en su rango de combate y evitar despawn inmediato;
+después se conserva la comprobación de obstrucciones. Solo se ajustan candidatos
+antes de aparecer; no se teletransportan mobs que ya existen.
+MixinSolarSpawner delega esa política y no consulta entidades durante la demora.
+Al alcanzar un límite reintenta tras 20 ticks. Respeta Pacífico/doMobSpawning,
+no fuerza chunks y no reconstruye jaulas destruidas. Los layouts 1–4 mantienen sus
+reglas anteriores; chunks existentes no se modifican retroactivamente. La cobertura
+geométrica no certifica dificultad real, línea de visión ni chunks simulados.
 La versión 4 omite lunas de la biosfera central. Las instantáneas anteriores
 conservan lunas y spawn heredados; se requiere mundo nuevo para esta revisión. Los satélites reutilizan
 SatellitePlacement/SatelliteLayers/MineralCatalog con opciones generales persistidas,
@@ -81,7 +90,7 @@ cascarón se aplica también a sus lunas y se excluye de los heightmaps.
 | `planet_gap` | `400` | 0–4000 blocks / bloques | Separación mínima de espacio vacío entre las superficies de las esferas, en bloques; no es una distancia entre centros. También separa el centro de la órbita interior. La geometría orbital puede dejar huecos mayores. |
 | `system_gap` | `1500` | 0–16000 blocks / bloques | Separación mínima de espacio vacío entre los límites exteriores de sistemas vecinos, en bloques. El tamaño del sistema se calcula automáticamente a partir de los tamaños y distancias planetarias. |
 | `climate_direction` | `0` | 0–1 (deslizador entero) | 0: centro de magma/lava, planetas interiores cálidos, intermedios templados y exteriores fríos. 1: centro de hielo compacto, interiores fríos, intermedios templados y exteriores cálidos. Con pocos planetas se conserva al menos uno templado. |
-| `guardians_enabled` | `true` | booleano | Genera jaulas orbitales de ghasts, phantoms y blazes con frecuencia y población bajas. No modifica otros mobs. Se guarda al crear cada mundo Solar. |
+| `guardians_enabled` | `true` | booleano | Genera doce jaulas de ghasts, phantoms y blazes que cubren el sol, con frecuencia y población acotadas. No modifica otros mobs. Se guarda al crear cada mundo Solar. |
 
 ### Ajustes generales independientes — Settings
 
@@ -120,8 +129,24 @@ se omiten candidatos tan grandes como su planeta.
 
 Se mantienen la colocación exclusiva central de Stronghold, las piezas vanilla,
 la validación del volumen completo y los bloqueos de portales en WorldGenRegion y
-ProtoChunks marcados. `SolarEvents` conserva spawn, guardianes por intervalos,
-protección de cascarón y restauración de geometría al cargar chunks.
+ProtoChunks marcados. `SolarEvents` conserva spawn y restauración de geometría al
+cargar chunks; para guardianes solo valida el mundo y enruta eventos a SolarGuardians.
+La política completa de portales naturales vive en
+`SolarPortalGuard.allowsNaturalPortal`: sala de portal activa en el hilo, posición
+interior de esa sala y centro con margen de tres bloques. Los mixins de
+WorldGenRegion y ProtoChunk conservan sus filtros tempranos y delegan esa decisión.
+La geometría lunar para bloques y alturas vive en `SolarLayout.Moon`; su distancia
+conserva la fórmula anterior y permite reutilizar el valor para elegir capas.
+`SolarTerrain.STRONGHOLD_MAX_Y` (48) y `CENTRAL_HAZARD_MIN_Y` (56) documentan la
+reserva vertical; los márgenes de Stronghold y bedrock se mantienen separados.
+Estos cambios no modifican los codecs, las versiones guardadas ni añaden opciones.
+SolarChunkGenerator coordina las fases del motor y publica atómicamente un BoundWorld
+inmutable con semilla, geometría, ruido propio, escritor y Stronghold. SolarVolumePainter
+escribe cascarón, superficie central y lunas, y filtra heightmaps. Resuelve la paleta
+una sola vez; omite aire superior únicamente por encima de bloques existentes y
+cuerpos. Conserva el reinicio/primado de heightmaps en cada fase. SatelliteMineralCatalog
+resuelve ids/tags para ambos presets; cada llamador conserva su política de fallback.
+Con satélites Solar apagados no se resuelve ni valida un catálogo sin uso.
 No verificado: escrituras de mods que eviten esas rutas, C2ME, activación real del
 portal, ojos, locate en un mundo jugable y rendimiento prolongado. La conservación
 de la lógica clásica no sustituye una comparación de chunks contra su copia anterior.
@@ -1039,3 +1064,11 @@ En la misma caché NeoForm citada arriba: RandomState.java:18, 31–42 y 101–1
 NoiseGeneratorSettings.java:19–30; NoiseChunk.java:138–159; NoiseBasedChunkGenerator.java:84–98.
 SolarRandomStateAccess expone únicamente el catálogo de parámetros para construir
 un estado nuevo; no cambia ningún campo del estado original.
+
+### Fuentes para alcance de combate y eventos de guardianes
+
+En la caché NeoForm citada: Ghast.java:187–188 y 270–271 (disparo a menos de 64),
+Blaze.java:54 y 254 (seguimiento 48), Phantom.java:235–246 (escaneo horizontal 16),
+BaseSpawner.java:160–171 y EventHooks.java:258–263 (posición y finalización).
+La limpieza de listeners temporales de GameTest usa `IEventBus.unregister`,
+según la [API de NeoForged Bus](https://github.com/neoforged/Bus/blob/main/src/main/java/net/neoforged/bus/api/IEventBus.java).

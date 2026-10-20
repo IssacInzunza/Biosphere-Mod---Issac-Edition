@@ -34,13 +34,17 @@ always stays temperate. With very few planets, at least one orbital planet is te
 The central sphere keeps its required Stronghold size and Y=127 automatically.
 Central surface changes occur before structure placement and only at Y>=56; the
 complete Stronghold remains at Y<=48. The sun has no mineral moons in version 4. Planets retain their satellites.
-With guardians enabled, up to three small obsidian pedestals in the sun's orbit
-carry ghast, phantom and blaze cages. A cage activates within 96 blocks of a player,
-spawns one mob per cycle, and waits 30–60 seconds between cycles. Nearby system caps
-are 2 ghasts, 3 phantoms and 3 blazes. Phantoms spawn only at night; Peaceful and
+With guardians enabled, twelve small obsidian pedestals carry cages distributed
+around the entire sun, including its poles. Their 136-block activation range covers
+the sampled surface directions. Each cage spawns one guardian every 20–40 seconds,
+with limits of four marked guardians within 96 blocks of a player and 24 around a sun.
+Distant spawn candidates are positioned within combat range of the approaching
+player (32 blocks for ghasts/blazes, 12 for phantoms), retaining obstruction checks.
+Ghasts and blazes defend by day; phantoms may also spawn at night. Peaceful and
 `doMobSpawning=false` pause these cages. Destroyed cages are not rebuilt.
-Old snapshots retain their previous moon and guardian behavior; create a new Solar
-world to get the cages and moonless sun.
+Layouts 1–4 keep their previous rules. Existing chunks are not retrofitted; use a
+new Solar world for a consistent twelve-cage arrangement. Combat difficulty still
+requires in-game acceptance with normal chunk simulation distances.
 
 Solar v5 uses the original Biospheres noise-settings template for terrain, noise
 caves, surface rules and the edge-ocean density/climate profile. Runtime adapters
@@ -59,7 +63,7 @@ for the shared terrain profile**. Previously generated chunks are not regenerate
 | `planet_gap` | `400` | 0–4000 blocks / bloques | Minimum empty gap between sphere surfaces, in blocks, never center-to-center distance. Also separates the central sphere from the inner orbit. Orbital geometry can produce larger gaps. |
 | `system_gap` | `1500` | 0–16000 blocks / bloques | Minimum empty gap between the outer envelopes of neighboring systems, in blocks. System size is calculated from planet sizes and distances automatically. |
 | `climate_direction` | `0` | 0–1 (integer slider) | 0: magma/lava center, warm inner planets, temperate middle, cold exterior. 1: packed-ice center, cold inner planets, temperate middle, warm exterior. With very few planets, at least one stays temperate. |
-| `guardians_enabled` | `true` | boolean | Generate the sun’s orbital ghast, phantom and blaze cages with low spawn rates. Other mobs are unaffected. Saved with each new Solar world. |
+| `guardians_enabled` | `true` | boolean | Generate twelve ghast, phantom and blaze cages covering the sun, with bounded spawn rates and population. Other mobs are unaffected. Saved with each new Solar world. |
 
 ### Familiar general options — Settings
 
