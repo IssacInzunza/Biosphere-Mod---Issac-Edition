@@ -20,6 +20,8 @@ Esta sección sustituye las decisiones de configuración y guardianes de las rev
   Pacífico/doMobSpawning y pausa phantoms de día. No usa cupo natural de monstruos
   ni fuerza chunks para spawn. Las jaulas normales no se modifican.
 - /work/ ignorado en .gitignore; no había archivos de work rastreados.
+- Spawn inicial sin plataforma: usa la superficie natural del planeta templado,
+  admite agua y no coloca piedra ni despeja bloques alrededor del jugador.
 - Fuente de APIs: véase la sección de fuentes de jaulas al final de ARQUITECTURA.
 - Pruebas nuevas: jaulas reales activas con jugador a 80 bloques y reaparición
   después de matar cada especie; guardado de jaula y marca del mob; generación
@@ -177,7 +179,7 @@ Implementado, con aceptación en juego pendiente:
   tamaño 8–12%, elevación configurable, chequeo entre todos los planetas y lunas,
   catálogo Solar inmutable por apertura del mundo obtenido de tags, sin leer la
   configuración clásica. No se genera ningún puente.
-- Spawn inicial en un orbital templado, con una plataforma de piedra pequeña.
+- Spawn inicial en un orbital templado sobre la superficie natural, sin plataforma.
 - ChunkEvent.Load restaura la referencia de geometría Solar para que los
   heightmaps sigan filtrando cascarones y lunas al cargar chunks, sin pedir chunks
   ni efectuar búsquedas durante ese evento.

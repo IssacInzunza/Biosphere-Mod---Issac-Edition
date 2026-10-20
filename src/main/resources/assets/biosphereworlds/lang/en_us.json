@@ -1,7 +1,7 @@
 {
   "biosphereworlds.configuration.section.biosphereworlds.biosphereworlds.toml": "Biospheres settings",
   "biosphereworlds.configuration.section.biosphereworlds.biosphereworlds.toml.title": "Biospheres configuration",
-  "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml": "Solar System - Issac Edition",
+  "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml": "Solar System settings",
   "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml.title": "Solar System configuration",
   "generator.biosphereworlds.solar_systems": "Solar System - Issac Edition",
   "biosphereworlds.configuration.solar_guardians_enabled": "Central guardian cages",

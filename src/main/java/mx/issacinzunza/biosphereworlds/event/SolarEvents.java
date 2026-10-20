@@ -47,16 +47,6 @@ public final class SolarEvents {
         int x = (int) Math.floor(planet.x());
         int z = (int) Math.floor(planet.z());
         int y = generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, level.getChunkSource().randomState());
-        // A small landing pad also makes all-ocean spawn biomes playable; only initial Solar spawn.
-        y = Math.max(y, generator.getSeaLevel() + 1);
-        y = Math.min(y, (int) Math.floor(planet.y() + planet.radius() - 5));
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
-                level.setBlock(new BlockPos(x + dx, y - 1, z + dz), Blocks.STONE.defaultBlockState(), 2);
-                level.setBlock(new BlockPos(x + dx, y, z + dz), Blocks.AIR.defaultBlockState(), 2);
-                level.setBlock(new BlockPos(x + dx, y + 1, z + dz), Blocks.AIR.defaultBlockState(), 2);
-            }
-        }
         event.getSettings().setSpawn(new BlockPos(x, y, z), 0);
         event.setCanceled(true);
     }

@@ -1,7 +1,7 @@
 {
   "biosphereworlds.configuration.section.biosphereworlds.biosphereworlds.toml": "Ajustes de Biospheres",
   "biosphereworlds.configuration.section.biosphereworlds.biosphereworlds.toml.title": "Configuración de Biospheres",
-  "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml": "Solar System - Issac Edition",
+  "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml": "Ajustes de Solar System",
   "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml.title": "Configuración de Solar System",
   "generator.biosphereworlds.solar_systems": "Solar System - Issac Edition",
   "biosphereworlds.configuration.solar_guardians_enabled": "Jaulas de guardianes del centro",

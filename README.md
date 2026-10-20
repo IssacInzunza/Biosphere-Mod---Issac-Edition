@@ -18,6 +18,8 @@ the revised orbits and central surface.** Existing Solar snapshots retain their
 original layout (versions 1–3); new worlds use version 4. Editing the TOML does not
 relocate saved planets or silently replace a saved world's settings.
 Generate Structures must be enabled.
+Initial spawn selects a temperate planet and uses its natural surface, including
+water. It does not build a platform or clear blocks around the player.
 
 Planets occupy up to three concentric orbital bands with evenly distributed angular
 sectors and small seeded variation. Planet count is exact, excluding the central sphere
