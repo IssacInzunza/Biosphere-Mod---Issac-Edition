@@ -26,7 +26,7 @@ class SolarTerrainTest {
             for (int y = -64; y <= 319; y++) {
                 long original = ((long) x << 32) ^ y;
                 long actual = original;
-                if (SolarTerrain.oceanOverride(body, x, y, 0, false, 20, 20, 63) != 0) actual = 17;
+                if (SolarTerrain.legacyOceanOverride(body, x, y, 0, false, 20, 20, 63) != 0) actual = 17;
                 if (SolarTerrain.bedrockLiner(body, x, y, 0, false)) actual = 18;
                 assertEquals(original, actual);
             }
@@ -35,11 +35,11 @@ class SolarTerrainTest {
 
     @Test void oceanOnlyChangesInteriorBandAboveItsFloor() {
         var body = new SolarLayout.Body(1, 0, 64, 0, 112, false, SolarLayout.Climate.TEMPERATE);
-        assertEquals(0, SolarTerrain.oceanOverride(body, 0, 64, 0, true, 20, 20, 63));
-        assertEquals(0, SolarTerrain.oceanOverride(body, 100, 43, 0, true, 20, 20, 63));
-        assertEquals(2, SolarTerrain.oceanOverride(body, 100, 63, 0, true, 20, 20, 63));
-        assertEquals(1, SolarTerrain.oceanOverride(body, 100, 64, 0, true, 20, 20, 63));
-        assertEquals(0, SolarTerrain.oceanOverride(body, 112, 64, 0, true, 20, 20, 63));
+        assertEquals(0, SolarTerrain.legacyOceanOverride(body, 0, 64, 0, true, 20, 20, 63));
+        assertEquals(0, SolarTerrain.legacyOceanOverride(body, 100, 43, 0, true, 20, 20, 63));
+        assertEquals(2, SolarTerrain.legacyOceanOverride(body, 100, 63, 0, true, 20, 20, 63));
+        assertEquals(1, SolarTerrain.legacyOceanOverride(body, 100, 64, 0, true, 20, 20, 63));
+        assertEquals(0, SolarTerrain.legacyOceanOverride(body, 112, 64, 0, true, 20, 20, 63));
         assertTrue(SolarTerrain.bedrockLiner(body, 0, -45, 0, true));
         assertFalse(SolarTerrain.bedrockLiner(body, 0, 173, 0, true));
     }

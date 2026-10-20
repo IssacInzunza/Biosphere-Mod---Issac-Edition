@@ -106,7 +106,7 @@ public final class SolarLayout {
     }
 
     public SolarLayout(long seed, Params params, int version, PlacementOptions options) {
-        if (version < 1 || version > 4) throw new IllegalArgumentException("Unknown Solar layout version");
+        if (version < 1 || version > 5) throw new IllegalArgumentException("Unknown Solar layout version");
         this.seed = seed;
         this.params = params;
         this.version = version;

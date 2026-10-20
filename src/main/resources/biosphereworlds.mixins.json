@@ -13,6 +13,7 @@
     "MixinSolarPortalPlacement",
     "MixinSolarProtoChunkPortals",
     "accessor.SolarStructureStateInvoker",
+    "accessor.SolarRandomStateAccess",
     "MixinHeightmap",
     "MixinChunkAccess",
     "MixinChunkGeneratorBiomeSource",

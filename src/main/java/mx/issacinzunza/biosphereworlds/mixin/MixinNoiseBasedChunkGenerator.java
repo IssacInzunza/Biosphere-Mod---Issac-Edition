@@ -46,6 +46,7 @@ public abstract class MixinNoiseBasedChunkGenerator implements BiosphereGenerato
 
     @Override
     public boolean biosphereworlds$isBiosphereGenerator() {
+        if ((Object) this instanceof mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkGenerator) return false;
         return settings.unwrapKey().map(BIOSPHERE_SETTINGS::equals).orElse(false);
     }
 

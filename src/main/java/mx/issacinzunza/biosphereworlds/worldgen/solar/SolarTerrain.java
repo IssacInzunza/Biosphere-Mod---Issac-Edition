@@ -6,7 +6,8 @@ public final class SolarTerrain {
     /** Keep the complete stronghold envelope (max Y=48) below the altered surface. */
     public static boolean centralSurface(int y, int surfaceY) { return y >= 56 && y <= surfaceY && y >= surfaceY - 5; }
     public static boolean centralFluid(int y, boolean water) { return y >= 56 && water; }
-    public static int oceanOverride(SolarLayout.Body body, int x, int y, int z,
+    /** Historical block override, retained only for saved layouts 1–4. New worlds use the Biospheres router. */
+    public static int legacyOceanOverride(SolarLayout.Body body, int x, int y, int z,
                                     boolean enabled, int width, int depth, int seaLevel) {
         if (!enabled || width == 0 || y <= seaLevel - depth || !body.contains(x, y, z, 2)) return 0;
         double dy = seaLevel - body.y();

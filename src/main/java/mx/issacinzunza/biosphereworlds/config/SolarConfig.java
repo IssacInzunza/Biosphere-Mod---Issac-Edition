@@ -40,6 +40,6 @@ public final class SolarConfig {
                 GENERAL.MIN_RADIUS.get().intValue(), GENERAL.RADIUS.get().intValue(), 180, OPTIONS.SOLAR_PLANET_GAP.get(), OPTIONS.SOLAR_PLANET_GAP.get(), cold, 30, 40, 30,
                 GENERAL.SATELLITES_ENABLED.get() ? GENERAL.SATELLITES_MAX_COUNT.get() : 0, GENERAL.SATELLITES_MIN_ELEVATION_DEGREES.get(), GENERAL.SATELLITES_MAX_ELEVATION_DEGREES.get(), GENERAL.SATELLITES_MIN_GAP_BLOCKS.get()),
                 true, cold ? SolarLayout.Climate.COLD : SolarLayout.Climate.HOT, guardians,
-                new SolarSettings.Environment(GENERAL.EDGE_OCEAN_ENABLED.get(), GENERAL.EDGE_OCEAN_WIDTH.get(), GENERAL.EDGE_OCEAN_DEPTH.get(), GENERAL.BEDROCK_MODE.get() == SphereConfig.BedrockMode.SHELL), general, 4);
+                new SolarSettings.Environment(GENERAL.EDGE_OCEAN_ENABLED.get(), GENERAL.EDGE_OCEAN_WIDTH.get(), GENERAL.EDGE_OCEAN_DEPTH.get(), GENERAL.BEDROCK_MODE.get() == SphereConfig.BedrockMode.SHELL), general, 5);
     }
 }

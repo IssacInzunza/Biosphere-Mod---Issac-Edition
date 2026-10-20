@@ -15,7 +15,7 @@ overwriting destinations. The latest unified settings take precedence over an ol
 experimental Solar file when initializing the new Solar config.
 Settings are saved with each world's generator. **Create a new Solar world to see
 the revised orbits and central surface.** Existing Solar snapshots retain their
-original layout (versions 1–3); new worlds use version 4. Editing the TOML does not
+original layout (versions 1–4); new worlds use version 5. Editing the TOML does not
 relocate saved planets or silently replace a saved world's settings.
 Generate Structures must be enabled.
 Initial spawn selects a temperate planet and uses its natural surface, including
@@ -41,6 +41,15 @@ are 2 ghasts, 3 phantoms and 3 blazes. Phantoms spawn only at night; Peaceful an
 `doMobSpawning=false` pause these cages. Destroyed cages are not rebuilt.
 Old snapshots retain their previous moon and guardian behavior; create a new Solar
 world to get the cages and moonless sun.
+
+Solar v5 uses the original Biospheres noise-settings template for terrain, noise
+caves, surface rules and the edge-ocean density/climate profile. Runtime adapters
+supply Solar sphere centers and immutable world settings; the classic template and
+RandomState are not mutated. Extra vanilla biome carvers are omitted, matching the
+original preset. There is no post-generation water/air replacement for the ocean.
+The sun retains its separate magma/ice profile and protected Stronghold depth.
+Existing v1–v4 snapshots retain their old terrain logic: **create a new Solar world
+for the shared terrain profile**. Previously generated chunks are not regenerated.
 
 ### Solar-specific options — SolarOrbits
 
@@ -72,7 +81,7 @@ as large as their parent are omitted.
 | `close_open_top` | `false` | boolean | Close planets cut by the build limit with a flat shell cap at Y=319. Disabled leaves the opening. Does not shrink the configured radius. |
 | `bedrock_mode` | `FLOOR` | FLOOR / NONE / SHELL | FLOOR preserves vanilla world-floor bedrock only where a sphere reaches it. NONE replaces it with deepslate. SHELL adds a three-block bedrock lining inside the lower shell. |
 | `edge_ocean_enabled` | `false` | boolean / booleano | Lowers and floods the interior band next to orbital shells. The dangerous central sphere keeps its magma or ice profile. |
-| `edge_ocean_width` | `20` | 0–100 % | Band width as a percentage of the sphere's sea-level section. Zero disables the band. Used only when edge_ocean_enabled is enabled. |
+| `edge_ocean_width` | `20` | 0–100 % | Band width as a percentage of the sphere radius, using the original smooth 3D profile. Zero disables the band. Used only when edge_ocean_enabled is enabled. |
 | `edge_ocean_depth` | `20` | 0–100 blocks / bloques | Ocean floor depth below sea level, in blocks. Sea level 63 and depth 20 give a floor at Y=43. Used only when the edge ocean is enabled. |
 | `satellites_enabled` | `true` | boolean / booleano | Generate elevated mineral moons around planets, without bridges. Turning this off leaves planet positions and climates unchanged. |
 | `satellites_max_count` | `3` | 0–64 | Upper limit per planet. Actual count may be lower when a moon cannot fit without collisions or height violations. Zero disables satellites. |

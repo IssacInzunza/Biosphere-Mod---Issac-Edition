@@ -16,7 +16,7 @@ dirección térmica textual de los formatos experimentales.
 
 El codec conserva la instantánea completa. `layout_version` ausente se interpreta
 como 1, con los valores generales heredados; así los mundos Solar existentes mantienen
-su geometría y perfil anteriores. Los mundos nuevos guardan versión 4 y los ajustes
+su geometría y perfil anteriores. Los mundos nuevos guardan versión 5 y los ajustes
 generales de cascarón, altura, bedrock, océanos y satélites. **Hace falta un mundo Solar
 nuevo para ver el reparto y el centro corregidos.** No se migra un mundo guardado
 silenciosamente. Se requiere Generate Structures activado.
@@ -31,6 +31,23 @@ Las implementaciones v1, v2 y v3 conservan su comportamiento en las instantánea
 La versión 3 usa el radio y center_y compartidos sin limitar el radio planetario a 160
 ni recolocar el centro para que quepa. close_open_top controla la tapa de Y=319;
 la geometría publica una única prueba de cascarón/tapa para generador y heightmaps.
+
+La versión 5 usa el holder original biosphereworlds:biospheres como plantilla,
+sin editar biospheres.json. SolarDensityFunction adapta los marcadores existentes:
+MultipleSpheresDistanceFunction recibe los cuerpos solares y SphereEdgeOceanFunction
+reutiliza la matemática de SphereEdgeOcean (peso tridimensional smoothstep y
+transformación FLOOR/CLIMATE), sin reescribir bloques para el océano después del ruido.
+SphereEdgeOcean extrae funciones compartidas conservando el orden de operaciones;
+una copia literal anterior en JUnit comprueba igualdad bit a bit para el preset clásico.
+Solar obtiene su RandomState independiente con los mismos parámetros de ruido y semilla.
+El estado externo y el holder original quedan intactos. mapAll recorre los hijos.
+Los adaptadores solo existen en memoria: el codec del generador guarda la plantilla
+y la instantánea Solar. Se evita marcar como Biospheres un generador Solar incluso
+si usa ese holder. Todos los puntos de generación y columnas usan el estado propio.
+Solar v5 omite carvers adicionales vanilla: el preset clásico solo ejecuta los carvers
+de cascarón/puentes; sus cuevas vienen del router de ruido. Las versiones 1–4 conservan
+su circuito anterior por compatibilidad. Hace falta un mundo Solar nuevo; los chunks
+existentes no se regeneran. El sol mantiene su perfil extremo y la cota del Stronghold.
 
 El centro v2 es cálido o frío según la dirección seleccionada, sin otra opción de
 clima central. Usa Badlands o Ice Spikes si la fuente contiene ese bioma, y conserva
@@ -85,7 +102,7 @@ se omiten candidatos tan grandes como su planeta.
 | `close_open_top` | `false` | booleano | Tapa las esferas cortadas por el límite de construcción con el bloque del cascarón en Y=319. Desactivado deja el corte abierto; no reduce el radio. |
 | `bedrock_mode` | `FLOOR` | FLOOR / NONE / SHELL | FLOOR conserva la bedrock vanilla del fondo del mundo donde llegue una esfera. NONE la sustituye por deepslate. SHELL añade un forro de bedrock de tres bloques por dentro de la mitad inferior del cascarón. |
 | `edge_ocean_enabled` | `false` | boolean / booleano | Baja e inunda la banda interior junto al cascarón de los planetas. La biosfera central conserva su perfil peligroso de magma o hielo. |
-| `edge_ocean_width` | `20` | 0–100 % | Ancho de la banda como porcentaje de la sección de la esfera al nivel del mar. Cero elimina la banda. Se usa únicamente con el océano de borde activado. |
+| `edge_ocean_width` | `20` | 0–100 % | Ancho como porcentaje del radio de la esfera, con el perfil suave tridimensional original. Cero elimina la banda. Se usa únicamente con el océano de borde activado. |
 | `edge_ocean_depth` | `20` | 0–100 blocks / bloques | Profundidad del fondo oceánico bajo el nivel del mar, en bloques. Con nivel del mar 63 y profundidad 20, el fondo queda en Y=43. Se usa únicamente con el océano de borde activado. |
 | `satellites_enabled` | `true` | boolean / booleano | Genera lunas mineras elevadas alrededor de los planetas, sin puentes. Desactivarlo conserva las posiciones y los climas de los planetas. |
 | `satellites_max_count` | `3` | 0–64 | Límite por planeta. Puede haber menos si una luna no cabe sin colisiones o sin superar la altura de construcción. Cero desactiva los satélites. |
@@ -1015,3 +1032,10 @@ BaseSpawner.java:57–60 (activación), 112–164 (reglas/colisiones), 203–260
 SpawnerBlockEntity.java:40–61 y 91–92; SpawnData.java:19–25 y 60–82.
 EventHooks.java:258–263 confirma el tratamiento de reglas personalizadas;
 ChunkAccess.java:129 permite publicar el block entity durante worldgen.
+
+### Fuentes para la reutilización del terreno Solar v5
+
+En la misma caché NeoForm citada arriba: RandomState.java:18, 31–42 y 101–125;
+NoiseGeneratorSettings.java:19–30; NoiseChunk.java:138–159; NoiseBasedChunkGenerator.java:84–98.
+SolarRandomStateAccess expone únicamente el catálogo de parámetros para construir
+un estado nuevo; no cambia ningún campo del estado original.

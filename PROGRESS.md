@@ -1,5 +1,31 @@
 # Solar System - Issac Edition — progreso
 
+## Revisión actual — reutilización del terreno Biospheres
+
+- Solar v5 usa el holder biosphereworlds:biospheres, sin tocar biospheres.json.
+- Se sustituye el océano recortado por bloques por los mismos cálculos de densidad
+  y clima del océano original, adaptando solo los centros/radios solares.
+- SphereEdgeOcean comparte peso 3D y transformación sin cambiar el orden aritmético;
+  se compara contra una copia literal del archivo anterior, con opciones activadas
+  y apagadas, varias anchuras/profundidades, radios y coordenadas.
+- Un RandomState por mundo Solar evita modificar el estado o los ajustes clásicos.
+  Los adaptadores visitan el hijo en mapAll y no se serializan: el codec conserva
+  el holder original y la instantánea Solar. La clasificación de generador mantiene
+  Solar fuera de los mixins clásicos aunque comparta la plantilla de ruido.
+- Se omiten los carvers biome vanilla adicionales en v5, igual que en el preset
+  Biospheres. Superficie, cuevas de ruido y océanos usan la misma plantilla.
+- El sol conserva el perfil magma/hielo y el Stronghold completo en su cota segura.
+- Snapshots v1–v4 conservan su lógica previa; legacyOceanOverride queda únicamente
+  para ellos. Se requiere mundo Solar nuevo, sin regenerar chunks existentes.
+- Nuevas pruebas de motor: perfil sembrado FLOOR/CLIMATE contra la matemática
+  compartida, no mutación del estado original, columnas de terreno, ausencia de
+  recorte posterior, sala de portal única y serialización sin adaptadores runtime.
+- Verificación aprobada: 320 000 comparaciones bit a bit contra la matemática
+  literal anterior, suite JUnit y 11 GameTests (incluidos Stronghold y guardado).
+  Evidencia: run/logs/solar-shared-terrain.log, BUILD SUCCESSFUL.
+- Pendiente de aceptación: inspección visual de la costa en una partida Solar nueva,
+  activación del portal, rendimiento y compatibilidad con mods.
+
 ## Revisión actual — configuraciones independientes y jaulas (2026-10-19)
 
 Esta sección sustituye las decisiones de configuración y guardianes de las revisiones inferiores.

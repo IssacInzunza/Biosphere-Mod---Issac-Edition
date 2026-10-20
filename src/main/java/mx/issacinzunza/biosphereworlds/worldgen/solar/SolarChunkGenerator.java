@@ -59,6 +59,7 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
     private final boolean configureOnBind;
     private volatile SolarLayout layout;
     private long boundSeed;
+    private volatile RandomState terrainRandomState;
     private Holder<Structure> stronghold;
     private java.util.List<SatelliteLayers.Mineral> minerals;
 
@@ -85,6 +86,15 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
             if (configureOnBind) solarSettings = SolarSettings.configured();
             boundSeed = seed;
             var geometry = new SolarLayout(seed, solarSettings.geometry(), solarSettings.layoutVersion(), solarSettings.general().placement());
+            if (solarSettings.layoutVersion() >= 5) {
+                var template = generatorSettings().value();
+                var terrain = new NoiseGeneratorSettings(template.noiseSettings(), template.defaultBlock(), template.defaultFluid(),
+                        SolarDensityFunction.adapt(template.noiseRouter(), geometry, solarSettings.environment()),
+                        template.surfaceRule(), template.spawnTarget(), template.seaLevel(), template.disableMobGeneration(),
+                        template.isAquifersEnabled(), template.oreVeinsEnabled(), template.useLegacyRandomSource());
+                terrainRandomState = RandomState.create(terrain,
+                        ((mx.issacinzunza.biosphereworlds.mixin.accessor.SolarRandomStateAccess) (Object) random).biosphereworlds$noiseParameters(), seed);
+            }
             solarBiomes.bind(geometry, solarSettings);
             layout = geometry;
         } else if (boundSeed != seed) throw new IllegalStateException("Solar generator shared between different seeds");
@@ -119,7 +129,7 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
             minerals = MineralCatalog.assemble(SatelliteLayers.VANILLA_MINERALS, ids, included, excluded, options.modWeight(), options.modDensity());
             if (minerals.isEmpty()) throw new IllegalArgumentException("Solar satellite mineral selection is empty after exclusions");
         }
-        return SolarStructureStateInvoker.biosphereworlds$create(random, getBiomeSource(), seed, seed, java.util.List.copyOf(selected));
+        return SolarStructureStateInvoker.biosphereworlds$create(terrainRandom(random), getBiomeSource(), seed, seed, java.util.List.copyOf(selected));
     }
 
     private static java.util.Set<String> resolveOres(java.util.List<String> entries) {
@@ -152,29 +162,36 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
                 || state.is(Blocks.END_PORTAL) || state.is(Blocks.END_PORTAL_FRAME) ? Blocks.GLASS.defaultBlockState() : state;
     }
 
+    private RandomState terrainRandom(RandomState original) {
+        var bound = terrainRandomState;
+        return bound == null ? original : bound;
+    }
+
     private void mark(ChunkAccess chunk) { ((SolarChunkAccess) chunk).biosphereworlds$solarLayout(layout()); }
 
     @Override public CompletableFuture<ChunkAccess> createBiomes(RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk) {
         mark(chunk);
-        return super.createBiomes(random, blender, structures, chunk);
+        return super.createBiomes(terrainRandom(random), blender, structures, chunk);
     }
     @Override public CompletableFuture<ChunkAccess> fillFromNoise(Blender blender, RandomState random, StructureManager structures, ChunkAccess chunk) {
         mark(chunk);
         if (!touchesPlanet(chunk)) return CompletableFuture.completedFuture(chunk);
-        return super.fillFromNoise(blender, random, structures, chunk).thenApply(generated -> {
+        return super.fillFromNoise(blender, terrainRandom(random), structures, chunk).thenApply(generated -> {
             finishVolume(generated, false);
             return generated;
         });
     }
     @Override public void buildSurface(WorldGenRegion level, StructureManager structures, RandomState random, ChunkAccess chunk) {
         mark(chunk);
-        if (touchesPlanet(chunk)) super.buildSurface(level, structures, random, chunk);
+        if (touchesPlanet(chunk)) super.buildSurface(level, structures, terrainRandom(random), chunk);
         finishVolume(chunk, false, true);
     }
     @Override public void applyCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomes,
                                        StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) {
         mark(chunk);
-        if (touchesPlanet(chunk)) super.applyCarvers(level, seed, random, biomes, structures, chunk, step);
+        // Classic Biospheres only executes its shell/bridge carvers, not additional vanilla biome carvers.
+        // For new Solar worlds the shared density supplies caves; finishVolume supplies shells and moons.
+        if (solarSettings.layoutVersion() < 5 && touchesPlanet(chunk)) super.applyCarvers(level, seed, terrainRandom(random), biomes, structures, chunk, step);
         finishVolume(chunk, true);
     }
     @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
@@ -199,7 +216,7 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
     }
 
     @Override public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor height, RandomState random) {
-        var original = super.getBaseColumn(x, z, height, random);
+        var original = super.getBaseColumn(x, z, height, terrainRandom(random));
         for (int y = height.getMinBuildHeight(); y < height.getMaxBuildHeight(); y++) {
             if (layout().bodyAt(x, y, z, 2) == null) original.setBlock(y, Blocks.AIR.defaultBlockState());
         }
@@ -247,7 +264,7 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
                         replacement = Blocks.BEDROCK.defaultBlockState();
                     } else if (!shell) {
                         var environment = solarSettings.environment();
-                        int ocean = SolarTerrain.oceanOverride(containing, x, y, z, environment.edgeOceanEnabled(),
+                        int ocean = solarSettings.layoutVersion() >= 5 ? 0 : SolarTerrain.legacyOceanOverride(containing, x, y, z, environment.edgeOceanEnabled(),
                                 environment.edgeOceanWidth(), environment.edgeOceanDepth(), getSeaLevel());
                         if (ocean == 1) replacement = Blocks.AIR.defaultBlockState();
                         else if (ocean == 2) replacement = Blocks.WATER.defaultBlockState();

@@ -33,6 +33,93 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(BiosphereWorlds.MODID)
 @PrefixGameTestTemplate(false)
 public final class SolarWorldgenGameTests {
+    @GameTest(template = "solar_empty", timeoutTicks = 1200)
+    public static void solarReusesBiospheresDensityWithoutChangingClassicState(GameTestHelper helper) throws ReflectiveOperationException {
+        var level = helper.getLevel();
+        var registries = level.registryAccess();
+        var noise = registries.registryOrThrow(Registries.NOISE_SETTINGS).getHolderOrThrow(ResourceKey.create(
+                Registries.NOISE_SETTINGS, ResourceLocation.fromNamespaceAndPath("biosphereworlds", "biospheres")));
+        var empty = registries.registryOrThrow(Registries.BIOME).getHolderOrThrow(Biomes.THE_VOID);
+        var parameters = registries.registryOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
+                .getHolderOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD);
+        var template = noise.value();
+        var rawRouter = template.noiseRouter().mapAll(function -> {
+            if (function instanceof mx.issacinzunza.biosphereworlds.density.MultipleSpheresDistanceFunction) return net.minecraft.world.level.levelgen.DensityFunctions.zero();
+            if (function instanceof mx.issacinzunza.biosphereworlds.density.SphereEdgeOceanFunction ocean) return ocean.input();
+            return function;
+        });
+        var rawSettings = new NoiseGeneratorSettings(template.noiseSettings(), template.defaultBlock(), template.defaultFluid(), rawRouter,
+                template.surfaceRule(), template.spawnTarget(), template.seaLevel(), template.disableMobGeneration(),
+                template.isAquifersEnabled(), template.oreVeinsEnabled(), template.useLegacyRandomSource());
+        var runtimeField = SolarChunkGenerator.class.getDeclaredField("terrainRandomState");
+        runtimeField.setAccessible(true);
+        var finish = SolarChunkGenerator.class.getDeclaredMethod("finishVolume", net.minecraft.world.level.chunk.ChunkAccess.class, boolean.class);
+        finish.setAccessible(true);
+        var defaults = SolarSettings.defaults();
+        for (long seed : new long[]{0, 81723}) {
+            var original = RandomState.create(template, registries.lookupOrThrow(Registries.NOISE), seed);
+            var raw = RandomState.create(rawSettings, registries.lookupOrThrow(Registries.NOISE), seed);
+            var sample = new net.minecraft.world.level.levelgen.DensityFunction.SinglePointContext(250, 64, 250);
+            long before = Double.doubleToRawLongBits(original.router().finalDensity().compute(sample));
+            for (boolean enabled : new boolean[]{false, true}) {
+                var environment = new SolarSettings.Environment(enabled, 20, 20, false);
+                var settings = new SolarSettings(defaults.geometry(), true, SolarLayout.Climate.HOT,
+                        defaults.guardians(), environment, defaults.general(), 5);
+                var generator = new SolarChunkGenerator(MultiNoiseBiomeSource.createFromPreset(parameters), empty, noise, settings);
+                generator.createState(registries.lookupOrThrow(Registries.STRUCTURE_SET), original, seed);
+                var bound = (RandomState) runtimeField.get(generator);
+                helper.assertTrue(bound != original && !BiosphereWorldgen.isBiosphereGenerator(generator)
+                        && !BiosphereWorldgen.isBiosphereBiomeSource(generator.getBiomeSource()), "Solar must own its state without activating classic markers");
+                var body = generator.layout().systemAtCell(0, 0).bodies().get(1);
+                for (int offset = 0; offset < body.radius(); offset += 3) for (int y = 32; y <= 96; y += 8) {
+                    int x = (int) body.x() + offset;
+                    int z = (int) body.z();
+                    if (!body.contains(x, y, z, 2)) continue;
+                    var context = new net.minecraft.world.level.levelgen.DensityFunction.SinglePointContext(x, y, z);
+                    double weight = enabled ? mx.issacinzunza.biosphereworlds.density.SphereEdgeOcean.weight(body.radius(),
+                            x-body.x(), y-body.y(), z-body.z(), .2) : 0;
+                    var oldRouter = raw.router();
+                    var solarRouter = bound.router();
+                    for (int mode = 0; mode < 3; mode++) {
+                        double input = (mode == 0 ? oldRouter.finalDensity() : mode == 1 ? oldRouter.initialDensityWithoutJaggedness() : oldRouter.continents()).compute(context);
+                        double expected = mx.issacinzunza.biosphereworlds.density.SphereEdgeOcean.transformWeighted(
+                                mode == 2 ? mx.issacinzunza.biosphereworlds.density.SphereEdgeOcean.Mode.CLIMATE : mx.issacinzunza.biosphereworlds.density.SphereEdgeOcean.Mode.FLOOR,
+                                20, y, input, weight);
+                        double actual = (mode == 0 ? solarRouter.finalDensity() : mode == 1 ? solarRouter.initialDensityWithoutJaggedness() : solarRouter.continents()).compute(context);
+                        helper.assertTrue(Double.doubleToRawLongBits(actual) == Double.doubleToRawLongBits(expected), "Solar must use the shared seeded density profile, including its smooth transition");
+                    }
+                }
+                int x = (int) (body.x() + body.radius() * .9);
+                int z = (int) body.z();
+                var pos = new BlockPos(x, 80, z);
+                var chunk = new ProtoChunk(new ChunkPos(pos), UpgradeData.EMPTY, level, registries.registryOrThrow(Registries.BIOME), null);
+                ((SolarChunkAccess) chunk).biosphereworlds$solarLayout(generator.layout());
+                chunk.setBlockState(pos, Blocks.STONE.defaultBlockState(), false);
+                finish.invoke(generator, chunk, false);
+                helper.assertTrue(chunk.getBlockState(pos).is(Blocks.STONE), "Solar must not carve a hard ocean band after generating the density terrain");
+                var column = generator.getBaseColumn((int) body.x(), (int) body.z(), level, original);
+                boolean terrain = false;
+                for (int y = -60; y < 80; y++) terrain |= !column.getBlock(y).isAir();
+                helper.assertTrue(terrain, "The adapted router must generate actual terrain and fluids");
+                var center = generator.layout().systemAtCell(0, 0).central();
+                var stronghold = registries.registryOrThrow(Registries.STRUCTURE).getHolderOrThrow(ResourceKey.create(
+                        Registries.STRUCTURE, ResourceLocation.withDefaultNamespace("stronghold")));
+                var start = stronghold.value().generate(registries, generator, generator.getBiomeSource(), bound,
+                        level.getStructureManager(), seed, new ChunkPos(new BlockPos((int) center.x(), 32, (int) center.z())), 0,
+                        level, stronghold.value().biomes()::contains);
+                helper.assertTrue(start.isValid() && start.getPieces().stream().filter(piece -> piece instanceof StrongholdPieces.PortalRoom).count() == 1,
+                        "The shared terrain router must preserve the central Stronghold and its unique portal room");
+                var ops = RegistryOps.create(JsonOps.INSTANCE, registries);
+                var saved = ChunkGenerator.CODEC.encodeStart(ops, generator).getOrThrow();
+                var restored = (SolarChunkGenerator) ChunkGenerator.CODEC.parse(ops, saved).getOrThrow();
+                helper.assertTrue(restored.solarSettings().equals(settings) && restored.generatorSettings().equals(noise),
+                        "Only the template and Solar snapshot must be serialized, never runtime density adapters");
+            }
+            helper.assertTrue(before == Double.doubleToRawLongBits(original.router().finalDensity().compute(sample)), "Binding Solar must not mutate the classic RandomState");
+        }
+        helper.succeed();
+    }
+
     @GameTest(template = "solar_empty")
     public static void orbitalCagesAreGeneratedOnlyWhenEnabled(GameTestHelper helper) {
         var level = helper.getLevel();
