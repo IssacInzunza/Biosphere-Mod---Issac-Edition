@@ -4,6 +4,8 @@ import mx.issacinzunza.biosphereworlds.config.SphereConfig;
 import mx.issacinzunza.biosphereworlds.util.SphereUtil;
 import mx.issacinzunza.biosphereworlds.worldgen.BiosphereWorldgen;
 import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
+import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkAccess;
+import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkGenerator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -30,6 +32,9 @@ public class MixinHeightmap {
             ordinal = 0
     )
     private BlockState onUpdateBlockState(BlockState state, int x, int y, int z) {
+        if (((SolarChunkAccess) this.chunk).biosphereworlds$solarLayout() != null) {
+            return SolarChunkGenerator.heightmapState(this.chunk, solarWorldPosition(this.chunk, new BlockPos(x, y, z)), state);
+        }
         if (!BiosphereWorldgen.isBiosphereChunk(this.chunk)) {
             return state;
         }
@@ -47,6 +52,18 @@ public class MixinHeightmap {
     }
 
     @Redirect(
+            method = "update",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/chunk/ChunkAccess;getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;")
+    )
+    private BlockState solarDownwardRead(ChunkAccess instance, BlockPos pos) {
+        BlockState original = instance.getBlockState(pos);
+        if (((SolarChunkAccess) instance).biosphereworlds$solarLayout() == null) {
+            return original;
+        }
+        return SolarChunkGenerator.heightmapState(instance, solarWorldPosition(instance, pos), original);
+    }
+
+    @Redirect(
             method = "primeHeightmaps",
             at = @At(
                     value = "INVOKE",
@@ -55,6 +72,9 @@ public class MixinHeightmap {
     )
     private static BlockState onPrimeGetBlockState(ChunkAccess instance, BlockPos pos) {
         BlockState original = instance.getBlockState(pos);
+        if (((SolarChunkAccess) instance).biosphereworlds$solarLayout() != null) {
+            return SolarChunkGenerator.heightmapState(instance, solarWorldPosition(instance, pos), original);
+        }
         if (!BiosphereWorldgen.isBiosphereChunk(instance)) {
             return original;
         }
@@ -66,5 +86,10 @@ public class MixinHeightmap {
             return Blocks.AIR.defaultBlockState();
         }
         return original;
+    }
+
+    private static BlockPos solarWorldPosition(ChunkAccess chunk, BlockPos local) {
+        return new BlockPos(chunk.getPos().getMinBlockX() + (local.getX() & 15), local.getY(),
+                chunk.getPos().getMinBlockZ() + (local.getZ() & 15));
     }
 }

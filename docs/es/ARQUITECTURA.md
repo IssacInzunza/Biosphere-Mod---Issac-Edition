@@ -1,5 +1,114 @@
 # Arquitectura de Biosphere Worlds
 
+## Solar Systems — configuración simplificada y órbitas (experimental)
+
+El preset se presenta como **Solar System - Issac Edition**; su identificador
+solar_systems no cambia. `SolarChunkGenerator` mantiene un circuito independiente.
+`SphereConfig` registra `config/biosphereworlds/BiosphereWorlds.toml` y
+`config/biosphereworlds/SolarSystems.toml`, con valores independientes.
+GeneralOptions y SolarOptions definen los controles una sola vez; SolarConfig los
+instancia con su propio builder. Las opciones generales mantienen las mismas
+etiquetas, comentarios y validadores. Solar no expone puentes, cuadrícula ni hemisferios.
+La migración copia archivos raíz sin borrarlos ni sobrescribir destinos. Si el
+archivo clásico contiene SolarOrbits, esos valores recientes inicializan Solar;
+si no, se considera el archivo Solar anterior. Se convierten SolarGeneral y la
+dirección térmica textual de los formatos experimentales.
+
+El codec conserva la instantánea completa. `layout_version` ausente se interpreta
+como 1, con los valores generales heredados; así los mundos Solar existentes mantienen
+su geometría y perfil anteriores. Los mundos nuevos guardan versión 4 y los ajustes
+generales de cascarón, altura, bedrock, océanos y satélites. **Hace falta un mundo Solar
+nuevo para ver el reparto y el centro corregidos.** No se migra un mundo guardado
+silenciosamente. Se requiere Generate Structures activado.
+
+`SolarLayout` v2 reparte exactamente la cantidad solicitada en hasta tres órbitas
+concéntricas. Cada órbita distribuye sectores angulares uniformes con variación pequeña.
+La separación se mide entre superficies y es un mínimo; las órbitas pueden dejar
+huecos mayores. El radio de la región se calcula internamente a partir de cantidad,
+tamaño, separación y espacio para satélites. Las consultas siguen acotadas por celdas
+y los sistemas se publican como instantáneas inmutables en una caché de 256 entradas.
+Las implementaciones v1, v2 y v3 conservan su comportamiento en las instantáneas guardadas.
+La versión 3 usa el radio y center_y compartidos sin limitar el radio planetario a 160
+ni recolocar el centro para que quepa. close_open_top controla la tapa de Y=319;
+la geometría publica una única prueba de cascarón/tapa para generador y heightmaps.
+
+El centro v2 es cálido o frío según la dirección seleccionada, sin otra opción de
+clima central. Usa Badlands o Ice Spikes si la fuente contiene ese bioma, y conserva
+el fallback climático si no lo contiene. La superficie cálida se cubre de magma y
+el agua superficial pasa a lava; la fría usa hielo compacto. El tratamiento ocurre
+después de superficie y antes de estructuras, solo en Y>=56. La construcción del
+Stronghold conserva su envolvente completa en Y<=48. El centro mantiene radio 180
+y altura 127 automáticamente. La banda orbital intermedia permanece templada.
+
+Los porcentajes climáticos y el radio del sistema no se exponen.
+`guardians_enabled` controla hasta tres pedestales orbitales con jaulas vanilla
+para ghasts, phantoms y blazes, colocadas al terminar la decoración. SolarLayout
+elige posiciones sin colisión con cuerpos ni lunas. Cada jaula genera un mob,
+con demora de 600–1200 ticks y RequiredPlayerRange=96; reglas explícitas evitan
+restricciones de dimensión/luz incompatibles, manteniendo colisiones y Pacífico.
+MixinSolarSpawner solo controla jaulas marcadas en Solar: limita el entorno del
+sistema a 2 ghasts, 3 phantoms y 3 blazes, pausa phantoms de día y respeta
+Peaceful/doMobSpawning. No fuerza chunks para aparecer. Las jaulas rotas no se
+reconstruyen. Los mobs llevan la marca que protege el cascarón de explosiones.
+La versión 4 omite lunas de la biosfera central. Las instantáneas anteriores
+conservan lunas y spawn heredados; se requiere mundo nuevo para esta revisión. Los satélites reutilizan
+SatellitePlacement/SatelliteLayers/MineralCatalog con opciones generales persistidas,
+incluyendo menas admitidas/excluidas y pesos de mods. La selección por planeta del
+cascarón se aplica también a sus lunas y se excluye de los heightmaps.
+
+### Opciones propias — SolarOrbits
+
+| Opción | Predeterminado | Rango | Efecto |
+|---|---|---|---|
+| `planet_count` | `8` | 1–16 | Cantidad de planetas orbitales, sin contar la biosfera central del Stronghold ni los satélites mineros. Se reparten alrededor del centro en hasta tres franjas orbitales. |
+| `planet_gap` | `400` | 0–4000 blocks / bloques | Separación mínima de espacio vacío entre las superficies de las esferas, en bloques; no es una distancia entre centros. También separa el centro de la órbita interior. La geometría orbital puede dejar huecos mayores. |
+| `system_gap` | `1500` | 0–16000 blocks / bloques | Separación mínima de espacio vacío entre los límites exteriores de sistemas vecinos, en bloques. El tamaño del sistema se calcula automáticamente a partir de los tamaños y distancias planetarias. |
+| `climate_direction` | `0` | 0–1 (deslizador entero) | 0: centro de magma/lava, planetas interiores cálidos, intermedios templados y exteriores fríos. 1: centro de hielo compacto, interiores fríos, intermedios templados y exteriores cálidos. Con pocos planetas se conserva al menos uno templado. |
+| `guardians_enabled` | `true` | booleano | Genera jaulas orbitales de ghasts, phantoms y blazes con frecuencia y población bajas. No modifica otros mobs. Se guarda al crear cada mundo Solar. |
+
+### Ajustes generales independientes — Settings
+
+Reutilizan las definiciones del archivo clásico, pero sus valores se leen de SolarSystems.toml al crear cada mundo Solar.
+Los mundos Solar guardados conservan su instantánea. Puentes automáticos: **desactivados siempre**.
+La cuadrícula clásica y los hemisferios no se aplican a Solar. La tapa superior
+usa su propio close_open_top. Se validan min <= max en radios, tamaños, huecos y elevaciones.
+Solar usa los radios positivos de Settings sin un límite planetario adicional;
+la altura del mundo recorta las esferas grandes. Se acepta tamaño de satélite del 100 %, pero
+se omiten candidatos tan grandes como su planeta.
+
+| Opción | Predeterminado | Rango | Efecto |
+|---|---|---|---|
+| `min_radius` | `128` | entero positivo | Radio mínimo de los planetas orbitales, en bloques. No puede superar el radio máximo. Pon ambos radios iguales para obtener tamaños fijos. |
+| `radius` | `128` | entero positivo | Radio máximo de los planetas orbitales, en bloques. La biosfera del Stronghold conserva automáticamente el tamaño necesario para alojarlo completo. |
+| `center_y` | `62` | −64–319 | Altura Y exacta del centro de los planetas orbitales. La altura del mundo recorta las esferas que la superan. El centro del Stronghold permanece en Y=127. |
+| `sphere_block` | `minecraft:glass` | block IDs / ids de bloques | Ids de bloque para los cascarones. Cada esfera elige uno de forma determinista. Si la lista está vacía o el bloque no es válido, se usa vidrio. Los puentes automáticos están desactivados en Solar. |
+| `close_open_top` | `false` | booleano | Tapa las esferas cortadas por el límite de construcción con el bloque del cascarón en Y=319. Desactivado deja el corte abierto; no reduce el radio. |
+| `bedrock_mode` | `FLOOR` | FLOOR / NONE / SHELL | FLOOR conserva la bedrock vanilla del fondo del mundo donde llegue una esfera. NONE la sustituye por deepslate. SHELL añade un forro de bedrock de tres bloques por dentro de la mitad inferior del cascarón. |
+| `edge_ocean_enabled` | `false` | boolean / booleano | Baja e inunda la banda interior junto al cascarón de los planetas. La biosfera central conserva su perfil peligroso de magma o hielo. |
+| `edge_ocean_width` | `20` | 0–100 % | Ancho de la banda como porcentaje de la sección de la esfera al nivel del mar. Cero elimina la banda. Se usa únicamente con el océano de borde activado. |
+| `edge_ocean_depth` | `20` | 0–100 blocks / bloques | Profundidad del fondo oceánico bajo el nivel del mar, en bloques. Con nivel del mar 63 y profundidad 20, el fondo queda en Y=43. Se usa únicamente con el océano de borde activado. |
+| `satellites_enabled` | `true` | boolean / booleano | Genera lunas mineras elevadas alrededor de los planetas, sin puentes. Desactivarlo conserva las posiciones y los climas de los planetas. |
+| `satellites_max_count` | `3` | 0–64 | Límite por planeta. Puede haber menos si una luna no cabe sin colisiones o sin superar la altura de construcción. Cero desactiva los satélites. |
+| `satellites_min_size_percent` | `8` | 1–100 % | Radio mínimo del satélite como porcentaje del radio de su planeta. No puede superar el máximo. Toda luna aceptada es más pequeña que su planeta. |
+| `satellites_max_size_percent` | `12` | 1–100 % | Radio máximo del satélite como porcentaje del radio de su planeta. Los valores altos pueden dejar menos espacio para lunas dentro de la altura de construcción. |
+| `satellites_min_gap_percent` | `25` | 0–1000 % | Separación mínima entre superficies del satélite y su planeta, como porcentaje del radio del planeta. También se aplica el mínimo absoluto en bloques. |
+| `satellites_max_gap_percent` | `75` | 0–1000 % | Separación máxima sorteada respecto al planeta como porcentaje de su radio. Debe ser mayor o igual al porcentaje mínimo; el mínimo absoluto en bloques sigue teniendo prioridad. |
+| `satellites_min_gap_blocks` | `16` | 0–1024 blocks / bloques | Separación mínima absoluta entre un satélite y cualquier planeta u otra luna, en bloques. Se usa el mayor valor entre este mínimo y la separación porcentual sorteada. |
+| `satellites_min_elevation_degrees` | `30` | 0–90° | Ángulo mínimo sobre el plano horizontal del planeta, en grados. No puede superar la elevación máxima. |
+| `satellites_max_elevation_degrees` | `55` | 0–90° | Ángulo máximo en grados; 90 queda directamente encima del planeta. Se omiten las posiciones que superen la altura de construcción. |
+| `satellites_excluded_ores` | `classic exclusions / exclusiones clásicas` | IDs or #tags / ids o #tags | Ids de bloque o #tags que no se elegirán como mineral. Las exclusiones tienen prioridad sobre las inclusiones. Por defecto se excluyen escombros ancestrales, minerales del Nether y menas de deepslate. |
+| `satellites_included_ores` | `[]` | IDs or #tags / ids o #tags | Ids de minerales o #tags adicionales a c:ores_in_ground/stone. Solo se aceptan bloques sólidos utilizables, sin entidades de bloque. |
+| `satellites_mod_ore_weight` | `3` | 0–1000 | Peso de selección de las menas de otros mods; las vanilla conservan sus pesos. Cero excluye las menas de mods de la selección. |
+| `satellites_mod_ore_density_permille` | `20` | 0–1000 ‰ | Bloques de mena por cada 1000 bloques del núcleo para minerales de mods: 20 equivale a 2 %. Se elige un solo tipo de mineral por luna, protegido por piedra y magma. |
+
+Se mantienen la colocación exclusiva central de Stronghold, las piezas vanilla,
+la validación del volumen completo y los bloqueos de portales en WorldGenRegion y
+ProtoChunks marcados. `SolarEvents` conserva spawn, guardianes por intervalos,
+protección de cascarón y restauración de geometría al cargar chunks.
+No verificado: escrituras de mods que eviten esas rutas, C2ME, activación real del
+portal, ojos, locate en un mundo jugable y rendimiento prolongado. La conservación
+de la lógica clásica no sustituye una comparación de chunks contra su copia anterior.
+
 Guía de lectura para **Biosphere Worlds - Issac Edition**, fork de
 NeoBiosphere para Minecraft 1.21.1 y NeoForge 21.1.216. Las rutas de este
 documento son relativas a la raíz del repositorio. Cuando una afirmación no se
@@ -898,3 +1007,11 @@ y finalmente comprobar un mundo nuevo dentro y fuera de una esfera. No se
 debe inferir compatibilidad de una compilación exitosa: los problemas de
 worldgen pueden aparecer solo al generar un chunk, al consultar biomas o al
 crear una estructura.
+
+### Fuentes de Minecraft consultadas para las jaulas
+
+Caché NeoForm `sourcesAndCompiledWithNeoForge_d1701b2d84878ca1ab690eb7c5e8e0275ec75727_output.jar`:
+BaseSpawner.java:57–60 (activación), 112–164 (reglas/colisiones), 203–260 (NBT);
+SpawnerBlockEntity.java:40–61 y 91–92; SpawnData.java:19–25 y 60–82.
+EventHooks.java:258–263 confirma el tratamiento de reglas personalizadas;
+ChunkAccess.java:129 permite publicar el block entity durante worldgen.

@@ -1,4 +1,21 @@
 {
+  "biosphereworlds.configuration.section.biosphereworlds.biosphereworlds.toml": "Ajustes de Biospheres",
+  "biosphereworlds.configuration.section.biosphereworlds.biosphereworlds.toml.title": "Configuración de Biospheres",
+  "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml": "Solar System - Issac Edition",
+  "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml.title": "Configuración de Solar System",
+  "generator.biosphereworlds.solar_systems": "Solar System - Issac Edition",
+  "biosphereworlds.configuration.solar_guardians_enabled": "Jaulas de guardianes del centro",
+  "biosphereworlds.configuration.solar_guardians_enabled.tooltip": "Genera hasta tres pequeños pedestales orbitales con jaulas de ghasts, phantoms y blazes. Se activan a 96 bloques del jugador; un mob por ciclo, cada 30–60 segundos. Límites del entorno del sistema: 2 ghasts, 3 phantoms y 3 blazes. Phantoms solo de noche. Sin guardianes en Pacífico ni con aparición de mobs desactivada. Las jaulas destruidas no se reconstruyen. Solo para mundos Solar nuevos.",
+  "biosphereworlds.configuration.SolarOrbits": "Sistema solar",
+  "biosphereworlds.configuration.SolarOrbits.tooltip": "Planetas, distancias, temperatura numérica y jaulas de guardianes. Los ajustes generales tienen valores independientes en SolarSystems.toml. Puentes automáticos, cuadrícula clásica y hemisferios desactivados. El sol no tiene lunas. Se aplica a mundos nuevos.",
+  "biosphereworlds.configuration.solar_planet_count": "Planetas por sistema solar",
+  "biosphereworlds.configuration.solar_planet_count.tooltip": "Cantidad de planetas orbitales, sin contar la biosfera central del Stronghold ni los satélites mineros. Se reparten alrededor del centro en hasta tres franjas orbitales. Solo se aplica a mundos Solar nuevos; los mundos guardados conservan su configuración.",
+  "biosphereworlds.configuration.solar_planet_gap": "Distancia mínima entre planetas",
+  "biosphereworlds.configuration.solar_planet_gap.tooltip": "Separación mínima de espacio vacío entre las superficies de las esferas, en bloques; no es una distancia entre centros. También separa el centro de la órbita interior. La geometría orbital puede dejar huecos mayores. Solo se aplica a mundos Solar nuevos; los mundos guardados conservan su configuración.",
+  "biosphereworlds.configuration.solar_system_gap": "Distancia mínima entre sistemas solares",
+  "biosphereworlds.configuration.solar_system_gap.tooltip": "Separación mínima de espacio vacío entre los límites exteriores de sistemas vecinos, en bloques. El tamaño del sistema se calcula automáticamente a partir de los tamaños y distancias planetarias. Solo se aplica a mundos Solar nuevos; los mundos guardados conservan su configuración.",
+  "biosphereworlds.configuration.solar_climate_direction": "Temperatura central (0 calor / 1 hielo)",
+  "biosphereworlds.configuration.solar_climate_direction.tooltip": "Deslizador entero: 0 = centro de magma/lava, planetas interiores cálidos y exteriores fríos. 1 = centro de hielo compacto, interiores fríos y exteriores cálidos. La franja intermedia permanece templada. Solo afecta a mundos Solar nuevos; los guardados conservan sus ajustes.",
   "generator.biosphereworlds.biospheres": "Biospheres - Issac Edition",
 
   "biosphereworlds.configuration.title": "Configuración de Biosphere Worlds",
@@ -9,38 +26,38 @@
   "biosphereworlds.configuration.Settings.tooltip": "Tamaño y separación de las esferas, bloques del cascarón y de los puentes, estructuras, océano de borde y satélites.",
 
   "biosphereworlds.configuration.radius": "Radio máximo de las esferas",
-  "biosphereworlds.configuration.radius.tooltip": "Radio máximo de las esferas, en bloques (128 por defecto). Solo afecta a mundos nuevos.",
+  "biosphereworlds.configuration.radius.tooltip": "Radio máximo de las esferas, en bloques (128 por defecto). Solo afecta a mundos nuevos. Solar usa este valor sin un límite adicional de radio; activa close_open_top para tapar las esferas cortadas por la altura del mundo. El centro del Stronghold tiene tamaño fijo.",
 
   "biosphereworlds.configuration.min_radius": "Radio mínimo de las esferas",
-  "biosphereworlds.configuration.min_radius.tooltip": "Radio mínimo de las esferas. Ponlo igual al radio máximo para esferas de tamaño fijo, o más bajo para que cada esfera elija un tamaño aleatorio. Solo afecta a mundos nuevos.",
+  "biosphereworlds.configuration.min_radius.tooltip": "Radio mínimo de las esferas. Ponlo igual al máximo para tamaños fijos o más bajo para tamaños aleatorios. En Solar debe ser positivo y no superar el máximo. Solo afecta a mundos nuevos.",
 
   "biosphereworlds.configuration.spacing": "Separación entre esferas",
-  "biosphereworlds.configuration.spacing.tooltip": "Distancia entre los centros de las esferas en la cuadrícula, en bloques. Solo afecta a mundos nuevos.",
+  "biosphereworlds.configuration.spacing.tooltip": "Distancia entre los centros de las esferas en la cuadrícula, en bloques. Solo afecta a mundos nuevos. Desactivado en Solar Systems; usa las distancias planetarias y entre sistemas.",
 
   "biosphereworlds.configuration.center_y": "Altura del centro",
-  "biosphereworlds.configuration.center_y.tooltip": "Nivel Y usado como centro de cada esfera. Solo afecta a mundos nuevos.",
+  "biosphereworlds.configuration.center_y.tooltip": "Nivel Y del centro de las esferas para mundos nuevos. Los planetas Solar usan este valor exacto; el centro del Stronghold permanece en Y=127. La altura del mundo recorta las esferas que la superan.",
 
   "biosphereworlds.configuration.sphere_block": "Bloques del cascarón",
   "biosphereworlds.configuration.sphere_block.tooltip": "Ids de bloque usados para los cascarones; cada esfera elige uno de forma determinista según su posición en la cuadrícula. En esta pantalla puedes editar, reordenar o eliminar las entradas existentes, pero las entradas nuevas hay que añadirlas a mano en el archivo de configuración. Solo afecta a mundos nuevos.",
   "biosphereworlds.configuration.sphere_block.button": "Editar",
 
   "biosphereworlds.configuration.only_upper_hemisphere": "Solo hemisferio superior",
-  "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Genera solo la mitad superior de cada esfera. Solo afecta a mundos nuevos.",
+  "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Genera solo la mitad superior de cada esfera. Solo afecta a mundos nuevos. Desactivado en Solar Systems, que usa esferas completas.",
 
   "biosphereworlds.configuration.close_open_top": "Cerrar tapas superiores",
-  "biosphereworlds.configuration.close_open_top.tooltip": "Cierra con una tapa plana en el Y colocable más alto (319) las esferas que superan el límite de construcción, usando el bloque del cascarón. Elimina la salida natural por arriba. Solo afecta a mundos nuevos.",
+  "biosphereworlds.configuration.close_open_top.tooltip": "Tapa con el bloque del cascarón las esferas cortadas por el límite de construcción, en la última altura construible. También se aplica a mundos Solar nuevos. Desactivado deja el corte abierto; en ambos casos se conserva el radio configurado.",
 
   "biosphereworlds.configuration.bedrock_mode": "Modo de bedrock",
   "biosphereworlds.configuration.bedrock_mode.tooltip": "Bedrock en el suelo del mundo. floor: se mantiene la regla bedrock_floor de la surface_rule en el fondo del mundo. none: sin bedrock en el fondo, el suelo pasa a ser deepslate (el pumpjack de Create Diesel Generators necesita bedrock, así que no funcionará con este valor). shell: lo de floor más un forro de bedrock de 3 bloques por dentro del cascarón de vidrio en la mitad inferior de cada esfera; con only_upper_hemisphere activo se comporta exactamente como floor. Solo afecta a chunks nuevos.",
 
   "biosphereworlds.configuration.generate_bridge": "Generar puentes",
-  "biosphereworlds.configuration.generate_bridge.tooltip": "Genera puentes entre esferas adyacentes. Solo afecta a mundos nuevos.",
+  "biosphereworlds.configuration.generate_bridge.tooltip": "Genera puentes entre esferas adyacentes. Solo afecta a mundos nuevos. Siempre desactivado en Solar Systems.",
 
   "biosphereworlds.configuration.bridge_block": "Bloque de los puentes",
-  "biosphereworlds.configuration.bridge_block.tooltip": "Id del bloque usado por los puentes (por ejemplo minecraft:oak_planks). Solo afecta a mundos nuevos.",
+  "biosphereworlds.configuration.bridge_block.tooltip": "Id del bloque usado por los puentes (por ejemplo minecraft:oak_planks). Solo afecta a mundos nuevos. No se utiliza en Solar Systems: los puentes automáticos están desactivados.",
 
   "biosphereworlds.configuration.bridge_radius": "Radio de los puentes",
-  "biosphereworlds.configuration.bridge_radius.tooltip": "Grosor radial del tubo del puente; valores mayores producen puentes más gruesos. Solo afecta a mundos nuevos.",
+  "biosphereworlds.configuration.bridge_radius.tooltip": "Grosor radial del tubo del puente; valores mayores producen puentes más gruesos. Solo afecta a mundos nuevos. No se utiliza en Solar Systems: los puentes automáticos están desactivados.",
 
   "biosphereworlds.configuration.restrict_structures_to_spheres": "Restringir estructuras a las esferas",
   "biosphereworlds.configuration.restrict_structures_to_spheres.tooltip": "Mantiene los inicios de estructura dentro de las esferas en vez de dejarlos aparecer en el vacío. Solo afecta a mundos nuevos.",

@@ -22,6 +22,7 @@ public class BiosphereWorlds {
 
     public BiosphereWorlds(IEventBus modEventBus, ModContainer modContainer) {
         SphereConfig.setup(modContainer);
+        mx.issacinzunza.biosphereworlds.worldgen.solar.SolarWorldgen.register(modEventBus);
         ModDensityFunctions.DENSITY_FUNCTIONS.register(modEventBus);
         ModCarvers.CARVERS.register(modEventBus);
         ModFeature.FEATURES.register(modEventBus);

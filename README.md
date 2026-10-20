@@ -1,5 +1,97 @@
 # Biosphere Worlds - Issac Edition
 
+## Solar System - Issac Edition (experimental; acceptance testing pending)
+
+Select **Solar System - Issac Edition** for independent solar generation.
+Both configuration files live under **config/biosphereworlds/**:
+
+- `BiosphereWorlds.toml` controls the original Biospheres generator.
+- `SolarSystems.toml` controls Solar, with familiar general settings plus five Solar controls.
+
+Their values are independent. A shared definition in SphereConfig supplies the same
+labels, defaults and detailed descriptions without duplicating the option logic.
+Old root-level files are copied on first start, without deleting the originals or
+overwriting destinations. The latest unified settings take precedence over an older
+experimental Solar file when initializing the new Solar config.
+Settings are saved with each world's generator. **Create a new Solar world to see
+the revised orbits and central surface.** Existing Solar snapshots retain their
+original layout (versions 1–3); new worlds use version 4. Editing the TOML does not
+relocate saved planets or silently replace a saved world's settings.
+Generate Structures must be enabled.
+
+Planets occupy up to three concentric orbital bands with evenly distributed angular
+sectors and small seeded variation. Planet count is exact, excluding the central sphere
+and mineral moons. Planet distance is a **minimum gap between surfaces**, rather than
+a distance to a randomly chosen neighboring planet. The system envelope is calculated
+automatically, including room for satellites; it is no longer a user-facing option.
+
+The center follows the selected temperature direction: **magma terrain and lava pools**
+for `climate_direction = 0`, or **packed ice** for `climate_direction = 1`. Its profile uses Badlands or
+Ice Spikes when those biomes exist in the wrapped source. The middle orbital band
+always stays temperate. With very few planets, at least one orbital planet is temperate.
+The central sphere keeps its required Stronghold size and Y=127 automatically.
+Central surface changes occur before structure placement and only at Y>=56; the
+complete Stronghold remains at Y<=48. The sun has no mineral moons in version 4. Planets retain their satellites.
+With guardians enabled, up to three small obsidian pedestals in the sun's orbit
+carry ghast, phantom and blaze cages. A cage activates within 96 blocks of a player,
+spawns one mob per cycle, and waits 30–60 seconds between cycles. Nearby system caps
+are 2 ghasts, 3 phantoms and 3 blazes. Phantoms spawn only at night; Peaceful and
+`doMobSpawning=false` pause these cages. Destroyed cages are not rebuilt.
+Old snapshots retain their previous moon and guardian behavior; create a new Solar
+world to get the cages and moonless sun.
+
+### Solar-specific options — SolarOrbits
+
+| Option | Default | Range | Behavior |
+|---|---|---|---|
+| `planet_count` | `8` | 1–16 | Exact number of orbital planets, excluding the central Stronghold sphere and mineral satellites. They occupy up to three orbital bands around the center. |
+| `planet_gap` | `400` | 0–4000 blocks / bloques | Minimum empty gap between sphere surfaces, in blocks, never center-to-center distance. Also separates the central sphere from the inner orbit. Orbital geometry can produce larger gaps. |
+| `system_gap` | `1500` | 0–16000 blocks / bloques | Minimum empty gap between the outer envelopes of neighboring systems, in blocks. System size is calculated from planet sizes and distances automatically. |
+| `climate_direction` | `0` | 0–1 (integer slider) | 0: magma/lava center, warm inner planets, temperate middle, cold exterior. 1: packed-ice center, cold inner planets, temperate middle, warm exterior. With very few planets, at least one stays temperate. |
+| `guardians_enabled` | `true` | boolean | Generate the sun’s orbital ghast, phantom and blaze cages with low spawn rates. Other mobs are unaffected. Saved with each new Solar world. |
+
+### Familiar general options — Settings
+
+These options reuse the Biospheres definitions with independent values in SolarSystems.toml.
+The table describes their Solar behavior; existing Solar worlds retain saved values.
+Automatic bridges are **always disabled**. Classic grid spacing and hemispheres do
+not apply. Solar uses its own `close_open_top` to cap planets cut by world height.
+General minimum/maximum pairs are validated together.
+Solar uses the positive radii from Settings without an additional planet radius cap.
+Orbital centers use the configured Y; world height clips oversized planets. Satellite sizes of 100% are accepted as input, but candidates
+as large as their parent are omitted.
+
+| Option | Default | Range | Behavior |
+|---|---|---|---|
+| `min_radius` | `128` | positive integer | Smallest orbital sphere radius, in blocks. Must not exceed radius. Set both radii equal for fixed sizes. |
+| `radius` | `128` | positive integer | Largest orbital sphere radius, in blocks. The central Stronghold sphere keeps its required safe size automatically. |
+| `center_y` | `62` | −64–319 | Exact orbital center Y. Oversized spheres are clipped at world height. The Stronghold center remains Y=127. |
+| `sphere_block` | `minecraft:glass` | block IDs / ids de bloques | Block ids used for the sphere shells; each sphere selects one deterministically. Empty, missing or unusable choices fall back to glass. Automatic bridges are disabled in Solar. |
+| `close_open_top` | `false` | boolean | Close planets cut by the build limit with a flat shell cap at Y=319. Disabled leaves the opening. Does not shrink the configured radius. |
+| `bedrock_mode` | `FLOOR` | FLOOR / NONE / SHELL | FLOOR preserves vanilla world-floor bedrock only where a sphere reaches it. NONE replaces it with deepslate. SHELL adds a three-block bedrock lining inside the lower shell. |
+| `edge_ocean_enabled` | `false` | boolean / booleano | Lowers and floods the interior band next to orbital shells. The dangerous central sphere keeps its magma or ice profile. |
+| `edge_ocean_width` | `20` | 0–100 % | Band width as a percentage of the sphere's sea-level section. Zero disables the band. Used only when edge_ocean_enabled is enabled. |
+| `edge_ocean_depth` | `20` | 0–100 blocks / bloques | Ocean floor depth below sea level, in blocks. Sea level 63 and depth 20 give a floor at Y=43. Used only when the edge ocean is enabled. |
+| `satellites_enabled` | `true` | boolean / booleano | Generate elevated mineral moons around planets, without bridges. Turning this off leaves planet positions and climates unchanged. |
+| `satellites_max_count` | `3` | 0–64 | Upper limit per planet. Actual count may be lower when a moon cannot fit without collisions or height violations. Zero disables satellites. |
+| `satellites_min_size_percent` | `8` | 1–100 % | Minimum moon radius as a percentage of its parent radius. Must not exceed the maximum. Every accepted moon remains smaller than its parent. |
+| `satellites_max_size_percent` | `12` | 1–100 % | Maximum moon radius as a percentage of its parent radius. Larger values may leave less room for moons inside build height. |
+| `satellites_min_gap_percent` | `25` | 0–1000 % | Minimum surface gap from the parent, as a percentage of its radius. The absolute minimum in satellites_min_gap_blocks also applies. |
+| `satellites_max_gap_percent` | `75` | 0–1000 % | Maximum sampled gap from the parent as a percentage of its radius. Must be at least the minimum percentage; the absolute minimum still takes precedence. |
+| `satellites_min_gap_blocks` | `16` | 0–1024 blocks / bloques | Absolute minimum gap between a satellite and any planet or moon, in blocks. The larger of this value and the sampled percentage gap is used. |
+| `satellites_min_elevation_degrees` | `30` | 0–90° | Minimum angle above the parent's horizontal plane, in degrees. Must not exceed the maximum elevation. |
+| `satellites_max_elevation_degrees` | `55` | 0–90° | Maximum angle in degrees; 90 is directly above the parent. Candidates outside build height are omitted. |
+| `satellites_excluded_ores` | `classic exclusions / exclusiones clásicas` | IDs or #tags / ids o #tags | Ore block ids or #tags that must not be selected. Exclusions override inclusions. Defaults exclude ancient debris, Nether ores and deepslate ores. |
+| `satellites_included_ores` | `[]` | IDs or #tags / ids o #tags | Extra ore ids or #tags, in addition to c:ores_in_ground/stone. Only usable solid blocks without block entities are accepted. |
+| `satellites_mod_ore_weight` | `3` | 0–1000 | Selection weight for mod ores; vanilla ores retain their own weights. Zero excludes mod ores from selection. |
+| `satellites_mod_ore_density_permille` | `20` | 0–1000 ‰ | Ore blocks per 1000 core blocks for mod ores: 20 means 2%. One mineral type is chosen per moon, behind stone and magma. |
+
+Natural End portal/frame writes through WorldGenRegion and marked ProtoChunks are
+accepted only within an authorized central Stronghold portal room placement.
+Other mods that bypass those paths are not certified. Nether and End retain vanilla
+generation. See `PROGRESS.md` for acceptance tests still pending, including actual
+portal activation, eyes, locate, external mods and prolonged exploration.
+
 Biosphere Worlds – Issac Edition is a fork of [NeoBiosphere](https://github.com/mlus-asuka/NeoBiosphere) by mlus, for NeoForge 1.21.1. Full credit to the original author for the concept and base code.
 
 Biosphere Worlds generates the Overworld as floating glass biospheres surrounded by void, with biomes and structures restricted to each sphere. Select **Biospheres - Issac Edition** on the Create World screen to opt into the biosphere terrain. Vanilla Overworld presets remain unchanged.
