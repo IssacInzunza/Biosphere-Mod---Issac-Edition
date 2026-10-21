@@ -33,6 +33,89 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(BiosphereWorlds.MODID)
 @PrefixGameTestTemplate(false)
 public final class SolarWorldgenGameTests {
+    @GameTest(template = "solar_empty", timeoutTicks = 1200)
+    public static void radiusOneReproducesEmptySpawnColumn(GameTestHelper helper) throws ReflectiveOperationException {
+        var level = helper.getLevel();
+        var registries = level.registryAccess();
+        var noise = registries.registryOrThrow(Registries.NOISE_SETTINGS).getHolderOrThrow(ResourceKey.create(
+                Registries.NOISE_SETTINGS, ResourceLocation.fromNamespaceAndPath("biosphereworlds", "biospheres")));
+        var empty = registries.registryOrThrow(Registries.BIOME).getHolderOrThrow(Biomes.THE_VOID);
+        var parameters = registries.registryOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
+                .getHolderOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD);
+        var defaults = SolarSettings.defaults();
+        int region = SolarLayout.requiredSingleOrbitSystemRadius(1, 1, 180, 400, 75, 12, 16);
+        var geometry = new SolarLayout.Params(region, 1500, 1, 1, 1, 180, 400, 400, false, 30, 40, 30, 0, 30, 55, 16);
+        var general = new SolarSettings.General(62, defaults.general().shellBlocks(), SphereConfig.BedrockMode.FLOOR,
+                defaults.general().satellites());
+        var settings = new SolarSettings(geometry, true, SolarLayout.Climate.HOT,
+                new SolarSettings.Guardians(false, true, true, 48, 3, 6, 400), defaults.environment(), general, 6);
+        for (long seed : new long[]{0, -1, Long.MIN_VALUE, -4634224182739581737L}) {
+            var generator = new SolarChunkGenerator(MultiNoiseBiomeSource.createFromPreset(parameters), empty, noise, settings);
+            var random = RandomState.create(noise.value(), registries.lookupOrThrow(Registries.NOISE), seed);
+            generator.createState(registries.lookupOrThrow(Registries.STRUCTURE_SET), random, seed);
+            var planet = generator.layout().systemAtCell(0, 0).bodies().get(1);
+            helper.assertTrue(planet.radius() == 1 && planet.climate() == SolarLayout.Climate.TEMPERATE,
+                    "Fixture must retain the configured radius and select the spawn planet");
+            int x = (int) Math.floor(planet.x());
+            int z = (int) Math.floor(planet.z());
+            var column = generator.getBaseColumn(x, z, level, random);
+            for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight(); y++) {
+                helper.assertTrue(column.getBlock(y).isAir(), "Radius one has no terrain interior");
+            }
+            int y = generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
+            helper.assertTrue(y == level.getMinBuildHeight(), "Reproduce the invalid spawn height before validation");
+            assertSpawnValidation(helper, planet, new BlockPos(x, y, z), false);
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "solar_empty")
+    public static void initialSpawnRequiresSupportAndStandingSpace(GameTestHelper helper) throws ReflectiveOperationException {
+        var level = helper.getLevel();
+        var pos = helper.absolutePos(new BlockPos(2, 4, 2));
+        var planet = new SolarLayout.Body(1, pos.getX(), pos.getY(), pos.getZ(), 128, false, SolarLayout.Climate.TEMPERATE);
+        level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 2);
+        level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+        level.setBlock(pos.above(), Blocks.AIR.defaultBlockState(), 2);
+        assertSpawnValidation(helper, planet, pos, true);
+        level.setBlock(pos.below(), Blocks.WATER.defaultBlockState(), 2);
+        assertSpawnValidation(helper, planet, pos, true);
+        level.setBlock(pos.below(), Blocks.AIR.defaultBlockState(), 2);
+        assertSpawnValidation(helper, planet, pos, false);
+        level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 2);
+        for (var obstruction : new BlockPos[]{pos, pos.above()}) {
+            level.setBlock(obstruction, Blocks.STONE.defaultBlockState(), 2);
+            assertSpawnValidation(helper, planet, pos, false);
+            level.setBlock(obstruction, Blocks.AIR.defaultBlockState(), 2);
+        }
+        level.setBlock(pos, Blocks.LAVA.defaultBlockState(), 2);
+        assertSpawnValidation(helper, planet, pos, false);
+        level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+        // A nominally positive radius is insufficient; the entire standing column must fit.
+        var small = new SolarLayout.Body(1, pos.getX(), pos.getY(), pos.getZ(), 2, false, SolarLayout.Climate.TEMPERATE);
+        assertSpawnValidation(helper, small, pos, false);
+        assertSpawnValidation(helper, planet, new BlockPos(pos.getX(), level.getMinBuildHeight(), pos.getZ()), false);
+        assertSpawnValidation(helper, planet, new BlockPos(pos.getX(), level.getMaxBuildHeight() - 1, pos.getZ()), false);
+        helper.succeed();
+    }
+
+    private static void assertSpawnValidation(GameTestHelper helper, SolarLayout.Body planet, BlockPos pos, boolean valid)
+            throws ReflectiveOperationException {
+        var validate = mx.issacinzunza.biosphereworlds.event.SolarEvents.class.getDeclaredMethod("validateSpawn",
+                net.minecraft.server.level.ServerLevel.class, SolarLayout.Body.class, BlockPos.class);
+        validate.setAccessible(true);
+        boolean accepted = true;
+        try {
+            validate.invoke(null, helper.getLevel(), planet, pos);
+        } catch (java.lang.reflect.InvocationTargetException error) {
+            if (!(error.getCause() instanceof IllegalStateException rejection)) throw error;
+            helper.assertTrue(rejection.getMessage().startsWith("Solar initial spawn is not viable at "),
+                    "Spawn rejection must explain the failure instead of masking another exception");
+            accepted = false;
+        }
+        helper.assertTrue(accepted == valid, "Unexpected spawn validation result at " + pos + ", radius=" + planet.radius());
+    }
+
     /** Produces independent orbit envelopes for current test fixtures; older snapshots keep their exact params. */
     private static SolarLayout.Params geometryForVersion(SolarLayout.Params p, int version) {
         if (version < 6) return p;
@@ -462,28 +545,39 @@ public final class SolarWorldgenGameTests {
         var p = defaults.geometry();
         var allBlocks = net.minecraft.core.registries.BuiltInRegistries.BLOCK.keySet().stream().map(Object::toString).toList();
         var options = defaults.general().satellites();
-        var excluded = new SolarSettings.Satellites(options.minSize(), options.maxSize(), options.minGapPercent(),
-                options.maxGapPercent(), java.util.List.of(), allBlocks, options.modWeight(), options.modDensity());
-        var resolved = mx.issacinzunza.biosphereworlds.event.SatelliteMineralCatalog.resolve(
-                net.minecraft.core.registries.BuiltInRegistries.BLOCK, excluded.included(), excluded.excluded(),
-                excluded.modWeight(), excluded.modDensity());
-        helper.assertTrue(resolved.candidates().isEmpty(), "The fixture must exclude every candidate");
-        for (int count : new int[]{0, 3}) {
-            var geometry = new SolarLayout.Params(p.systemRadius(), p.systemGap(), p.planetCount(), p.minRadius(), p.maxRadius(),
-                    p.centralRadius(), p.minGap(), p.maxGap(), p.coldInside(), p.innerPercent(), p.middlePercent(),
-                    p.outerPercent(), count, p.satelliteMinElevation(), p.satelliteMaxElevation(), p.satelliteGap());
-            var general = new SolarSettings.General(64, defaults.general().shellBlocks(), SphereConfig.BedrockMode.FLOOR, excluded);
-            var settings = new SolarSettings(geometry, true, SolarLayout.Climate.HOT,
-                    defaults.guardians(), defaults.environment(), general, 5);
-            var generator = new SolarChunkGenerator(MultiNoiseBiomeSource.createFromPreset(parameters), empty, noise, settings);
-            var random = RandomState.create(noise.value(), registries.lookupOrThrow(Registries.NOISE), 4);
-            boolean failed = false;
-            try {
-                generator.createState(registries.lookupOrThrow(Registries.STRUCTURE_SET), random, 4);
-            } catch (IllegalArgumentException expected) {
-                failed = true;
+        // Empty, nonempty with zero weight, and valid with a missing id to exercise Solar diagnostics.
+        for (int catalogCase = 0; catalogCase < 3; catalogCase++) {
+            var excluded = new SolarSettings.Satellites(options.minSize(), options.maxSize(), options.minGapPercent(),
+                    options.maxGapPercent(), catalogCase == 0 ? java.util.List.of() : java.util.List.of("minecraft:stone", "missingmod:ore"),
+                    catalogCase == 0 ? allBlocks : allBlocks.stream().filter(id -> !id.equals("minecraft:stone")).toList(),
+                    catalogCase == 1 ? 0 : options.modWeight(), options.modDensity());
+            var resolved = mx.issacinzunza.biosphereworlds.event.SatelliteMineralCatalog.resolve(
+                    net.minecraft.core.registries.BuiltInRegistries.BLOCK, excluded.included(), excluded.excluded(),
+                    excluded.modWeight(), excluded.modDensity());
+            helper.assertTrue(catalogCase == 0 ? resolved.candidates().isEmpty()
+                    : resolved.candidates().equals(java.util.List.of(new mx.issacinzunza.biosphereworlds.worldgen.SatelliteLayers.Mineral(
+                            "minecraft:stone", excluded.modWeight(), options.modDensity()))), "Catalog fixture differs from its intended weights");
+            if (catalogCase > 0) helper.assertTrue(resolved.ignored().stream().anyMatch(entry -> entry.startsWith("missingmod:ore")),
+                    "Missing Solar entries must retain a diagnostic");
+            for (int count : new int[]{0, 3}) {
+                var geometry = new SolarLayout.Params(p.systemRadius(), p.systemGap(), p.planetCount(), p.minRadius(), p.maxRadius(),
+                        p.centralRadius(), p.minGap(), p.maxGap(), p.coldInside(), p.innerPercent(), p.middlePercent(),
+                        p.outerPercent(), count, p.satelliteMinElevation(), p.satelliteMaxElevation(), p.satelliteGap());
+                var general = new SolarSettings.General(64, defaults.general().shellBlocks(), SphereConfig.BedrockMode.FLOOR, excluded);
+                var settings = new SolarSettings(geometryForVersion(geometry, 6), true, SolarLayout.Climate.HOT,
+                        defaults.guardians(), defaults.environment(), general, 6);
+                var generator = new SolarChunkGenerator(MultiNoiseBiomeSource.createFromPreset(parameters), empty, noise, settings);
+                var random = RandomState.create(noise.value(), registries.lookupOrThrow(Registries.NOISE), 4);
+                boolean failed = false;
+                try {
+                    generator.createState(registries.lookupOrThrow(Registries.STRUCTURE_SET), random, 4);
+                } catch (IllegalArgumentException expected) {
+                    helper.assertTrue(expected.getMessage().contains("positive-weight candidate"), "Catalog failure must explain the settings to review");
+                    failed = true;
+                }
+                helper.assertTrue(failed == (count > 0 && catalogCase < 2),
+                        "Only enabled satellites with empty/zero-weight catalogs must fail before painting");
             }
-            helper.assertTrue(failed == (count > 0), "Only enabled satellites may reject the empty catalog");
         }
         helper.succeed();
     }
@@ -547,6 +641,7 @@ public final class SolarWorldgenGameTests {
     @GameTest(template = "solar_empty")
     public static void solarUsesIndependentConfiguration(GameTestHelper helper) {
         var settings = SolarConfig.snapshot();
+        helper.assertTrue(settings.layoutVersion() == 6, "New Solar worlds must save layout 6");
         var general = settings.general();
         helper.assertTrue(SolarConfig.GENERAL.RADIUS != SphereConfig.RADIUS && SolarConfig.GENERAL.SPHERE_BLOCK != SphereConfig.SPHERE_BLOCK, "Solar and Biospheres must hold distinct configuration values");
         helper.assertTrue(general.centerY() == SolarConfig.GENERAL.CENTER_Y.get().intValue(), "Solar must read the independent Solar center Y");
@@ -568,14 +663,18 @@ public final class SolarWorldgenGameTests {
     public static void centralStrongholdsAndPersistence(GameTestHelper helper) {
         var level = helper.getLevel();
         var registries = level.registryAccess();
-        var noise = registries.registryOrThrow(Registries.NOISE_SETTINGS).getHolderOrThrow(NoiseGeneratorSettings.OVERWORLD);
         var empty = registries.registryOrThrow(Registries.BIOME).getHolderOrThrow(Biomes.THE_VOID);
         var parameters = registries.registryOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
                 .getHolderOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD);
         var stronghold = registries.registryOrThrow(Registries.STRUCTURE).getHolderOrThrow(ResourceKey.create(
                 Registries.STRUCTURE, ResourceLocation.withDefaultNamespace("stronghold")));
-        var options = SolarSettings.defaults();
-        for (long seed : new long[]{0, -1, Long.MIN_VALUE, 81723}) {
+        var defaults = SolarSettings.defaults();
+        for (int version : new int[]{2, 6}) for (long seed : new long[]{0, -1, Long.MIN_VALUE, 81723, -4634224182739581737L}) {
+            var noise = registries.registryOrThrow(Registries.NOISE_SETTINGS).getHolderOrThrow(version < 5
+                    ? NoiseGeneratorSettings.OVERWORLD : ResourceKey.create(Registries.NOISE_SETTINGS,
+                            ResourceLocation.fromNamespaceAndPath("biosphereworlds", "biospheres")));
+            var options = new SolarSettings(geometryForVersion(defaults.geometry(), version), defaults.climateEnabled(),
+                    defaults.centralClimate(), defaults.guardians(), defaults.environment(), defaults.general(), version);
             var generator = new SolarChunkGenerator(MultiNoiseBiomeSource.createFromPreset(parameters), empty, noise, options);
             var random = RandomState.create(noise.value(), registries.lookupOrThrow(Registries.NOISE), seed);
             var state = generator.createState(registries.lookupOrThrow(Registries.STRUCTURE_SET), random, seed);

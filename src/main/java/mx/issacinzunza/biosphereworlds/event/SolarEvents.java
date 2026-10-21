@@ -7,7 +7,9 @@ import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkAccess;
 import net.neoforged.neoforge.event.entity.living.MobSpawnEvent;
 import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -41,8 +43,39 @@ public final class SolarEvents {
         int x = (int) Math.floor(planet.x());
         int z = (int) Math.floor(planet.z());
         int y = generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, level.getChunkSource().randomState());
-        event.getSettings().setSpawn(new BlockPos(x, y, z), 0);
+        var spawn = new BlockPos(x, y, z);
+        validateSpawn(level, planet, spawn);
+        event.getSettings().setSpawn(spawn, 0);
         event.setCanceled(true);
+    }
+
+    /** Rejects the existing candidate; never searches, changes the radius or writes a platform. */
+    private static void validateSpawn(ServerLevel level, SolarLayout.Body planet, BlockPos spawn) {
+        int x = spawn.getX(), y = spawn.getY(), z = spawn.getZ();
+        String reason = null;
+        if (y <= level.getMinBuildHeight() || y + 1 >= level.getMaxBuildHeight()
+                || !planet.containsBox(x, y - 1, z, x, y + 1, z, 2)) {
+            reason = "no room for a supporting surface and two standing blocks inside the planet and build limits";
+        } else {
+            // Read the generated terrain, including decoration, rather than trusting the noise column alone.
+            var below = spawn.below();
+            var support = level.getBlockState(below);
+            if (!support.isFaceSturdy(level, below, Direction.UP) && !support.getFluidState().is(FluidTags.WATER)) {
+                reason = "no supporting surface or water beneath the selected position";
+            } else {
+                for (var pos : new BlockPos[]{spawn, spawn.above()}) {
+                    var state = level.getBlockState(pos);
+                    if (!state.getCollisionShape(level, pos).isEmpty()
+                            || (!state.getFluidState().isEmpty() && !state.getFluidState().is(FluidTags.WATER))) {
+                        reason = "the selected standing space is obstructed or contains a non-water fluid";
+                        break;
+                    }
+                }
+            }
+        }
+        if (reason != null) throw new IllegalStateException("Solar initial spawn is not viable at " + spawn
+                + " (planet radius=" + planet.radius() + ", center_y=" + planet.y() + "): " + reason
+                + ". Review min_radius, radius and center_y for a new world; no alternate position or platform is created.");
     }
 
     /** Preserves the pre-cage spawning behavior for saved layouts 1–3. */

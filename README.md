@@ -15,11 +15,24 @@ overwriting destinations. The latest unified settings take precedence over an ol
 experimental Solar file when initializing the new Solar config.
 Settings are saved with each world's generator. **Create a new Solar world to see
 the revised orbits and central surface.** Existing Solar snapshots retain their
-original layout (versions 1–4); new worlds use version 5. Editing the TOML does not
+original layout (versions 1–5); new worlds use version 6. Editing the TOML does not
 relocate saved planets or silently replace a saved world's settings.
 Generate Structures must be enabled.
 Initial spawn selects a temperate planet and uses its natural surface, including
 water. It does not build a platform or clear blocks around the player.
+If that selected position lacks interior space, support (or water), or two clear
+standing blocks within build height, world creation fails with a diagnostic.
+No alternate spawn is searched and radii are not enlarged. A positive radius alone
+does not guarantee a viable spawn; radius 1 has no interior inside the shell.
+
+Solar resolves its mineral catalog once per world opening from the saved settings
+and current registries/tags. It logs candidates, exclusions and ignored entries;
+ignored entries also produce a warning. With moons enabled, an empty catalog or one
+with no positive selection weight is rejected before generation. Disabled moons
+skip catalog resolution and validation. `/reload` does not replace the bound Solar
+catalog, and reopening does not apply TOML edits to an existing world's snapshot.
+Changed mods/tags can change the resolved catalog after restarting; partially
+generated moons may therefore contain different minerals across old/new chunks.
 
 Each planet occupies a distinct orbit in new layout-v6 worlds, retaining its existing
 seeded angular placement and configured Y. The system envelope grows automatically

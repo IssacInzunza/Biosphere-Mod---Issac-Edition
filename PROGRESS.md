@@ -1,5 +1,114 @@
 # Solar System - Issac Edition — progreso
 
+## Corrección controlada de auditoría — C1–C4 (2026-10-20)
+
+Alcance autorizado: rechazo explícito del spawn seleccionado cuando resulte
+inviable, validación mineral Solar, diagnósticos y documentación. No se modifica
+la generación clásica, layout_version, codecs, geometría, climas, guardianes,
+Stronghold, mod_version ni biospheres.json. No se añaden dependencias ni opciones.
+
+### Defectos y correcciones
+
+- C1 reproducido: JUnit ensambla una lista no vacía con stone y peso cero y observa
+  la excepción de SatelliteLayers.selectMineral. El GameTest de enlace, antes de
+  corregir producción, falla porque createState acepta ese catálogo. Ahora exige
+  al menos un peso positivo antes de construir/publicar el escritor, con error que
+  identifica las opciones relevantes. Mantiene candidatos, orden y pesos válidos;
+  satélites desactivados siguen omitiendo por completo resolución y validación.
+- C2 reproducido en el motor con radios 1, un planeta, gap 400, center_y 62,
+  lunas/guardianes apagados y semillas 0, -1, Long.MIN_VALUE y -4634224182739581737:
+  la columna completa está vacía y getBaseHeight devuelve la altura mínima.
+  SolarEvents valida antes de guardar/cancelar el spawn: interior para soporte,
+  pies y cabeza; límites verticales; soporte sólido superior o agua; dos bloques
+  sin colisión ni fluidos distintos del agua. Lee terreno generado, no solamente
+  ruido. Conserva la posición si es válida y falla con coordenadas/radio/center_y
+  y motivo si no lo es. No busca alternativas, cambia radios ni añade plataformas.
+  El rechazo se refiere al punto seleccionado; no afirma que no exista otro lugar
+  habitable en el mundo. No hay un nuevo mínimo arbitrario de radio.
+- C3: Solar ya publica candidatos, exclusiones y entradas ignoradas al enlazar;
+  las ignoradas generan además WARN. La prueba incluye missingmod:ore y el log
+  verifica su diagnóstico Solar. Se aclaran los comentarios compartidos: Solar
+  no recarga el escritor con /reload ni sustituye ajustes guardados al reabrir.
+  Resolver de nuevo tags tras reiniciar puede cambiar minerales (R1 permanece).
+- C4: README y el párrafo desactualizado de ARQUITECTURA indican layout 6 para
+  mundos nuevos. GameTest verifica SolarConfig.snapshot().layoutVersion() == 6.
+
+### Archivos y justificación
+
+- SolarChunkGenerator.java: validación temprana y diagnósticos del catálogo Solar.
+- SolarEvents.java: rechazo del punto de spawn inviable tras el filtro de generador.
+- SphereConfig.java: solo comentarios compartidos; valores/validadores intactos.
+- MineralCatalogTest.java: reproducción pura del catálogo de peso total cero.
+- SolarWorldgenGameTests.java: catálogo vacío/cero/válido, opción apagada, spawn
+  pequeño y comprobaciones de soporte, agua, obstrucción, lava y límites de altura;
+  muestreo de Stronghold/codec extendido a layouts 2 y 6 con cinco semillas y cinco
+  celdas (50 construcciones centrales), conservando la prueba histórica.
+- README.md, docs/es/ARQUITECTURA.md y este archivo: contrato, evidencia y límites.
+
+### Verificación ejecutada
+
+- Reproducción: build/JUnit pasan; GameTests falla deliberadamente solo en el
+  rechazo temprano de C1 (16 de 17 pasan). Evidencia:
+  run/logs/solar-audit-reproduction-jdk21.log. Producción aún no estaba corregida
+  en los binarios de esa ejecución.
+- Primera regresión: build/JUnit y los 18 GameTests pasan con las correcciones.
+  Evidencia: run/logs/solar-audit-validation.log, BUILD SUCCESSFUL.
+- Validación final con el muestreo ampliado de Stronghold: build/JUnit y los 18
+  GameTests pasan; registro run/logs/solar-audit-final.log, BUILD SUCCESSFUL
+  (1m 13s). git diff --check sin errores. No se detectaron regresiones en estas
+  pruebas; las comprobaciones de mundos completos indicadas abajo siguen pendientes.
+- Java 21.0.6 explícito: el lanzador Java del PATH no arrancó. El primer intento
+  restringido de Gradle no pudo crear el lock de su caché; se ejecutó después con
+  acceso autorizado. No se usó clean ni se inspeccionaron build/, .gradle/ o .idea/.
+- No se consultaron fuentes Minecraft de la caché en esta revisión. Las llamadas
+  de motor añadidas se verifican mediante compilación y GameTests, no se presenta
+  una cita de fuentes vanilla que no se haya leído.
+
+### Revisión arquitectónica acotada
+
+- Reutilización real: SolarLayout.moons delega en SatellitePlacement.place
+  (SolarLayout.java:362); ambos escritores usan SatelliteLayers y el mismo resolver
+  mineral. SolarDensityFunction.compute delega océanos en SphereEdgeOcean y mapAll
+  visita su hijo (SolarDensityFunction.java:57,66). Son adaptadores necesarios.
+- Duplicación local existente: SphereCarver.carveSatellite (SphereCarver.java:209)
+  y SolarVolumePainter.paint (SolarVolumePainter.java:130) recorren el volumen
+  lunar y asignan materiales por región. Las reglas de capas/mineral ya se
+  comparten, pero persisten recorridos/switch similares con ciclos de vida distintos.
+  No se extrae un escritor común: sería otro cambio arquitectónico y requeriría OK.
+- Independencia justificada: la cuadrícula clásica y las órbitas sembradas Solar
+  tienen contratos diferentes; no se fusionan SphereLayout y SolarLayout.
+- Compatibilidad: SolarTerrain.legacyOceanOverride, las rutas de layouts 1–5 y
+  BiosphereBiomeSource histórico siguen presentes. SolarVolumeBaseline es una
+  referencia literal de pruebas, no duplicación accidental de producción.
+- No se introduce una dependencia nueva de Solar respecto del generador clásico.
+  La comparación de bloques/heightmaps del escritor y las pruebas de aislamiento
+  existentes se mantienen; no equivalen a comparar mundos completos anteriores.
+
+### Riesgos y aceptación manual pendiente
+
+R1–R9 no se convierten en defectos confirmados por estas correcciones. Conservar
+semilla, ajustes, versión y mods en cada prueba; usar copias de mundos.
+
+| Riesgo | Prueba pendiente / criterio de aceptación |
+|---|---|
+| R3, prioridad crítica | Mundo v6 caliente/frío, FLOOR/NONE/SHELL, semillas 0, -1, Long.MIN_VALUE y -4634224182739581737. Generar todos los chunks del Stronghold, verificar sala y 12 marcos orientados, insertar ojos, viajar al End; ejecutar /locate structure minecraft:stronghold y lanzar ojos desde centro/orbital/luna/vacío. Repetir tras reiniciar. Las 50 construcciones prueban grafos y codecs, no colocación física ni viaje. |
+| R1 | Guardar una luna parcialmente generada; comparar copias con tags iguales y modificados, /reload y reinicio. Comparar bloques nuevos, catálogo y snapshot. Verificar disponibilidad de tags al enlazar un mundo real. |
+| R2 | Crear mundo Solar predeterminado y radios 1/8/16/128; comprobar diagnóstico del caso imposible y spawn real en los demás. Dos jugadores nuevos, respawn sin cama/cama destruida, varios spawnRadius y reinicio; registrar soporte y espacio real. La prueba local de validación no ejecuta el evento completo de creación ni la dispersión vanilla. |
+| R4 | Features de prueba por WorldGenRegion/ProtoChunk y rutas reales de mods; buscar portales naturales fuera de la sala central. No tratar /setblock como worldgen. |
+| R5 | Dos jugadores con áreas parcialmente superpuestas y ocho guardianes junto al segundo; contar tras cada ciclo. Repetir en lados opuestos y simulación 4/6/10, sin forzar chunks. |
+| R6 | Regiones iguales generadas secuencialmente, en orden inverso y con C2ME; comparar bloques, biomas, piezas y heightmaps. Incluir otros generadores de Stronghold concurrentes si el modpack los usa. |
+| R7 | Inspeccionar centros caliente/frío después de decoración con features vanilla y mods; comparar superficie a Y>=56 y registrar excepciones de diseño. |
+| R8 | Barrer radios extremos, formatos numéricos admitidos y 16 planetas/gap 0/guardianes activos; registrar fase de rechazo y semillas que agoten colocación. Sin cambiar límites basándose solo en hipótesis. |
+| R9 | Perfilar exploración simultánea con 1/8/16 planetas y 0/3/64 lunas; medir MSPT, GC, tiempo/chunk y memoria frente a vanilla/Biospheres, con y sin C2ME. |
+
+Persistencia integral adicional: guardar, descargar/cargar chunks y reiniciar;
+comparar snapshot, bloques, heightmaps y NBT de jaulas. Comparar mundos vanilla y
+Biospheres con una revisión anterior a igual semilla/configuración. Pendiente:
+no hay regresión integral descartada por el mero éxito de pruebas acotadas.
+No se declara Biosphere Worlds 2.0 terminado. Cambios de arquitectura, recarga
+dinámica, búsqueda alternativa de spawn o ajustes de gameplay siguen requiriendo
+autorización; no se implementan como parte de esta corrección.
+
 ## Revisión actual — límite del forro de bedrock central
 
 - Causa: el modo SHELL usaba Y=127, centro geométrico elevado del sol, como techo

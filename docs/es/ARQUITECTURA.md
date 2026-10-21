@@ -1,5 +1,34 @@
 # Arquitectura de Biosphere Worlds
 
+## Correcciones de auditoría Solar — C1–C4
+
+`SolarChunkGenerator.createState` conserva la resolución compartida de minerales,
+pero valida una sola vez que haya un candidato de peso positivo antes de publicar
+el mundo enlazado. `Mineral` ya prohíbe pesos negativos; esta condición también
+rechaza la lista vacía. No se filtran ni reordenan candidatos válidos. Satélites
+apagados siguen evitando resolución, diagnósticos y validación del catálogo.
+El enlace registra candidatos/exclusiones/entradas ignoradas y avisa de estas últimas.
+
+Solar conserva los ajustes serializados del mundo: editar el TOML solo afecta a
+mundos nuevos. El catálogo resuelto pertenece al generador enlazado y `/reload`
+no lo reemplaza. Al reabrir se resuelven los ids/tags guardados con los datos actuales;
+cambiar mods/tags puede alterar minerales en chunks nuevos. El catálogo clásico
+mantiene su evento y comportamiento anteriores; solo se aclararon los comentarios
+de configuración compartidos.
+
+`SolarEvents.spawnPosition` conserva la elección del primer planeta templado y su
+consulta de altura. Antes de guardar el spawn, `validateSpawn` rechaza el punto si
+no caben soporte y dos bloques de pie dentro del interior y los límites verticales.
+También consulta los bloques generados: exige soporte por cara superior o agua,
+espacio sin colisión y sin fluidos distintos del agua. No busca otra coordenada,
+no agranda radios y no escribe una plataforma. Radio 1 queda rechazado porque
+no tiene interior con margen 2; un radio positivo mayor tampoco garantiza spawn.
+La comprobación corresponde al punto elegido, no demuestra que todo el mundo sea
+inhabitable. No certifica peligros de bloques, dispersión vanilla ni respawn.
+
+Los mundos nuevos usan layout 6; versiones, codecs y rutas históricas no cambian.
+Las pruebas y aceptación integral pendiente se registran en `PROGRESS.md`.
+
 ## Corrección del forro central de bedrock
 
 `SolarTerrain.bedrockLiner` limita únicamente el sol a Y=63 mediante
@@ -67,7 +96,7 @@ dirección térmica textual de los formatos experimentales.
 
 El codec conserva la instantánea completa. `layout_version` ausente se interpreta
 como 1, con los valores generales heredados; así los mundos Solar existentes mantienen
-su geometría y perfil anteriores. Los mundos nuevos guardan versión 5 y los ajustes
+su geometría y perfil anteriores. Los mundos nuevos guardan versión 6 y los ajustes
 generales de cascarón, altura, bedrock, océanos y satélites. **Hace falta un mundo Solar
 nuevo para ver el reparto y el centro corregidos.** No se migra un mundo guardado
 silenciosamente. Se requiere Generate Structures activado.

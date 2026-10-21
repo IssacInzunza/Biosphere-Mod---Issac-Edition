@@ -9,11 +9,22 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Pruebas puras del ensamblado de candidatos y de la seleccion ponderada.
  */
 class MineralCatalogTest {
+
+    @Test
+    void nonemptyZeroWeightCatalogReproducesDeferredSelectionFailure() {
+        var excluded = SatelliteLayers.VANILLA_MINERALS.stream().map(SatelliteLayers.Mineral::blockId).toList();
+        var minerals = MineralCatalog.assemble(SatelliteLayers.VANILLA_MINERALS,
+                Set.of(), Set.of("minecraft:stone"), excluded, 0, 20);
+        assertEquals(List.of(new SatelliteLayers.Mineral("minecraft:stone", 0, 20)), minerals);
+        var error = assertThrows(IllegalArgumentException.class, () -> SatelliteLayers.selectMineral(0, minerals));
+        assertEquals("total mineral weight must be > 0", error.getMessage());
+    }
 
     private static final int MOD_WEIGHT = 3;
     private static final int MOD_DENSITY = 20;
