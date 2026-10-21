@@ -7,6 +7,39 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SolarTerrainTest {
+    /** Literal predicate before the central liner ceiling correction. */
+    private static boolean previousLiner(SolarLayout.Body body, int x, int y, int z, boolean enabled) {
+        return enabled && y <= body.y() && body.contains(x, y, z, 2) && !body.contains(x, y, z, 5);
+    }
+
+    @Test
+    void centralLinerStopsAtTerrainLevelAndLeavesAllOtherCasesIdentical() {
+        for (boolean central : new boolean[]{false, true}) {
+            for (int centerY : new int[]{62, 127, 300}) {
+                var body = new SolarLayout.Body(1, 0, centerY, 0, 180, central, SolarLayout.Climate.HOT);
+                int removed = 0;
+                int preserved = 0;
+                for (int x = -180; x <= 180; x += 2) {
+                    for (int y = -64; y <= 319; y++) {
+                        boolean previous = previousLiner(body, x, y, 0, true);
+                        boolean current = SolarTerrain.bedrockLiner(body, x, y, 0, true);
+                        if (central && y > 63) {
+                            assertFalse(current);
+                            if (previous) removed++;
+                        } else {
+                            assertEquals(previous, current);
+                            if (current) preserved++;
+                        }
+                        assertEquals(previousLiner(body, x, y, 0, false), SolarTerrain.bedrockLiner(body, x, y, 0, false));
+                    }
+                }
+                if (!central || centerY - body.radius() + 2 <= 63) assertTrue(preserved > 0);
+                else assertEquals(0, preserved);
+                if (central && centerY > 63) assertTrue(removed > 0);
+            }
+        }
+    }
+
     @Test
     void namedReservationsPreserveLiteralSurfaceRules() {
         for (int surface = -64; surface <= 319; surface++) {

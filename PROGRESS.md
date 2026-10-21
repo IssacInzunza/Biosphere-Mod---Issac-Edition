@@ -1,6 +1,30 @@
 # Solar System - Issac Edition — progreso
 
-## Revisión actual — una órbita por planeta y defensa central reforzada
+## Revisión actual — límite del forro de bedrock central
+
+- Causa: el modo SHELL usaba Y=127, centro geométrico elevado del sol, como techo
+  del forro. Esa cota no representa el nivel de terreno de la plantilla (Y=63).
+- SolarTerrain.bedrockLiner limita solo el sol a Y=63, sin elevar un centro que
+  ya estuviera más bajo. Se mantiene el grosor y el techo relativo al centro en
+  planetas orbitales. Desactivado retorna false antes de calcular la cota.
+- Generación, protección de bloques y filtrado de heightmaps siguen compartiendo
+  la misma regla. No se modifican guardianes, Biospheres clásico, geometría,
+  codecs, opciones, mod_version ni biospheres.json.
+- Pruebas puras contra el predicado literal anterior: solo se elimina forro solar
+  por encima de Y=63; planetas, zonas inferiores y opción apagada se conservan.
+  GameTest en Y=63/64/80/127 verifica bedrock bajo el límite, piedra conservada
+  encima y heightmaps que cuentan ese terreno superior correctamente.
+- La comparación del escritor mantiene reglas de terreno compartidas; valida el
+  escritor y no se usa como única referencia de la política nueva. Esta política
+  tiene las pruebas independientes indicadas arriba.
+- El cambio afecta a chunks nuevos: no elimina murallas ya guardadas. La vista
+  superior del sistema muestra órbitas, no relieve ni el forro. La inspección de
+  la costa/sol con chunks recién generados sigue siendo aceptación manual.
+- Evidencia: run/logs/solar-central-bedrock-final.log.
+- Resultado: build, suite JUnit, Javadoc y dieciséis GameTests aprobados;
+  git diff --check sin errores. Guardianes y generador clásico sin modificaciones.
+
+## Revisión anterior — una órbita por planeta y defensa central reforzada
 
 - Las instantáneas nuevas usan layout 6. Cada planeta recibe una distancia al sol
   distinta y conserva el cálculo angular anterior, su id, clima y Y configurada.

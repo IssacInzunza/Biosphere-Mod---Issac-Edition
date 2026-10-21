@@ -6,6 +6,8 @@ public final class SolarTerrain {
     public static final int STRONGHOLD_MAX_Y = 48;
     /** Inclusive lowest Y at which the central magma/ice profile can modify terrain. */
     public static final int CENTRAL_HAZARD_MIN_Y = 56;
+    /** Inclusive ceiling of the sun's liner: terrain water level, not its raised geometric center. */
+    public static final int CENTRAL_BEDROCK_MAX_Y = 63;
     /** Surface depth below the top block; inclusive, so the treatment spans six blocks. */
     private static final int CENTRAL_SURFACE_DEPTH = 5;
     /** Minimum interior clearance, in blocks, required by a complete Stronghold. */
@@ -60,6 +62,9 @@ public final class SolarTerrain {
     }
 
     /**
+     * Tests the lower inner band, capping the sun's liner at the terrain water level.
+     * The sun's raised center reserves Stronghold space; it must not raise the liner.
+     * Orbital planets keep their original center-relative ceiling.
      * @param body sphere containing the candidate block
      * @param x global block X
      * @param y global block Y
@@ -68,6 +73,8 @@ public final class SolarTerrain {
      * @return whether the block belongs to the lower inner bedrock band
      */
     public static boolean bedrockLiner(SolarLayout.Body body, int x, int y, int z, boolean enabled) {
-        return enabled && y <= body.y() && body.contains(x, y, z, 2) && !body.contains(x, y, z, BEDROCK_INNER_MARGIN);
+        if (!enabled) return false;
+        double ceiling = body.central() ? Math.min(body.y(), CENTRAL_BEDROCK_MAX_Y) : body.y();
+        return y <= ceiling && body.contains(x, y, z, 2) && !body.contains(x, y, z, BEDROCK_INNER_MARGIN);
     }
 }

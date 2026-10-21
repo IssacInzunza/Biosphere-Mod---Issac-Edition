@@ -1,5 +1,24 @@
 # Arquitectura de Biosphere Worlds
 
+## Corrección del forro central de bedrock
+
+`SolarTerrain.bedrockLiner` limita únicamente el sol a Y=63 mediante
+`CENTRAL_BEDROCK_MAX_Y`, coincidiendo con el nivel del mar de la plantilla actual.
+Su centro geométrico sigue en Y=127 para alojar el Stronghold: no es la cota de
+terreno y ya no eleva el forro. Se conservan el grosor radial y el límite relativo
+al centro de cada planeta orbital. Con la opción apagada retorna false antes de
+calcular la cota. No se añade una opción ni una revisión de layout para este bugfix.
+
+El escritor, la protección de bloques de WorldGenRegion y el filtro de heightmaps
+ya delegaban en la misma regla; no se añaden ramas paralelas. El cambio actúa en
+chunks nuevos y no borra murallas guardadas. Biospheres clásico y guardianes no
+se modifican. Las pruebas puras comparan con el predicado literal anterior: solo
+pueden desaparecer posiciones elegibles del sol por encima de Y=63. El GameTest
+comprueba Y=63/64/80/127, generación de bedrock, conservación de piedra superior
+y heightmaps. La comparación del escritor usa reglas de terreno compartidas;
+no constituye por sí sola una referencia independiente de esta política nueva.
+
+
 ## Revisión de órbitas y defensa central (layout 6)
 
 Cada planeta nuevo recibe una distancia orbital distinta; se conservan la fórmula

@@ -33,6 +33,10 @@ for `climate_direction = 0`, or **packed ice** for `climate_direction = 1`. Its 
 Ice Spikes when those biomes exist in the wrapped source. The middle orbital band
 always stays temperate. With very few planets, at least one orbital planet is temperate.
 The central sphere keeps its required Stronghold size and Y=127 automatically.
+With Solar's `bedrock_mode = "SHELL"`, the sun's three-block inner liner ends at
+Y=63, rather than following its raised geometric center at Y=127. Orbital planet
+liners keep their center-relative ceiling. This affects newly generated chunks;
+previously saved walls are not removed automatically. Guardian behavior is unchanged.
 Central surface changes occur before structure placement and only at Y>=56; the
 complete Stronghold remains at Y<=48. The sun has no mineral moons in version 4. Planets retain their satellites.
 With guardians enabled, twelve small obsidian pedestals carry cages distributed

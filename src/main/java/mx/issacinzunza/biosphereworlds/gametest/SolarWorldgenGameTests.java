@@ -43,6 +43,48 @@ public final class SolarWorldgenGameTests {
                 p.satelliteMinElevation(), p.satelliteMaxElevation(), p.satelliteGap());
     }
 
+    @GameTest(template = "solar_empty")
+    public static void centralBedrockCeilingIsSharedByGenerationAndHeightmaps(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var registry = level.registryAccess().registryOrThrow(Registries.BIOME);
+        var defaults = SolarSettings.defaults();
+        var geometry = geometryForVersion(defaults.geometry(), 6);
+        var layout = new SolarLayout(19, geometry, 6, defaults.general().placement());
+        var sun = layout.systemAtCell(0, 0).central();
+        for (boolean enabled : new boolean[]{false, true}) {
+            for (int y : new int[]{63, 64, 80, 127}) {
+                BlockPos position = null;
+                for (int offset = 0; offset <= sun.radius(); offset++) {
+                    var candidate = BlockPos.containing(sun.x() + offset, y, sun.z());
+                    if (sun.contains(candidate.getX(), y, candidate.getZ(), 2)
+                            && !sun.contains(candidate.getX(), y, candidate.getZ(), 5)) {
+                        position = candidate;
+                        break;
+                    }
+                }
+                helper.assertTrue(position != null, "Fixture must lie in the previous central bedrock band");
+                var chunk = new ProtoChunk(new ChunkPos(position), UpgradeData.EMPTY, level, registry, null);
+                ((SolarChunkAccess) chunk).biosphereworlds$solarLayout(layout);
+                var settings = new SolarSettings(geometry, true, SolarLayout.Climate.HOT, defaults.guardians(),
+                        new SolarSettings.Environment(false, 20, 20, enabled), defaults.general(), 6);
+                chunk.setBlockState(position, Blocks.STONE.defaultBlockState(), false);
+                new SolarVolumePainter(layout, settings, java.util.List.of(), 63).paint(chunk, SolarVolumePainter.Pass.SHELL);
+                boolean expectedBedrock = enabled && y <= 63;
+                helper.assertTrue(chunk.getBlockState(position).is(expectedBedrock ? Blocks.BEDROCK : Blocks.STONE),
+                        "Central liner must stop at Y=63 and preserve the original terrain above it");
+                var filtered = SolarChunkGenerator.heightmapState(chunk, position, chunk.getBlockState(position));
+                helper.assertTrue(expectedBedrock ? filtered.isAir() : filtered.is(Blocks.STONE),
+                        "Heightmap filtering must use the same liner ceiling as generation");
+                if (y > 63) {
+                    helper.assertTrue(chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.WORLD_SURFACE_WG)
+                            .getFirstAvailable(position.getX() & 15, position.getZ() & 15) == y + 1,
+                            "Terrain above the liner ceiling must remain visible to heightmaps");
+                }
+            }
+        }
+        helper.succeed();
+    }
+
     @GameTest(template = "solar_empty", timeoutTicks = 1200)
     public static void volumeRefactorMatchesLiteralBlocksAndHeightmaps(GameTestHelper helper) {
         var level = helper.getLevel();
