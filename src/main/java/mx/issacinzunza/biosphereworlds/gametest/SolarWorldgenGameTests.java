@@ -85,7 +85,7 @@ public final class SolarWorldgenGameTests {
     }
 
     @GameTest(template = "solar_empty", timeoutTicks = 1200)
-    public static void radiusOneReproducesEmptySpawnColumn(GameTestHelper helper) throws ReflectiveOperationException {
+    public static void radiusOneReproducesEmptySpawnColumn(GameTestHelper helper) {
         var level = helper.getLevel();
         var registries = level.registryAccess();
         var noise = registries.registryOrThrow(Registries.NOISE_SETTINGS).getHolderOrThrow(ResourceKey.create(
@@ -114,57 +114,61 @@ public final class SolarWorldgenGameTests {
                 helper.assertTrue(column.getBlock(y).isAir(), "Radius one has no terrain interior");
             }
             int y = generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
-            helper.assertTrue(y == level.getMinBuildHeight(), "Reproduce the invalid spawn height before validation");
-            assertSpawnValidation(helper, planet, new BlockPos(x, y, z), false);
+            helper.assertTrue(y == level.getMinBuildHeight(), "An empty spawn column retains the natural height without enlarging the planet");
         }
         helper.succeed();
     }
 
     @GameTest(template = "solar_empty")
-    public static void initialSpawnRequiresSupportAndStandingSpace(GameTestHelper helper) throws ReflectiveOperationException {
+    public static void sharedSpawnSearchRequiresSolidSupportAndAir(GameTestHelper helper) throws ReflectiveOperationException {
         var level = helper.getLevel();
         var pos = helper.absolutePos(new BlockPos(2, 4, 2));
-        var planet = new SolarLayout.Body(1, pos.getX(), pos.getY(), pos.getZ(), 128, false, SolarLayout.Climate.TEMPERATE);
+        // Isolate every column visited by radius 1 from the test platform and surrounding terrain.
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (dx * dx + dz * dz > 1) continue;
+                for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight(); y++) {
+                    level.setBlock(new BlockPos(pos.getX() + dx, y, pos.getZ() + dz), Blocks.AIR.defaultBlockState(), 2);
+                }
+            }
+        }
         level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 2);
-        level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
-        level.setBlock(pos.above(), Blocks.AIR.defaultBlockState(), 2);
-        assertSpawnValidation(helper, planet, pos, true);
+        assertSpawnSearch(helper, pos, 0, pos);
         level.setBlock(pos.below(), Blocks.WATER.defaultBlockState(), 2);
-        assertSpawnValidation(helper, planet, pos, true);
+        assertSpawnSearch(helper, pos, 0, null);
         level.setBlock(pos.below(), Blocks.AIR.defaultBlockState(), 2);
-        assertSpawnValidation(helper, planet, pos, false);
+        assertSpawnSearch(helper, pos, 0, null);
         level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 2);
         for (var obstruction : new BlockPos[]{pos, pos.above()}) {
-            level.setBlock(obstruction, Blocks.STONE.defaultBlockState(), 2);
-            assertSpawnValidation(helper, planet, pos, false);
+            level.setBlock(obstruction, Blocks.GLASS.defaultBlockState(), 2);
+            assertSpawnSearch(helper, pos, 0, null);
             level.setBlock(obstruction, Blocks.AIR.defaultBlockState(), 2);
         }
         level.setBlock(pos, Blocks.LAVA.defaultBlockState(), 2);
-        assertSpawnValidation(helper, planet, pos, false);
+        assertSpawnSearch(helper, pos, 0, null);
         level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
-        // A nominally positive radius is insufficient; the entire standing column must fit.
-        var small = new SolarLayout.Body(1, pos.getX(), pos.getY(), pos.getZ(), 2, false, SolarLayout.Climate.TEMPERATE);
-        assertSpawnValidation(helper, small, pos, false);
-        assertSpawnValidation(helper, planet, new BlockPos(pos.getX(), level.getMinBuildHeight(), pos.getZ()), false);
-        assertSpawnValidation(helper, planet, new BlockPos(pos.getX(), level.getMaxBuildHeight() - 1, pos.getZ()), false);
+        // The resolver must exclude the supplied shell for either world's material palette.
+        for (var shell : new net.minecraft.world.level.block.Block[]{Blocks.GLASS, Blocks.TINTED_GLASS}) {
+            level.setBlock(pos.below(), shell.defaultBlockState(), 2);
+            assertSpawnSearch(helper, pos, 0, null);
+        }
+        var alternate = new BlockPos(pos.getX() - 1, pos.getY() - 1, pos.getZ());
+        level.setBlock(alternate.below(), Blocks.STONE.defaultBlockState(), 2);
+        assertSpawnSearch(helper, pos, 1, alternate);
+        level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 2);
+        assertSpawnSearch(helper, pos, 1, pos);
         helper.succeed();
     }
 
-    private static void assertSpawnValidation(GameTestHelper helper, SolarLayout.Body planet, BlockPos pos, boolean valid)
+    private static void assertSpawnSearch(GameTestHelper helper, BlockPos pos, int radius, BlockPos expected)
             throws ReflectiveOperationException {
-        var validate = mx.issacinzunza.biosphereworlds.event.SolarEvents.class.getDeclaredMethod("validateSpawn",
-                net.minecraft.server.level.ServerLevel.class, SolarLayout.Body.class, BlockPos.class);
-        validate.setAccessible(true);
-        boolean accepted = true;
-        try {
-            validate.invoke(null, helper.getLevel(), planet, pos);
-        } catch (java.lang.reflect.InvocationTargetException error) {
-            if (!(error.getCause() instanceof IllegalStateException rejection)) throw error;
-            helper.assertTrue(rejection.getMessage().startsWith("Solar initial spawn is not viable at "),
-                    "Spawn rejection must explain the failure instead of masking another exception");
-            accepted = false;
-        }
-        helper.assertTrue(accepted == valid, "Unexpected spawn validation result at " + pos + ", radius=" + planet.radius());
+        var find = mx.issacinzunza.biosphereworlds.event.PlayerSpawnHandler.class.getDeclaredMethod("findValidPosition",
+                net.minecraft.world.level.Level.class, BlockPos.class, int.class, java.util.function.Predicate.class);
+        find.setAccessible(true);
+        java.util.function.Predicate<net.minecraft.world.level.block.state.BlockState> shell =
+                state -> state.is(Blocks.GLASS) || state.is(Blocks.TINTED_GLASS);
+        var actual = (BlockPos) find.invoke(null, helper.getLevel(), pos, radius, shell);
+        helper.assertTrue(java.util.Objects.equals(actual, expected), "Expected shared spawn destination " + expected + ", got " + actual);
     }
 
     /** Produces independent orbit envelopes for current test fixtures; older snapshots keep their exact params. */

@@ -16,15 +16,14 @@ cambiar mods/tags puede alterar minerales en chunks nuevos. El catálogo clásic
 mantiene su evento y comportamiento anteriores; solo se aclararon los comentarios
 de configuración compartidos.
 
-`SolarEvents.spawnPosition` conserva la elección del primer planeta templado y su
-consulta de altura. Antes de guardar el spawn, `validateSpawn` rechaza el punto si
-no caben soporte y dos bloques de pie dentro del interior y los límites verticales.
-También consulta los bloques generados: exige soporte por cara superior o agua,
-espacio sin colisión y sin fluidos distintos del agua. No busca otra coordenada,
-no agranda radios y no escribe una plataforma. Radio 1 queda rechazado porque
-no tiene interior con margen 2; un radio positivo mayor tampoco garantiza spawn.
-La comprobación corresponde al punto elegido, no demuestra que todo el mundo sea
-inhabitable. No certifica peligros de bloques, dispersión vanilla ni respawn.
+`SolarEvents.spawnPosition` conserva la elección del primer planeta templado del
+sistema (0,0) y su consulta de altura. La corrección de login y respawn se comparte
+con Biospheres en `PlayerSpawnHandler`: solo se activa si el bloque en los pies es
+material de cascarón, busca soporte sólido completo con dos bloques de aire y
+conserva la posición si no encuentra destino. Solar consulta su geometría por
+mundo y sus materiales guardados; también reconoce las lunas. No existe rechazo
+exclusivo de Solar por falta de espacio, ni se crean plataformas o agrandan radios.
+Un radio positivo no garantiza superficie habitable; radio 1 no tiene terreno interior.
 
 Los mundos nuevos usan layout 6; versiones, codecs y rutas históricas no cambian.
 Las pruebas y aceptación integral pendiente se registran en `PROGRESS.md`.
@@ -319,9 +318,9 @@ puede demostrar leyendo el código, se marca como **No verificado:**.
 ### 1.3 Eventos
 
 - `src/main/java/mx/issacinzunza/biosphereworlds/event/PlayerSpawnHandler.java` —
-  escucha login y respawn. En un `ServerLevel` cuyo generator es el de
-  biosferas, busca una superficie sólida dentro de la esfera y teletransporta
-  al jugador si apareció sobre el cascarón.
+  escucha login y respawn. En un `ServerLevel` de Biospheres o Solar, comparte
+  la búsqueda de superficie sólida y recoloca al jugador si el bloque en sus
+  pies es material del cascarón. La lectura y el teletransporte usan el hilo del servidor.
 
 ### 1.4 Registros
 
@@ -653,14 +652,16 @@ desactivada.
 
 `PlayerSpawnHandler.onPlayerLoggedIn` y `onPlayerRespawn` solo actúan en un
 `ServerLevel` cuyo generator está marcado por
-`BiosphereWorldgen.isBiosphereGenerator`. Lanzan un hilo que llama a
-`teleportIntoSphere`.
+`BiosphereWorldgen.isBiosphereGenerator` o es `SolarChunkGenerator`. Programan
+`teleportIntoSphere` en el hilo del servidor; vanilla retorna antes de consultar geometría.
 
-Si la posición actual es un bloque de cascarón (`SphereUtil.isSphereBlock`),
+Si la posición actual es material del cascarón (`SphereUtil.isSphereBlock` en
+clásico; materiales de los cuerpos del sistema guardado en Solar),
 `findValidPosition` primero busca hacia abajo una superficie sólida con dos
 bloques de aire encima. Si no la encuentra, explora un disco de radio
-`getSphereRadiusAt(x, z)` y busca allí. Finalmente programa en el hilo del
-servidor un `teleportTo` al espacio sobre esa superficie.
+de la esfera clásica, planeta o luna correspondiente y busca allí de arriba abajo.
+Finalmente ejecuta `teleportTo` al primer bloque de aire sobre el soporte, centrado
+en X/Z y sin añadir un bloque extra a Y. Si no encuentra destino, no teletransporta.
 
 El `spawn_target` de `biospheres.json` pertenece a la selección de posiciones
 de spawn del `NoiseGeneratorSettings`; el teletransporte de seguridad anterior
@@ -1120,7 +1121,7 @@ durante worldgen.
   borde: agua no deseada, alturas erróneas o cascarones contados como suelo
   indican una incompatibilidad.
 - **Concurrencia y memoria.** `BiosphereWorldgen.BIOSPHERE_AQUIFERS` es un set
-  concurrente global y el spawn crea un `Thread` nuevo por evento. La
+  concurrente global; el spawn consulta bloques y teletransporta en el hilo del servidor. La
   interacción con cambios de scheduler, generación paralela o mods como C2ME
   necesita una prueba específica; no se debe asumir seguridad solo porque el
   código compile.

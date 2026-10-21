@@ -18,12 +18,13 @@ the revised orbits and central surface.** Existing Solar snapshots retain their
 original layout (versions 1–5); new worlds use version 6. Editing the TOML does not
 relocate saved planets or silently replace a saved world's settings.
 Generate Structures must be enabled.
-Initial spawn selects a temperate planet and uses its natural surface, including
-water. It does not build a platform or clear blocks around the player.
-If that selected position lacks interior space, support (or water), or two clear
-standing blocks within build height, world creation fails with a diagnostic.
-No alternate spawn is searched and radii are not enlarged. A positive radius alone
-does not guarantee a viable spawn; radius 1 has no interior inside the shell.
+Initial spawn selects the first temperate planet in system (0,0) and uses its
+natural surface height. Solar and classic Biospheres share the same login/respawn
+correction: if the block at the player's feet is a shell material, search downward
+in that column, then nearby columns, for full solid non-shell support and two air
+blocks. The player is placed directly above that support on the server thread.
+If no destination exists, the position stays unchanged. No platform is built,
+blocks are not cleared and radii are not enlarged; radius 1 has no terrain interior.
 
 Solar resolves its mineral catalog once per world opening from the saved settings
 and current registries/tags. It logs candidates, exclusions and ignored entries;
