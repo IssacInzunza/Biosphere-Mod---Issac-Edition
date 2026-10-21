@@ -207,13 +207,20 @@ se omiten candidatos tan grandes como su planeta.
 | `satellites_mod_ore_weight` | `3` | 0–1000 | Peso de selección de las menas de otros mods; las vanilla conservan sus pesos. Cero excluye las menas de mods de la selección. |
 | `satellites_mod_ore_density_permille` | `20` | 0–1000 ‰ | Bloques de mena por cada 1000 bloques del núcleo para minerales de mods: 20 equivale a 2 %. Se elige un solo tipo de mineral por luna, protegido por piedra y magma. |
 
-Se mantienen la colocación exclusiva central de Stronghold, las piezas vanilla,
-la validación del volumen completo y los bloqueos de portales en WorldGenRegion y
-ProtoChunks marcados. `SolarEvents` conserva spawn y restauración de geometría al
+La fortaleza central se selecciona mediante `#minecraft:eye_of_ender_located`;
+los reemplazos registrados tienen prioridad sobre `minecraft:stronghold`. Sus sets
+de colocación se sustituyen por un único set con SolarPlacement, compartido por
+generación, ojos y locate. Se conservan las piezas y procesadores del reemplazo;
+se trasladan bajo Y=48, incluidas las conexiones jigsaw, y se valida cada pieza
+completa contra el interior de la esfera y la altura del mundo. No se amplía el
+centro ni se recortan estructuras: un reemplazo demasiado grande falla con diagnóstico.
+Sin reemplazo se conserva la generación vanilla. Se mantienen los bloqueos de
+portales en WorldGenRegion y ProtoChunks marcados. `SolarEvents` conserva spawn y restauración de geometría al
 cargar chunks; para guardianes solo valida el mundo y enruta eventos a SolarGuardians.
 La política completa de portales naturales vive en
-`SolarPortalGuard.allowsNaturalPortal`: sala de portal activa en el hilo, posición
-interior de esa sala y centro con margen de tres bloques. Los mixins de
+`SolarPortalGuard.allowsNaturalPortal`: pieza autorizada activa en el hilo, posición
+interior de esa pieza y centro con margen de tres bloques. Vanilla autoriza solo
+su sala de portal; un reemplazo autoriza sus propias piezas del inicio central seleccionado. Los mixins de
 WorldGenRegion y ProtoChunk conservan sus filtros tempranos y delegan esa decisión.
 La geometría lunar para bloques y alturas vive en `SolarLayout.Moon`; su distancia
 conserva la fórmula anterior y permite reutilizar el valor para elegir capas.

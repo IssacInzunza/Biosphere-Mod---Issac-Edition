@@ -660,6 +660,86 @@ public final class SolarWorldgenGameTests {
     }
 
     @GameTest(template = "solar_empty", timeoutTicks = 1200)
+    public static void centralReplacementUsesSolarPlacement(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var registries = level.registryAccess();
+        var noise = registries.registryOrThrow(Registries.NOISE_SETTINGS).getHolderOrThrow(ResourceKey.create(
+                Registries.NOISE_SETTINGS, ResourceLocation.fromNamespaceAndPath("biosphereworlds", "biospheres")));
+        var empty = registries.registryOrThrow(Registries.BIOME).getHolderOrThrow(Biomes.THE_VOID);
+        var parameters = registries.registryOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
+                .getHolderOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD);
+        var defaults = SolarSettings.defaults();
+        int region = SolarLayout.requiredSingleOrbitSystemRadius(8, 512, 180, 1000, 75, 12, 16);
+        var geometry = new SolarLayout.Params(region, 5000, 8, 256, 512, 180, 1000, 1000,
+                false, 30, 40, 30, 0, 30, 55, 16);
+        var settings = new SolarSettings(geometry, true, SolarLayout.Climate.HOT, defaults.guardians(),
+                defaults.environment(), defaults.general(), 6);
+        long seed = -7284467477822061774L;
+        var generator = new SolarChunkGenerator(MultiNoiseBiomeSource.createFromPreset(parameters), empty, noise, settings);
+        var random = RandomState.create(noise.value(), registries.lookupOrThrow(Registries.NOISE), seed);
+        var state = generator.createState(registries.lookupOrThrow(Registries.STRUCTURE_SET), random, seed);
+        var centralSets = state.possibleStructureSets().stream().filter(s -> s.value().structures().stream()
+                .anyMatch(e -> generator.isCentralStronghold(e.structure().value()))).toList();
+        helper.assertTrue(centralSets.size() == 1 && centralSets.getFirst().value().placement() instanceof SolarPlacement,
+                "Every selected replacement must use exactly one central Solar placement");
+        boolean replacementPresent = registries.registryOrThrow(Registries.STRUCTURE).holders()
+                .anyMatch(holder -> holder.is(net.minecraft.tags.StructureTags.EYE_OF_ENDER_LOCATED)
+                        && !holder.is(ResourceKey.create(Registries.STRUCTURE, ResourceLocation.withDefaultNamespace("stronghold"))));
+        for (var entry : centralSets.getFirst().value().structures()) {
+            helper.assertTrue(!replacementPresent || !entry.structure().is(ResourceKey.create(Registries.STRUCTURE,
+                    ResourceLocation.withDefaultNamespace("stronghold"))), "A replacement must supersede disabled vanilla");
+        }
+        for (int cell : new int[]{0, -1, 1}) {
+            var body = generator.layout().systemAtCell(cell, -cell).central();
+            var pos = new ChunkPos(BlockPos.containing(body.x(), body.y(), body.z()));
+            var chunk = new ProtoChunk(pos, UpgradeData.EMPTY, level, registries.registryOrThrow(Registries.BIOME), null);
+            generator.createStructures(registries, state, level.structureManager(), chunk, level.getStructureManager());
+            var start = chunk.getAllStarts().values().stream().filter(s -> s.isValid()
+                    && generator.isCentralStronghold(s.getStructure())).findFirst().orElseThrow();
+            for (var piece : start.getPieces()) {
+                var box = piece.getBoundingBox();
+                helper.assertTrue(box.maxY() <= SolarTerrain.STRONGHOLD_MAX_Y
+                        && body.containsBox(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ(), 5),
+                        "A complete replacement piece must fit below the central hazard surface");
+            }
+            if (registries.registryOrThrow(Registries.STRUCTURE).getKey(start.getStructure()).toString().equals("betterstrongholds:stronghold")) {
+                helper.assertTrue(start.getPieces().stream().anyMatch(piece -> piece.toString().contains("portal_rooms/portal_room")),
+                        "The replacement's own portal room must survive generation and relocation");
+            }
+            var orbital = generator.layout().systemAtCell(cell, -cell).bodies().get(1);
+            var outside = start.getStructure().generate(registries, generator, generator.getBiomeSource(), random,
+                    level.getStructureManager(), seed, new ChunkPos(BlockPos.containing(orbital.x(), orbital.y(), orbital.z())),
+                    0, level, b -> true);
+            helper.assertTrue(!outside.isValid(), "A selected stronghold must not generate on an orbital planet");
+        }
+        var center = generator.layout().systemAtCell(0, 0).central();
+        var portal = BlockPos.containing(center.x(), 32, center.z());
+        var room = new net.minecraft.world.level.levelgen.structure.BoundingBox(portal);
+        boolean[] expected = {false};
+        var modPiece = new net.minecraft.world.level.levelgen.structure.StructurePiece(
+                net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType.JIGSAW, 0, room) {
+            @Override protected void addAdditionalSaveData(
+                    net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext context,
+                    net.minecraft.nbt.CompoundTag tag) { }
+            @Override public void postProcess(net.minecraft.world.level.WorldGenLevel world,
+                    net.minecraft.world.level.StructureManager structures, ChunkGenerator ignored,
+                    net.minecraft.util.RandomSource source, net.minecraft.world.level.levelgen.structure.BoundingBox box,
+                    ChunkPos chunk, BlockPos pivot) {
+                helper.assertTrue(SolarPortalGuard.allowsNaturalPortal(generator.layout(), portal) == expected[0],
+                        "Only selected replacement pieces may authorize their own portal blocks");
+            }
+        };
+        for (boolean selected : new boolean[]{false, true}) for (boolean replacement : new boolean[]{false, true}) {
+            expected[0] = selected && replacement;
+            SolarPortalGuard.place(modPiece, level, level.structureManager(), generator, level.random,
+                    room, new ChunkPos(portal), portal, selected, replacement);
+            helper.assertTrue(!SolarPortalGuard.allowsNaturalPortal(generator.layout(), portal),
+                    "Replacement portal authorization leaked past piece placement");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "solar_empty", timeoutTicks = 1200)
     public static void centralStrongholdsAndPersistence(GameTestHelper helper) {
         var level = helper.getLevel();
         var registries = level.registryAccess();
@@ -680,7 +760,7 @@ public final class SolarWorldgenGameTests {
             var state = generator.createState(registries.lookupOrThrow(Registries.STRUCTURE_SET), random, seed);
             helper.assertTrue(!BiosphereWorldgen.isBiosphereGenerator(generator), "Solar activated the classic generator branch");
             long sets = state.possibleStructureSets().stream().filter(s -> s.value().structures().stream()
-                    .anyMatch(e -> e.structure().value() instanceof StrongholdStructure)).count();
+                    .anyMatch(e -> generator.isCentralStronghold(e.structure().value()))).count();
             helper.assertTrue(sets == 1, "Expected exactly one stronghold placement set");
             for (int cx = -2; cx <= 2; cx++) {
                 var system = generator.layout().systemAtCell(cx, -cx);

@@ -11,7 +11,7 @@ import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.structures.StrongholdPieces;
 
 /**
- * Authorizes natural End portal writes only while placing the central Stronghold's portal room.
+ * Authorizes natural End portal writes only while placing the selected central Stronghold's pieces.
  * Scope is local to each generation thread and restored even when piece placement throws.
  * Both worldgen write paths delegate here after checking that the world/chunk is Solar.
  */
@@ -25,7 +25,7 @@ public final class SolarPortalGuard {
      * Evaluates the complete natural-portal policy without reading global configuration.
      * @param geometry layout of an already identified Solar world/chunk
      * @param pos global block position being written
-     * @return true only inside both the active portal room and the central sphere's safe interior
+     * @return true only inside both the authorized piece and the central sphere's safe interior
      */
     public static boolean allowsNaturalPortal(SolarLayout geometry, BlockPos pos) {
         var body = geometry.bodyAt(pos.getX(), pos.getY(), pos.getZ(), PORTAL_MARGIN);
@@ -36,7 +36,7 @@ public final class SolarPortalGuard {
     /**
      * Runs the original piece placement inside a temporary authorization scope.
      * Non-Solar generators delegate immediately, without accessing thread-local state.
-     * @param piece vanilla structure piece being placed
+     * @param piece structure piece being placed, using its original implementation
      * @param level generation region supplied by the engine
      * @param structures structure access for this placement
      * @param generator generator identifying the preset
@@ -45,15 +45,17 @@ public final class SolarPortalGuard {
      * @param chunk chunk receiving this placement
      * @param pivot vanilla placement pivot
      * @param centralStronghold whether the caller verified this is the central Stronghold start
+     * @param replacement whether the registered structure supplies its own non-vanilla portal pieces
      */
     public static void place(StructurePiece piece, WorldGenLevel level, StructureManager structures, ChunkGenerator generator,
-                             RandomSource random, BoundingBox box, ChunkPos chunk, BlockPos pivot, boolean centralStronghold) {
+                             RandomSource random, BoundingBox box, ChunkPos chunk, BlockPos pivot, boolean centralStronghold,
+                             boolean replacement) {
         if (!(generator instanceof SolarChunkGenerator)) {
             piece.postProcess(level, structures, generator, random, box, chunk, pivot);
             return;
         }
         BoundingBox previous = PORTAL_ROOM.get();
-        if (centralStronghold && piece instanceof StrongholdPieces.PortalRoom) PORTAL_ROOM.set(piece.getBoundingBox());
+        if (centralStronghold && (replacement || piece instanceof StrongholdPieces.PortalRoom)) PORTAL_ROOM.set(piece.getBoundingBox());
         else PORTAL_ROOM.remove();
         try {
             piece.postProcess(level, structures, generator, random, box, chunk, pivot);

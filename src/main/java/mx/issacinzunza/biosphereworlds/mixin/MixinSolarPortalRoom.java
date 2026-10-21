@@ -20,12 +20,14 @@ public abstract class MixinSolarPortalRoom {
     private void solarPortalScope(StructurePiece piece, WorldGenLevel level, StructureManager structures, ChunkGenerator generator,
                                   RandomSource random, BoundingBox box, ChunkPos chunk, BlockPos pivot) {
         var start = (StructureStart) (Object) this;
-        boolean central = start.getStructure() instanceof net.minecraft.world.level.levelgen.structure.structures.StrongholdStructure;
+        boolean central = false;
         if (generator instanceof mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkGenerator solar) {
             var body = solar.layout().systemAtBlock(start.getChunkPos().getMiddleBlockX(), start.getChunkPos().getMiddleBlockZ()).central();
-            central &= start.getChunkPos().x == Math.floorDiv((int) body.x(), 16)
+            central = solar.isCentralStronghold(start.getStructure())
+                    && start.getChunkPos().x == Math.floorDiv((int) body.x(), 16)
                     && start.getChunkPos().z == Math.floorDiv((int) body.z(), 16);
         }
-        SolarPortalGuard.place(piece, level, structures, generator, random, box, chunk, pivot, central);
+        SolarPortalGuard.place(piece, level, structures, generator, random, box, chunk, pivot, central,
+                !(start.getStructure() instanceof net.minecraft.world.level.levelgen.structure.structures.StrongholdStructure));
     }
 }

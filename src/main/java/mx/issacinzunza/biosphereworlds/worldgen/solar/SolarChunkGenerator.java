@@ -15,6 +15,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.StructureTags;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
@@ -68,7 +69,7 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
     /** All resources derived from a seed are published together, never field by field. */
     private record BoundWorld(long seed, SolarSettings settings, SolarLayout layout,
                               RandomState terrainRandom, SolarVolumePainter volume,
-                              Holder<Structure> stronghold) { }
+                              List<Holder<Structure>> strongholds) { }
 
     public SolarChunkGenerator(BiomeSource source, Holder<Biome> empty, Holder<NoiseGeneratorSettings> noise,
                                SolarSettings solar) {
@@ -98,14 +99,17 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
 
     @Override
     public synchronized ChunkGeneratorStructureState createState(HolderLookup<StructureSet> sets, RandomState random, long seed) {
-        var strongholdKey = net.minecraft.resources.ResourceKey.create(Registries.STRUCTURE,
-                ResourceLocation.withDefaultNamespace("stronghold"));
-        Holder<Structure> stronghold = sets.listElements()
+        var entries = sets.listElements()
                 .flatMap(holder -> holder.value().structures().stream())
-                .map(StructureSet.StructureSelectionEntry::structure)
-                .filter(holder -> holder.is(strongholdKey)).findFirst().orElse(null);
-        if (stronghold == null || !(stronghold.value() instanceof StrongholdStructure)) {
-            throw new IllegalStateException("Solar requires the vanilla stronghold structure; a datapack replaced or removed it");
+                .filter(entry -> entry.structure().is(StructureTags.EYE_OF_ENDER_LOCATED))
+                .distinct().toList();
+        // A replacement owns its pieces and portal. Do not ask a mod that disables vanilla to generate vanilla.
+        var replacements = entries.stream()
+                .filter(entry -> !entry.structure().is(net.minecraft.resources.ResourceKey.create(Registries.STRUCTURE,
+                        ResourceLocation.withDefaultNamespace("stronghold")))).toList();
+        var centralEntries = replacements.isEmpty() ? entries : replacements;
+        if (centralEntries.isEmpty()) {
+            throw new IllegalStateException("Solar requires a structure in #minecraft:eye_of_ender_located");
         }
         if (boundWorld == null) {
             var settings = configureOnBind ? SolarSettings.configured() : initialSettings;
@@ -129,18 +133,25 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
             var terrain = settings.layoutVersion() >= 5 ? createTerrainRandom(random, seed, geometry, settings) : null;
             var volume = new SolarVolumePainter(geometry, settings, minerals, getSeaLevel());
             solarBiomes.bind(geometry, settings);
-            boundWorld = new BoundWorld(seed, settings, geometry, terrain, volume, stronghold);
+            boundWorld = new BoundWorld(seed, settings, geometry, terrain, volume,
+                    centralEntries.stream().map(StructureSet.StructureSelectionEntry::structure).distinct().toList());
         } else if (boundWorld.seed() != seed) {
             throw new IllegalStateException("Solar generator shared between different seeds");
         }
         var selected = new ArrayList<Holder<StructureSet>>();
         sets.listElements().forEach(holder -> {
-            var entries = holder.value().structures().stream()
-                    .filter(entry -> !(entry.structure().value() instanceof StrongholdStructure)).toList();
-            if (!entries.isEmpty()) selected.add(Holder.direct(new StructureSet(entries, holder.value().placement())));
+            var remaining = holder.value().structures().stream()
+                    .filter(entry -> !entry.structure().is(StructureTags.EYE_OF_ENDER_LOCATED)
+                            && !(entry.structure().value() instanceof StrongholdStructure)).toList();
+            if (!remaining.isEmpty()) selected.add(Holder.direct(new StructureSet(remaining, holder.value().placement())));
         });
-        selected.add(Holder.direct(new StructureSet(world().stronghold(), new SolarPlacement(solarSettings().geometry()))));
+        selected.add(Holder.direct(new StructureSet(centralEntries, new SolarPlacement(solarSettings().geometry()))));
         return SolarStructureStateInvoker.biosphereworlds$create(terrainRandom(random), getBiomeSource(), seed, seed, List.copyOf(selected));
+    }
+
+    /** Identity of the registered structures selected for this Solar world's central placement. */
+    public boolean isCentralStronghold(Structure structure) {
+        return world().strongholds().stream().anyMatch(holder -> holder.value() == structure);
     }
 
     /** Adapts the shared noise template without modifying the classic generator's RandomState. */
@@ -202,9 +213,13 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
         var center = layout().systemAtBlock(chunk.getPos().getMiddleBlockX(), chunk.getPos().getMiddleBlockZ()).central();
         if (chunk.getPos().x == Math.floorDiv((int) center.x(), 16)
                 && chunk.getPos().z == Math.floorDiv((int) center.z(), 16)) {
-            var start = structures.getStartForStructure(SectionPos.bottomOf(chunk), world().stronghold().value(), chunk);
-            if (start == null || !start.isValid()) {
-                throw new IllegalStateException("Solar central stronghold failed biome/structure validation at " + chunk.getPos());
+            boolean valid = world().strongholds().stream().anyMatch(holder -> {
+                var start = structures.getStartForStructure(SectionPos.bottomOf(chunk), holder.value(), chunk);
+                return start != null && start.isValid();
+            });
+            if (!valid) {
+                throw new IllegalStateException("Solar central stronghold failed biome/structure/containment validation at "
+                        + chunk.getPos() + "; candidates=" + world().strongholds());
             }
         }
     }

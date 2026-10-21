@@ -4,10 +4,41 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.structures.StrongholdPieces;
+import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
+import net.minecraft.world.level.levelgen.structure.pools.JigsawJunction;
+import java.util.List;
 
 /** Vanilla pieces, complete graph and portal room, with bounded retries and full containment. */
 public final class SolarStronghold {
     private SolarStronghold() { }
+
+    /** Move the mod's complete graph, preserving its piece implementations and jigsaw placement data. */
+    public static boolean fitReplacement(List<StructurePiece> pieces, SolarLayout.Body body, LevelHeightAccessor height) {
+        var box = StructurePiece.createBoundingBox(pieces.stream());
+        int dx = (int) body.x() - box.getCenter().getX();
+        int dz = (int) body.z() - box.getCenter().getZ();
+        int dy = SolarTerrain.STRONGHOLD_MAX_Y - box.maxY();
+        for (var piece : pieces) {
+            piece.move(dx, dy, dz);
+            if (piece instanceof PoolElementStructurePiece pool) {
+                pool.getJunctions().replaceAll(junction -> new JigsawJunction(junction.getSourceX() + dx,
+                        junction.getSourceGroundY() + dy, junction.getSourceZ() + dz,
+                        junction.getDeltaY(), junction.getDestProjection()));
+            }
+        }
+        // Test actual pieces: an empty corner of the enclosing box need not fit inside the sphere.
+        boolean fits = pieces.stream().allMatch(piece -> {
+            var bounds = piece.getBoundingBox();
+            return bounds.minY() >= height.getMinBuildHeight() && bounds.maxY() < height.getMaxBuildHeight()
+                    && body.containsBox(bounds.minX(), bounds.minY(), bounds.minZ(),
+                            bounds.maxX(), bounds.maxY(), bounds.maxZ(), SolarTerrain.STRONGHOLD_INTERIOR_MARGIN);
+        });
+        if (!fits) mx.issacinzunza.biosphereworlds.BiosphereWorlds.LOGGER.warn(
+                "Solar replacement stronghold does not fit below Y={} inside central sphere at {},{}: {}",
+                SolarTerrain.STRONGHOLD_MAX_Y, body.x(), body.z(), StructurePiece.createBoundingBox(pieces.stream()));
+        return fits;
+    }
 
     /**
      * Builds the full vanilla graph and fits it below the central surface reservation.

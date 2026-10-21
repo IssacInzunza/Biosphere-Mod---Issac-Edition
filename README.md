@@ -121,8 +121,16 @@ as large as their parent are omitted.
 | `satellites_mod_ore_weight` | `3` | 0–1000 | Selection weight for mod ores; vanilla ores retain their own weights. Zero excludes mod ores from selection. |
 | `satellites_mod_ore_density_permille` | `20` | 0–1000 ‰ | Ore blocks per 1000 core blocks for mod ores: 20 means 2%. One mineral type is chosen per moon, behind stone and magma. |
 
+Solar selects central strongholds from `#minecraft:eye_of_ender_located`. Registered
+replacements take precedence over `minecraft:stronghold`; their original placement
+sets are replaced with Solar's central placement, which also serves eyes and locate.
+The replacement keeps its own pieces and processors. Its complete pieces are moved
+below Y=48 and must fit inside the existing central sphere and build height; oversized
+replacements fail with a diagnostic instead of being clipped or silently omitted.
+Without a replacement, vanilla stronghold generation is unchanged.
 Natural End portal/frame writes through WorldGenRegion and marked ProtoChunks are
-accepted only within an authorized central Stronghold portal room placement.
+accepted only within an authorized central Stronghold piece placement (the portal
+room for vanilla, or the replacement's own pieces).
 Other mods that bypass those paths are not certified. Nether and End retain vanilla
 generation. See `PROGRESS.md` for acceptance tests still pending, including actual
 portal activation, eyes, locate, external mods and prolonged exploration.
