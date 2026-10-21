@@ -13,6 +13,58 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class SolarLayoutTest {
     @Test
+    void distinctOrbitsKeepConfiguredHeightEvenBeyondBuildLimits() {
+        int region = SolarLayout.requiredSingleOrbitSystemRadius(4, 512, 180, 400, 75, 12, 16);
+        var p = new SolarLayout.Params(region, 1500, 4, 512, 512, 180, 400, 400, false, 30, 40, 30, 0, 30, 55, 16);
+        for (int y : new int[]{-40, 62, 300}) {
+            var layout = new SolarLayout(19, p, 6, new SolarLayout.PlacementOptions(y, 8, 12, 25, 75, true));
+            for (var body : layout.systemAtCell(0, 0).bodies()) {
+                if (!body.central()) assertEquals(y, body.y());
+            }
+        }
+    }
+
+    @Test
+    void distinctOrbitsPreserveExistingAnglesHeightAndClimate() {
+        for (int count = 1; count <= 16; count++) {
+            int region = SolarLayout.requiredSingleOrbitSystemRadius(count, 160, 180, 400, 75, 12, 16);
+            var p = new SolarLayout.Params(region, 1500, count, 24, 160, 180, 400, 400, false, 30, 40, 30, 3, 30, 55, 16);
+            var placement = new SolarLayout.PlacementOptions(62, 8, 12, 25, 75, false);
+            for (long seed : new long[]{0, 17, -4634224182739581737L}) {
+                var old = new SolarLayout(seed, p, 5, placement).systemAtCell(-1, 2);
+                var current = new SolarLayout(seed, p, 6, placement).systemAtCell(-1, 2);
+                assertEquals(count + 1, current.bodies().size());
+                double previousOrbit = 0;
+                for (int i = 1; i <= count; i++) {
+                    var body = current.bodies().get(i);
+                    var before = old.bodies().get(i);
+                    double x = body.x() - current.central().x();
+                    double z = body.z() - current.central().z();
+                    double orbit = Math.hypot(x, z);
+                    assertTrue(orbit > previousOrbit);
+                    assertTrue(orbit + body.radius() <= region);
+                    assertEquals(62, body.y());
+                    assertEquals(before.y(), body.y());
+                    assertEquals(before.id(), body.id());
+                    assertEquals(before.climate(), body.climate());
+                    assertEquals(Math.atan2(before.z() - old.central().z(), before.x() - old.central().x()),
+                            Math.atan2(z, x), 1e-12);
+                    previousOrbit = orbit;
+                    for (int j = 0; j < i; j++) {
+                        var other = current.bodies().get(j);
+                        assertTrue(Math.sqrt(Math.pow(body.x() - other.x(), 2) + Math.pow(body.y() - other.y(), 2)
+                                + Math.pow(body.z() - other.z(), 2)) - body.radius() - other.radius() >= 400 - 1e-8);
+                    }
+                }
+                var neighbor = new SolarLayout(seed, p, 6, placement).systemAtCell(0, 2).central();
+                assertTrue(Math.hypot(neighbor.x() - current.central().x(), neighbor.z() - current.central().z())
+                        >= 2.0 * region + p.systemGap());
+                assertTrue(current.moons().stream().noneMatch(moon -> moon.planetId() == current.central().id()));
+            }
+        }
+    }
+
+    @Test
     void moonGeometryMatchesLiteralGenerationAndHeightmapBoundaries() {
         var random = new java.util.Random(1996);
         for (int radius : new int[]{1, 2, 15, 128, 512}) {
@@ -61,6 +113,9 @@ class SolarLayoutTest {
             var center = system.central();
             var posts = layout.guardianPosts(system);
             assertEquals(12, posts.size());
+            assertTrue(posts.stream().anyMatch(post -> Math.pow(post.x() - center.x(), 2)
+                    + Math.pow(post.y() - center.y(), 2) + Math.pow(post.z() - center.z(), 2)
+                    <= (double) SolarLayout.GUARDIAN_ACTIVATION_RANGE * SolarLayout.GUARDIAN_ACTIVATION_RANGE));
             for (int latitude = -90; latitude <= 90; latitude += 3) for (int longitude = 0; longitude < 360; longitude += 3) {
                 double a = Math.toRadians(latitude), b = Math.toRadians(longitude);
                 double x = center.x() + radius * Math.cos(a) * Math.cos(b);

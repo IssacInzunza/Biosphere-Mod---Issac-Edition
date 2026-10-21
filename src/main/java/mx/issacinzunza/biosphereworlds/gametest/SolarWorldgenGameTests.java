@@ -33,6 +33,16 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(BiosphereWorlds.MODID)
 @PrefixGameTestTemplate(false)
 public final class SolarWorldgenGameTests {
+    /** Produces independent orbit envelopes for current test fixtures; older snapshots keep their exact params. */
+    private static SolarLayout.Params geometryForVersion(SolarLayout.Params p, int version) {
+        if (version < 6) return p;
+        return new SolarLayout.Params(SolarLayout.requiredSingleOrbitSystemRadius(p.planetCount(), p.maxRadius(),
+                p.centralRadius(), p.minGap(), 75, 12, p.satelliteGap()), p.systemGap(), p.planetCount(),
+                p.minRadius(), p.maxRadius(), p.centralRadius(), p.minGap(), p.maxGap(), p.coldInside(),
+                p.innerPercent(), p.middlePercent(), p.outerPercent(), p.satelliteCount(),
+                p.satelliteMinElevation(), p.satelliteMaxElevation(), p.satelliteGap());
+    }
+
     @GameTest(template = "solar_empty", timeoutTicks = 1200)
     public static void volumeRefactorMatchesLiteralBlocksAndHeightmaps(GameTestHelper helper) {
         var level = helper.getLevel();
@@ -41,13 +51,13 @@ public final class SolarWorldgenGameTests {
         long previousNanos = 0;
         long currentNanos = 0;
         int comparisons = 0;
-        for (int version : new int[]{1, 2, 4, 5}) {
+        for (int version : new int[]{1, 2, 4, 5, 6}) {
             for (boolean cold : new boolean[]{false, true}) {
                 var general = new SolarSettings.General(64,
                         java.util.List.of("minecraft:blue_stained_glass", "invalid id", "minecraft:water"),
                         cold ? SphereConfig.BedrockMode.NONE : SphereConfig.BedrockMode.FLOOR,
                         defaults.general().satellites(), cold);
-                var settings = new SolarSettings(defaults.geometry(), true,
+                var settings = new SolarSettings(geometryForVersion(defaults.geometry(), version), true,
                         cold ? SolarLayout.Climate.COLD : SolarLayout.Climate.HOT,
                         defaults.guardians(), new SolarSettings.Environment(true, 20, 20, cold), general, version);
                 var layout = new SolarLayout(71, settings.geometry(), version, general.placement());
@@ -163,10 +173,10 @@ public final class SolarWorldgenGameTests {
             var raw = RandomState.create(rawSettings, registries.lookupOrThrow(Registries.NOISE), seed);
             var sample = new net.minecraft.world.level.levelgen.DensityFunction.SinglePointContext(250, 64, 250);
             long before = Double.doubleToRawLongBits(original.router().finalDensity().compute(sample));
-            for (boolean enabled : new boolean[]{false, true}) {
+            for (int version : new int[]{5, 6}) for (boolean enabled : new boolean[]{false, true}) {
                 var environment = new SolarSettings.Environment(enabled, 20, 20, false);
-                var settings = new SolarSettings(defaults.geometry(), true, SolarLayout.Climate.HOT,
-                        defaults.guardians(), environment, defaults.general(), 5);
+                var settings = new SolarSettings(geometryForVersion(defaults.geometry(), version), true, SolarLayout.Climate.HOT,
+                        defaults.guardians(), environment, defaults.general(), version);
                 var generator = new SolarChunkGenerator(MultiNoiseBiomeSource.createFromPreset(parameters), empty, noise, settings);
                 generator.createState(registries.lookupOrThrow(Registries.STRUCTURE_SET), original, seed);
                 var bound = (RandomState) runtimeField.invoke(generator, original);
@@ -231,9 +241,9 @@ public final class SolarWorldgenGameTests {
         var parameters = registries.registryOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
                 .getHolderOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD);
         var defaults = SolarSettings.defaults();
-        for (int version : new int[]{4, 5}) for (boolean enabled : new boolean[]{false, true}) {
+        for (int version : new int[]{4, 5, 6}) for (boolean enabled : new boolean[]{false, true}) {
             var guardians = new SolarSettings.Guardians(enabled, true, true, 48, 2, 3, 600);
-            var settings = new SolarSettings(defaults.geometry(), true, SolarLayout.Climate.HOT, guardians, defaults.environment(), defaults.general(), version);
+            var settings = new SolarSettings(geometryForVersion(defaults.geometry(), version), true, SolarLayout.Climate.HOT, guardians, defaults.environment(), defaults.general(), version);
             var generator = new SolarChunkGenerator(MultiNoiseBiomeSource.createFromPreset(parameters), empty, noise, settings);
             var random = RandomState.create(noise.value(), registries.lookupOrThrow(Registries.NOISE), 19);
             generator.createState(registries.lookupOrThrow(Registries.STRUCTURE_SET), random, 19);
@@ -245,11 +255,11 @@ public final class SolarWorldgenGameTests {
                 ((SolarChunkAccess) chunk).biosphereworlds$solarLayout(generator.layout());
                 helper.assertTrue(generator.layout().bodyAt(post.x(), post.y(), post.z(), 0) == null, "Cages must be outside the sun");
                 SolarGuardians.placeCages(chunk, generator);
-                if (enabled && version == 5) {
+                if (enabled && version >= 5) {
                     var block = (net.minecraft.world.level.block.entity.SpawnerBlockEntity) chunk.getBlockEntity(pos);
                     var tag = block.getSpawner().save(new net.minecraft.nbt.CompoundTag());
                     helper.assertTrue(tag.getShort("RequiredPlayerRange") == SolarLayout.GUARDIAN_ACTIVATION_RANGE
-                            && tag.getShort("SpawnCount") == 1 && tag.getShort("MinSpawnDelay") == SolarGuardians.MIN_DELAY
+                            && tag.getShort("SpawnCount") == 2 && tag.getShort("MinSpawnDelay") == SolarGuardians.MIN_DELAY
                             && tag.getShort("MaxSpawnDelay") == SolarGuardians.MAX_DELAY, "Current cage policy must be consistent");
                     helper.assertTrue(tag.getCompound("SpawnData").getCompound("entity").size() == 1,
                             "Entity data must retain vanilla finalizeSpawn initialization");
@@ -348,10 +358,10 @@ public final class SolarWorldgenGameTests {
                         block.getSpawner().load(level, pos, tag);
                         for (int attempt = 0; attempt < 32; attempt++) block.getSpawner().serverTick(level, pos);
                         var mobs = level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, area, mob -> mob.getType() == type);
-                        helper.assertTrue(mobs.size() == 1, "Modern cage must respawn one " + type + " at 132 blocks after each kill");
+                        helper.assertTrue(mobs.size() >= 1 && mobs.size() <= 2, "Modern cage must attempt a pair of " + type + " at 132 blocks after each kill, respecting collisions");
                         var mob = mobs.getFirst();
                         helper.assertTrue(mob.getPersistentData().getBoolean(SolarGuardians.MARKER), "Finalization must mark the initialized guardian");
-                        double engagementRange = type == net.minecraft.world.entity.EntityType.PHANTOM ? 12 : 32;
+                        double engagementRange = type == net.minecraft.world.entity.EntityType.PHANTOM ? 12 : 16;
                         helper.assertTrue(mob.distanceToSqr(player) <= engagementRange * engagementRange + .001,
                                 "Coverage-edge spawn must be within the guardian's engagement range");
                         mobs.forEach(net.minecraft.world.entity.Entity::discard);
@@ -368,6 +378,35 @@ public final class SolarWorldgenGameTests {
             }
             helper.succeed();
         });
+    }
+
+    @GameTest(template = "solar_empty")
+    public static void savedGuardianCagesUpgradeWithoutReplacingBlocks(GameTestHelper helper) throws ReflectiveOperationException {
+        var level = helper.getLevel();
+        var pos = helper.absolutePos(new BlockPos(1, 12, 1));
+        var upgrade = SolarGuardians.class.getDeclaredMethod("upgradeCage", net.minecraft.server.level.ServerLevel.class,
+                BlockPos.class, net.minecraft.world.level.BaseSpawner.class);
+        upgrade.setAccessible(true);
+        for (boolean marked : new boolean[]{false, true}) {
+            var block = SolarGuardians.createSpawner(pos, 0, false);
+            if (!marked) block.getPersistentData().remove(SolarGuardians.MARKER);
+            var before = block.getSpawner().save(new net.minecraft.nbt.CompoundTag());
+            upgrade.invoke(null, level, pos, block.getSpawner());
+            var after = block.getSpawner().save(new net.minecraft.nbt.CompoundTag());
+            if (!marked) helper.assertTrue(before.equals(after), "Ordinary spawners must remain identical");
+            else {
+                helper.assertTrue(after.getShort("RequiredPlayerRange") == SolarLayout.GUARDIAN_ACTIVATION_RANGE
+                        && after.getShort("SpawnCount") == 2 && after.getShort("MinSpawnDelay") == 160
+                        && after.getShort("MaxSpawnDelay") == 240 && after.getShort("MaxNearbyEntities") == 8,
+                        "Saved Solar cages must adopt the new policy");
+                helper.assertTrue(after.getCompound("SpawnData").getCompound("entity").size() == 1,
+                        "Migration must retain vanilla mob initialization");
+                upgrade.invoke(null, level, pos, block.getSpawner());
+                helper.assertTrue(after.equals(block.getSpawner().save(new net.minecraft.nbt.CompoundTag())),
+                        "Migration must be idempotent");
+            }
+        }
+        helper.succeed();
     }
 
     @GameTest(template = "solar_empty")

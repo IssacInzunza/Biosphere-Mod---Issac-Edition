@@ -21,9 +21,10 @@ Generate Structures must be enabled.
 Initial spawn selects a temperate planet and uses its natural surface, including
 water. It does not build a platform or clear blocks around the player.
 
-Planets occupy up to three concentric orbital bands with evenly distributed angular
-sectors and small seeded variation. Planet count is exact, excluding the central sphere
-and mineral moons. Planet distance is a **minimum gap between surfaces**, rather than
+Each planet occupies a distinct orbit in new layout-v6 worlds, retaining its existing
+seeded angular placement and configured Y. The system envelope grows automatically
+to include every orbit, its moons and the configured gap between systems.
+Planet distance is a **minimum gap between surfaces**, rather than
 a distance to a randomly chosen neighboring planet. The system envelope is calculated
 automatically, including room for satellites; it is no longer a user-facing option.
 
@@ -35,14 +36,16 @@ The central sphere keeps its required Stronghold size and Y=127 automatically.
 Central surface changes occur before structure placement and only at Y>=56; the
 complete Stronghold remains at Y<=48. The sun has no mineral moons in version 4. Planets retain their satellites.
 With guardians enabled, twelve small obsidian pedestals carry cages distributed
-around the entire sun, including its poles. Their 136-block activation range covers
-the sampled surface directions. Each cage spawns one guardian every 20–40 seconds,
-with limits of four marked guardians within 96 blocks of a player and 24 around a sun.
+around the entire sun, including its poles. Their 224-block activation range covers
+the interior as well as the surface. Each cage attempts up to two guardians every
+8–12 seconds, limited to eight marked guardians within 32 blocks of a player and
+24 around a sun. Each cycle reduces its spawn budget to the remaining capacity.
 Distant spawn candidates are positioned within combat range of the approaching
-player (32 blocks for ghasts/blazes, 12 for phantoms), retaining obstruction checks.
+player (16 blocks for ghasts/blazes, 12 for phantoms), retaining obstruction checks.
 Ghasts and blazes defend by day; phantoms may also spawn at night. Peaceful and
 `doMobSpawning=false` pause these cages. Destroyed cages are not rebuilt.
-Layouts 1–4 keep their previous rules. Existing chunks are not retrofitted; use a
+Saved layouts 1–5 keep their geometry. Existing marked cages upgrade their combat
+settings when enabled, without replacing blocks or recreating destroyed cages; use a
 new Solar world for a consistent twelve-cage arrangement. Combat difficulty still
 requires in-game acceptance with normal chunk simulation distances.
 
@@ -59,7 +62,7 @@ for the shared terrain profile**. Previously generated chunks are not regenerate
 
 | Option | Default | Range | Behavior |
 |---|---|---|---|
-| `planet_count` | `8` | 1–16 | Exact number of orbital planets, excluding the central Stronghold sphere and mineral satellites. They occupy up to three orbital bands around the center. |
+| `planet_count` | `8` | 1–16 | Exact number of orbital planets, excluding the central Stronghold sphere and mineral satellites. Each planet occupies a distinct orbit in new layout-v6 worlds. |
 | `planet_gap` | `400` | 0–4000 blocks / bloques | Minimum empty gap between sphere surfaces, in blocks, never center-to-center distance. Also separates the central sphere from the inner orbit. Orbital geometry can produce larger gaps. |
 | `system_gap` | `1500` | 0–16000 blocks / bloques | Minimum empty gap between the outer envelopes of neighboring systems, in blocks. System size is calculated from planet sizes and distances automatically. |
 | `climate_direction` | `0` | 0–1 (integer slider) | 0: magma/lava center, warm inner planets, temperate middle, cold exterior. 1: packed-ice center, cold inner planets, temperate middle, warm exterior. With very few planets, at least one stays temperate. |

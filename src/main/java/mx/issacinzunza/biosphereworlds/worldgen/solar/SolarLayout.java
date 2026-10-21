@@ -76,6 +76,28 @@ public final class SolarLayout {
         double inner = (double) centralRadius + maxRadius + gap;
         if (perRing > 1) inner = Math.max(inner, (2.0 * maxRadius + gap) / (2 * Math.sin(Math.PI * 0.8 / perRing)));
         double outer = inner + (rings - 1) * (2.0 * maxRadius + gap);
+        return enclosingSystemRadius(outer, maxRadius, moonGapPercent, moonSizePercent, moonGapBlocks);
+    }
+
+    /**
+     * Bounds one distinct orbit per planet for new layouts, including the outer moons.
+     * @param count number of orbital planets
+     * @param maxRadius largest configured planet radius, in blocks
+     * @param centralRadius sun radius, in blocks
+     * @param gap minimum empty gap between planet surfaces, in blocks
+     * @param moonGapPercent maximum satellite gap percentage
+     * @param moonSizePercent maximum satellite radius percentage
+     * @param moonGapBlocks minimum absolute satellite gap, in blocks
+     * @return conservative system envelope radius, in blocks
+     */
+    public static int requiredSingleOrbitSystemRadius(int count, int maxRadius, int centralRadius, int gap,
+                                                      int moonGapPercent, int moonSizePercent, int moonGapBlocks) {
+        double outer = (double) centralRadius + maxRadius + gap + (count - 1) * (2.0 * maxRadius + gap);
+        return enclosingSystemRadius(outer, maxRadius, moonGapPercent, moonSizePercent, moonGapBlocks);
+    }
+
+    /** Shared moon allowance for old orbital bands and current individual orbits. */
+    private static int enclosingSystemRadius(double outer, int maxRadius, int moonGapPercent, int moonSizePercent, int moonGapBlocks) {
         double moonSpace = maxRadius + Math.max(moonGapBlocks, maxRadius * moonGapPercent / 100.0)
                 + 2 * Math.ceil(maxRadius * moonSizePercent / 100.0);
         return Math.max(512, (int) Math.ceil(outer + Math.max(maxRadius, moonSpace) + 16));
@@ -153,7 +175,7 @@ public final class SolarLayout {
     }
 
     public SolarLayout(long seed, Params params, int version, PlacementOptions options) {
-        if (version < 1 || version > 5) throw new IllegalArgumentException("Unknown Solar layout version");
+        if (version < 1 || version > 6) throw new IllegalArgumentException("Unknown Solar layout version");
         this.seed = seed;
         this.params = params;
         this.version = version;
@@ -305,6 +327,11 @@ public final class SolarLayout {
                 int radius = params.minRadius + (int) Math.floorMod(hash, (long) params.maxRadius - params.minRadius + 1);
                 double angle = phase + offset + slot * sector
                         + (unit(mix(hash + 1)) - 0.5) * Math.min(sector, Math.PI * 2 / params.planetCount) * 0.2;
+                // Retain the existing angle and Y; only radial distance changes in layout 6.
+                if (version >= 6) {
+                    orbit = (double) central.radius + params.maxRadius + params.minGap
+                            + index * (2.0 * params.maxRadius + params.minGap);
+                }
                 double y = version >= 3 ? options.centerY : Math.max(MIN_Y + radius, Math.min(MAX_Y - radius, options.centerY));
                 Body body = new Body(mix(hash + 2), central.x + Math.cos(angle) * orbit, y,
                         central.z + Math.sin(angle) * orbit, radius, false,
@@ -349,8 +376,8 @@ public final class SolarLayout {
 
     public record GuardianPost(int index, int x, int y, int z) { }
 
-    /** Activation radius in blocks, including a rounding margin for the twelve surface-covering posts. */
-    public static final int GUARDIAN_ACTIVATION_RANGE = 136;
+    /** Activation radius in blocks, covering the entire sun volume, including its center. */
+    public static final int GUARDIAN_ACTIVATION_RANGE = 224;
 
     /**
      * Returns twelve cage sites covering the sun in three dimensions for current worlds.

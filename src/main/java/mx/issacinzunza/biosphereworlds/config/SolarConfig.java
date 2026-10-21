@@ -31,7 +31,7 @@ public final class SolarConfig {
         var general = new SolarSettings.General(GENERAL.CENTER_Y.get().intValue(), List.copyOf(GENERAL.SPHERE_BLOCK.get()), GENERAL.BEDROCK_MODE.get(),
                 new SolarSettings.Satellites(GENERAL.SATELLITES_MIN_SIZE_PERCENT.get(), GENERAL.SATELLITES_MAX_SIZE_PERCENT.get(), GENERAL.SATELLITES_MIN_GAP_PERCENT.get(),
                         GENERAL.SATELLITES_MAX_GAP_PERCENT.get(), List.copyOf(GENERAL.SATELLITES_INCLUDED_ORES.get()), List.copyOf(GENERAL.SATELLITES_EXCLUDED_ORES.get()), GENERAL.SATELLITES_MOD_ORE_WEIGHT.get(), GENERAL.SATELLITES_MOD_ORE_DENSITY_PERMILLE.get()), GENERAL.CLOSE_OPEN_TOP.get());
-        int region = SolarLayout.requiredSystemRadius(OPTIONS.SOLAR_PLANET_COUNT.get(), GENERAL.RADIUS.get().intValue(), 180, OPTIONS.SOLAR_PLANET_GAP.get(),
+        int region = SolarLayout.requiredSingleOrbitSystemRadius(OPTIONS.SOLAR_PLANET_COUNT.get(), GENERAL.RADIUS.get().intValue(), 180, OPTIONS.SOLAR_PLANET_GAP.get(),
                 GENERAL.SATELLITES_MAX_GAP_PERCENT.get(), GENERAL.SATELLITES_MAX_SIZE_PERCENT.get(), GENERAL.SATELLITES_MIN_GAP_BLOCKS.get());
         var defaults = SolarSettings.defaults().guardians();
         var guardians = new SolarSettings.Guardians(OPTIONS.SOLAR_GUARDIANS_ENABLED.get(), defaults.ghasts(), defaults.phantoms(),
@@ -40,6 +40,6 @@ public final class SolarConfig {
                 GENERAL.MIN_RADIUS.get().intValue(), GENERAL.RADIUS.get().intValue(), 180, OPTIONS.SOLAR_PLANET_GAP.get(), OPTIONS.SOLAR_PLANET_GAP.get(), cold, 30, 40, 30,
                 GENERAL.SATELLITES_ENABLED.get() ? GENERAL.SATELLITES_MAX_COUNT.get() : 0, GENERAL.SATELLITES_MIN_ELEVATION_DEGREES.get(), GENERAL.SATELLITES_MAX_ELEVATION_DEGREES.get(), GENERAL.SATELLITES_MIN_GAP_BLOCKS.get()),
                 true, cold ? SolarLayout.Climate.COLD : SolarLayout.Climate.HOT, guardians,
-                new SolarSettings.Environment(GENERAL.EDGE_OCEAN_ENABLED.get(), GENERAL.EDGE_OCEAN_WIDTH.get(), GENERAL.EDGE_OCEAN_DEPTH.get(), GENERAL.BEDROCK_MODE.get() == SphereConfig.BedrockMode.SHELL), general, 5);
+                new SolarSettings.Environment(GENERAL.EDGE_OCEAN_ENABLED.get(), GENERAL.EDGE_OCEAN_WIDTH.get(), GENERAL.EDGE_OCEAN_DEPTH.get(), GENERAL.BEDROCK_MODE.get() == SphereConfig.BedrockMode.SHELL), general, 6);
     }
 }

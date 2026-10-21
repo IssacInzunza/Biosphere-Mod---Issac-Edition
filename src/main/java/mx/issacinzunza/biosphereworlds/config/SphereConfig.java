@@ -154,7 +154,7 @@ public class SphereConfig {
                     .comment("0: magma/lava center, warm inner planets, temperate middle, cold exterior. 1: ice center, cold inner planets, temperate middle, warm exterior. New Solar worlds only.")
                     .defineInRange("climate_direction", 0, 0, 1);
             SOLAR_GUARDIANS_ENABLED = builder.translation("biosphereworlds.configuration.solar_guardians_enabled")
-                    .comment("Generate twelve surface-covering cages for ghast, phantom and blaze guardians. Four guardians near a player, 24 per sun. Other mobs are unaffected. Saved with each new Solar world.")
+                    .comment("Generate twelve surface-covering cages for ghast, phantom and blaze guardians. Eight guardians within 32 blocks of a player, 24 per sun; up to two every 8-12 seconds. Existing marked cages upgrade when enabled. Other mobs are unaffected. Saved with each new Solar world.")
                     .define("guardians_enabled", true);
         }
     }

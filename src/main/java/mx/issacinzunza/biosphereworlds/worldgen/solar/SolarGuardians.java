@@ -31,11 +31,11 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 public final class SolarGuardians {
     public static final String MARKER = "biosphereworlds_solar_guardian";
     /** Spawn delays in server ticks (20 ticks per second). */
-    public static final int MIN_DELAY = 400;
-    public static final int MAX_DELAY = 800;
-    public static final int LOCAL_LIMIT = 4;
+    public static final int MIN_DELAY = 160;
+    public static final int MAX_DELAY = 240;
+    public static final int LOCAL_LIMIT = 8;
     public static final int SYSTEM_LIMIT = 24;
-    // Stored on each cage so existing three-cage chunks retain their original policy.
+    // Persistent policy revision, used to upgrade existing marked cages once.
     private static final String RULES = "guardian_rules";
 
     /** How the mixin should handle a tick; RETRY backs off for one second. */
@@ -72,14 +72,14 @@ public final class SolarGuardians {
         tag.putShort("Delay", (short) (modern ? 40 : 100));
         tag.putShort("MinSpawnDelay", (short) (modern ? MIN_DELAY : 600));
         tag.putShort("MaxSpawnDelay", (short) (modern ? MAX_DELAY : 1200));
-        tag.putShort("SpawnCount", (short) 1);
+        tag.putShort("SpawnCount", (short) (modern ? 2 : 1));
         tag.putShort("MaxNearbyEntities", (short) (modern ? LOCAL_LIMIT : index == 0 ? 2 : 3));
         tag.putShort("RequiredPlayerRange", (short) (modern ? SolarLayout.GUARDIAN_ACTIVATION_RANGE : 96));
         tag.putShort("SpawnRange", (short) 8);
         block.getSpawner().load(null, pos, tag);
         block.getPersistentData().putBoolean(MARKER, true);
         block.getPersistentData().putInt("guardian_index", index);
-        if (modern) block.getPersistentData().putInt(RULES, 2);
+        if (modern) block.getPersistentData().putInt(RULES, 3);
         return block;
     }
 
@@ -115,24 +115,52 @@ public final class SolarGuardians {
         if (block == null) return TickAction.VANILLA;
         if (!generator.solarSettings().guardians().enabled() || level.getDifficulty() == Difficulty.PEACEFUL
                 || !level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)) return TickAction.PAUSE;
-        if (block.getPersistentData().getInt(RULES) < 2) return legacyPause(level, pos, block, generator) ? TickAction.PAUSE : TickAction.VANILLA;
+        upgradeCage(level, pos, spawner);
         if (delay > 0) return TickAction.VANILLA;
         var player = nearestPlayer(level, pos);
         if (player == null || !spawnAreaLoaded(level, pos, 12)) return TickAction.RETRY;
-        var nearby = level.getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(96), SolarGuardians::isGuardian);
+        var nearby = level.getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(32), SolarGuardians::isGuardian);
         if (nearby.size() >= LOCAL_LIMIT) return TickAction.RETRY;
         var center = generator.layout().systemAtBlock(pos.getX(), pos.getZ()).central();
         double extent = center.radius() + 160;
         var area = new AABB(center.x() - extent, level.getMinBuildHeight(), center.z() - extent,
                 center.x() + extent, level.getMaxBuildHeight(), center.z() + extent);
-        if (level.getEntitiesOfClass(Mob.class, area, SolarGuardians::isGuardian).size() >= SYSTEM_LIMIT) return TickAction.RETRY;
+        int systemCount = level.getEntitiesOfClass(Mob.class, area, SolarGuardians::isGuardian).size();
+        int budget = Math.min(2, Math.min(LOCAL_LIMIT - nearby.size(), SYSTEM_LIMIT - systemCount));
+        if (budget <= 0) return TickAction.RETRY;
         int choice = level.random.nextInt(level.isNight() ? 3 : 2);
         String id = choice == 0 ? "minecraft:ghast" : choice == 1 ? "minecraft:blaze" : "minecraft:phantom";
         var tag = spawner.save(new CompoundTag());
         tag.remove("SpawnPotentials");
         tag.put("SpawnData", spawnData(id));
+        tag.putShort("SpawnCount", (short) budget);
         spawner.load(level, pos, tag);
         return TickAction.VANILLA;
+    }
+
+    /**
+     * Upgrades only an enabled Solar cage's saved settings; no blocks are replaced.
+     * Called after world/ownership/config checks and once per old cage. Disabled
+     * guardians never mutate cage NBT. Positions and ordinary vanilla cages stay intact.
+     * @param level owning Solar server world
+     * @param pos cage position
+     * @param spawner spawner whose owner carries the Solar marker
+     */
+    private static void upgradeCage(ServerLevel level, BlockPos pos, BaseSpawner spawner) {
+        var block = owner(spawner);
+        if (block == null || block.getPersistentData().getInt(RULES) >= 3) return;
+        var tag = spawner.save(new CompoundTag());
+        tag.putShort("Delay", (short) Math.min(40, tag.getShort("Delay")));
+        tag.putShort("MinSpawnDelay", (short) MIN_DELAY);
+        tag.putShort("MaxSpawnDelay", (short) MAX_DELAY);
+        tag.putShort("SpawnCount", (short) 2);
+        tag.putShort("MaxNearbyEntities", (short) LOCAL_LIMIT);
+        tag.putShort("RequiredPlayerRange", (short) SolarLayout.GUARDIAN_ACTIVATION_RANGE);
+        tag.put("SpawnData", spawnData("minecraft:ghast"));
+        tag.remove("SpawnPotentials");
+        spawner.load(level, pos, tag);
+        block.getPersistentData().putInt(RULES, 3);
+        block.setChanged();
     }
 
     private static boolean isGuardian(Mob mob) { return mob.getPersistentData().getBoolean(MARKER); }
@@ -162,7 +190,7 @@ public final class SolarGuardians {
 
     /**
      * Moves distant candidates into engagement range of the approaching player.
-     * Ghasts/blazes use 32 blocks; phantoms use 12 because their target scan is narrow.
+     * Ghasts/blazes use 16 blocks; phantoms use 12 because their target scan is narrow.
      * This also prevents immediate distance despawn. Vanilla obstruction checks run
      * afterward at the adjusted position; no mob is teleported after being spawned.
      * @param event position check already scoped to a Solar world
@@ -177,11 +205,17 @@ public final class SolarGuardians {
         double dy = player.getY() - mob.getY();
         double dz = player.getZ() - mob.getZ();
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        double engagementRange = mob.getType() == EntityType.PHANTOM ? 12 : 32;
+        double engagementRange = mob.getType() == EntityType.PHANTOM ? 12 : 16;
         if (distance <= engagementRange) return;
-        double move = (distance - engagementRange) / distance;
+        // Leave room for a small sideways spread so a pair of ghasts does not
+        // collapse into the same collision box when a distant cage activates.
+        double move = (distance - (engagementRange - 4)) / distance;
+        double horizontal = Math.hypot(dx, dz);
+        double sideways = (level.random.nextDouble() - .5) * 8;
+        double tangentX = horizontal > 0 ? -dz / horizontal : 1;
+        double tangentZ = horizontal > 0 ? dx / horizontal : 0;
         double y = Math.max(level.getMinBuildHeight() + 2, Math.min(level.getMaxBuildHeight() - 6, mob.getY() + dy * move));
-        mob.moveTo(mob.getX() + dx * move, y, mob.getZ() + dz * move, mob.getYRot(), mob.getXRot());
+        mob.moveTo(mob.getX() + dx * move + tangentX * sideways, y, mob.getZ() + dz * move + tangentZ * sideways, mob.getYRot(), mob.getXRot());
     }
 
     /**
@@ -192,19 +226,6 @@ public final class SolarGuardians {
         var source = event.getSpawner();
         if (source == null || source.left().isEmpty()) return;
         if (source.left().get().getPersistentData().getBoolean(MARKER)) event.getEntity().getPersistentData().putBoolean(MARKER, true);
-    }
-
-    private static boolean legacyPause(ServerLevel level, BlockPos pos, BlockEntity block, SolarChunkGenerator generator) {
-        if (!level.hasNearbyAlivePlayer(pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5, 96)) return true;
-        if (!spawnAreaLoaded(level, pos, 12)) return true;
-        int index = block.getPersistentData().getInt("guardian_index");
-        if (index == 1 && !level.isNight()) return true;
-        var type = index == 0 ? EntityType.GHAST : index == 1 ? EntityType.PHANTOM : EntityType.BLAZE;
-        var center = generator.layout().systemAtBlock(pos.getX(), pos.getZ()).central();
-        double extent = center.radius() + 160;
-        var area = new AABB(center.x() - extent, level.getMinBuildHeight(), center.z() - extent,
-                center.x() + extent, level.getMaxBuildHeight(), center.z() + extent);
-        return level.getEntitiesOfClass(Mob.class, area, mob -> mob.getType() == type).size() >= (index == 0 ? 2 : 3);
     }
 
     /**

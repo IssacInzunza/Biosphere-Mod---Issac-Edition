@@ -1,5 +1,37 @@
 # Arquitectura de Biosphere Worlds
 
+## Revisión de órbitas y defensa central (layout 6)
+
+Cada planeta nuevo recibe una distancia orbital distinta; se conservan la fórmula
+angular anterior, los ids, la Y configurada y las bandas de temperatura. La
+separación radial usa el máximo radio configurado para garantizar el hueco mínimo
+incluso si dos planetas quedan alineados. El radio envolvente añade espacio para
+las lunas y alimenta el cálculo existente de separación entre sistemas.
+`requiredSingleOrbitSystemRadius` se usa solo para nuevas instantáneas; el cálculo
+histórico sigue disponible para layouts 1–5 y sus mundos mantienen la geometría.
+No cambia mod_version ni se añade una opción de configuración.
+
+SolarGuardians usa demora 160–240 ticks, hasta dos intentos por ciclo, ocho
+marcados en el entorno de 32 bloques del jugador y 24 alrededor del sol. El
+presupuesto del ciclo se reduce a la capacidad restante para no superar esos
+límites. Alcance de activación 224: incluye el centro, no solo la superficie.
+Los candidatos se colocan dentro de 16 bloques del jugador (12 para phantom),
+con dispersión lateral acotada para evitar que una pareja comparta la misma caja
+de colisión. Se conservan las comprobaciones de obstrucciones y la pausa en
+Pacífico/doMobSpawning=false. Solo hay phantom de noche.
+
+Las jaulas marcadas existentes adoptan una revisión NBT de política al activarse:
+se acorta su demora y se actualizan rango, cantidad y datos de spawn. No se mueve
+la jaula, no se reemplazan bloques y no se reconstruyen jaulas destruidas. La
+migración ocurre después de verificar mundo Solar, propietario y opción activada;
+los spawners ordinarios y la opción apagada no sufren esta migración. No se fuerzan
+chunks: las jaulas necesitan chunks activos. Los layouts 1–3 sin jaulas conservan
+su sistema histórico de intervalos.
+
+Las secciones históricas inferiores describen las revisiones anteriores; los
+valores de esta sección sustituyen las demoras, cantidades y alcances anteriores.
+
+
 ## Solar Systems — configuración simplificada y órbitas (experimental)
 
 El preset se presenta como **Solar System - Issac Edition**; su identificador

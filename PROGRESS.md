@@ -1,6 +1,41 @@
 # Solar System - Issac Edition — progreso
 
-## Revisión actual — reglas compartidas y contratos del código
+## Revisión actual — una órbita por planeta y defensa central reforzada
+
+- Las instantáneas nuevas usan layout 6. Cada planeta recibe una distancia al sol
+  distinta y conserva el cálculo angular anterior, su id, clima y Y configurada.
+  El radio envolvente crece para incluir todas las órbitas y lunas; la separación
+  entre sistemas usa el mismo cálculo de seguridad existente. Las instantáneas
+  1–5 conservan su geometría. No se cambia mod_version ni biospheres.json.
+- El cálculo envolvente de lunas se comparte entre las bandas históricas y las
+  órbitas individuales para no duplicar esa regla. No se añaden clases ni opciones.
+- Las jaulas intentan hasta dos guardianes cada 160–240 ticks, con límite ocho
+  dentro del entorno de 32 bloques del jugador y 24 alrededor del sol. El ciclo
+  usa solo el presupuesto restante. Se mantienen colisiones, Pacífico y gamerule.
+- Alcance 224: incluye el centro del volumen central. Candidatos de ghast/blaze
+  a menos de 16 bloques del jugador y phantom a menos de 12, con dispersión lateral
+  para que una pareja no quede forzada a compartir una caja de colisión. Phantom
+  sigue siendo nocturno; las apariciones pueden fallar si hay obstrucciones.
+- Jaulas marcadas existentes: migración NBT una vez al activarse, después de validar
+  mundo Solar y opción encendida. Cambian sus valores de combate, no sus bloques
+  ni posiciones; las jaulas destruidas no reaparecen. No se fuerzan chunks.
+- Pruebas: cantidad y órbitas distintas para 1–16 planetas; comparación con layout 5
+  de ángulos, ids, climas y Y; separación entre planetas y envolventes de sistemas.
+  Radios 512 conservan Y=-40/62/300 sin introducir límites verticales nuevos.
+  GameTests de guardado y Stronghold completo incluyen layout 6; la comparación
+  literal del escritor también incluye su geometría. Migración marcada/idempotente
+  y spawners ordinarios sin cambios se verifican en el motor.
+- Resultado: build, suite JUnit, Javadoc y quince GameTests aprobados; 240 fases
+  del escritor comparadas con bloques y heightmaps idénticos a la rutina literal.
+  La vista previa de -4634224182739581737 refleja las ocho órbitas nuevas, usando
+  el SolarLayout actual y conservando la semilla completa como cadena.
+- Evidencia: run/logs/solar-single-orbits-final.log. Pendiente manual: dificultad
+  efectiva en supervivencia, persecución y chunks activos del mundo del jugador.
+  La migración no instala jaulas adicionales en chunks antiguos ni certifica
+  combate obligatorio en cada punto. Para la nueva distribución orbital se
+  requiere mundo nuevo; cambiar geometría de chunks existentes rompería continuidad.
+
+## Revisión anterior — reglas compartidas y contratos del código
 
 - SolarPortalGuard.allowsNaturalPortal concentra la autorización completa: sala
   activa en el hilo, posición dentro de ella y margen de tres bloques en el centro.
