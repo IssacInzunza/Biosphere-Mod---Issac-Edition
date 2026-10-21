@@ -15,6 +15,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = MultiNoiseBiomeSource.class, priority = 500)
@@ -23,6 +24,12 @@ public abstract class MixinMultiNoiseBiomeSource implements BiosphereBiomeSource
 
     @Inject(method = "getNoiseBiome(IIILnet/minecraft/world/level/biome/Climate$Sampler;)Lnet/minecraft/core/Holder;", at = @At("HEAD"), cancellable = true)
     private void getNoiseBiome(int x, int y, int z, Climate.Sampler sampler, CallbackInfoReturnable<Holder<Biome>> cir){
+        var solar = biosphereworlds$solarBiomes;
+        if (solar != null) {
+            Holder<Biome> forced = solar.forcedBiome(x, y, z);
+            if (forced != null) cir.setReturnValue(forced);
+            return;
+        }
         if (!biosphereworlds$isBiosphereBiomeSource()) {
             return;
         }
@@ -44,6 +51,27 @@ public abstract class MixinMultiNoiseBiomeSource implements BiosphereBiomeSource
             if (voidBiome != null && voidBiome.isBound())
                 cir.setReturnValue(voidBiome);
         }
+    }
+
+    // Run before TerraBlender's priority-1000 HEAD handler, retaining positional region selection.
+    @ModifyVariable(method = "getNoiseBiome(IIILnet/minecraft/world/level/biome/Climate$Sampler;)Lnet/minecraft/core/Holder;",
+            at = @At("HEAD"), argsOnly = true)
+    private Climate.Sampler solarSampler(Climate.Sampler sampler, int x, int y, int z, Climate.Sampler original) {
+        var solar = biosphereworlds$solarBiomes;
+        return solar == null ? sampler : solar.climateSampler(x, y, z, sampler);
+    }
+
+    @org.spongepowered.asm.mixin.Unique
+    private volatile mx.issacinzunza.biosphereworlds.worldgen.solar.SolarBiomeSource biosphereworlds$solarBiomes;
+
+    @Override
+    public mx.issacinzunza.biosphereworlds.worldgen.solar.SolarBiomeSource biosphereworlds$solarBiomes() {
+        return biosphereworlds$solarBiomes;
+    }
+
+    @Override
+    public void biosphereworlds$setSolarBiomes(mx.issacinzunza.biosphereworlds.worldgen.solar.SolarBiomeSource solar) {
+        biosphereworlds$solarBiomes = solar;
     }
 
     @org.spongepowered.asm.mixin.Unique

@@ -76,8 +76,12 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
         this(new SolarBiomeSource(source, empty, solar), noise, solar, false);
     }
     private SolarChunkGenerator(SolarBiomeSource source, Holder<NoiseGeneratorSettings> noise, SolarSettings solar, boolean configureOnBind) {
-        super(source, noise);
+        // TerraBlender initializes only a directly exposed MultiNoiseBiomeSource.
+        super(source.source() instanceof net.minecraft.world.level.biome.MultiNoiseBiomeSource ? source.source() : source, noise);
         solarBiomes = source;
+        if (getBiomeSource() instanceof mx.issacinzunza.biosphereworlds.worldgen.BiosphereBiomeSourceAccess access) {
+            access.biosphereworlds$setSolarBiomes(source);
+        }
         initialSettings = solar;
         this.configureOnBind = configureOnBind;
     }

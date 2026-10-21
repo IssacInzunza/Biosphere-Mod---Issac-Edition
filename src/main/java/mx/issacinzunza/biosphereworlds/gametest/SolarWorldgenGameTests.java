@@ -33,6 +33,57 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(BiosphereWorlds.MODID)
 @PrefixGameTestTemplate(false)
 public final class SolarWorldgenGameTests {
+    @GameTest(template = "solar_empty")
+    public static void solarExposesMultiNoiseAndPreservesClimateRouting(GameTestHelper helper) {
+        var registries = helper.getLevel().registryAccess();
+        var noise = registries.registryOrThrow(Registries.NOISE_SETTINGS).getHolderOrThrow(ResourceKey.create(
+                Registries.NOISE_SETTINGS, ResourceLocation.fromNamespaceAndPath("biosphereworlds", "biospheres")));
+        var empty = registries.registryOrThrow(Registries.BIOME).getHolderOrThrow(Biomes.THE_VOID);
+        var parameters = registries.registryOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
+                .getHolderOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD);
+        var defaults = SolarSettings.defaults();
+        var random = RandomState.create(noise.value(), registries.lookupOrThrow(Registries.NOISE), 81723);
+        var sampler = random.sampler();
+        for (boolean enabled : new boolean[]{false, true}) {
+            var source = MultiNoiseBiomeSource.createFromPreset(parameters);
+            var settings = new SolarSettings(geometryForVersion(defaults.geometry(), 6), enabled, SolarLayout.Climate.HOT,
+                    defaults.guardians(), defaults.environment(), defaults.general(), 6);
+            var generator = new SolarChunkGenerator(source, empty, noise, settings);
+            helper.assertTrue(generator.getBiomeSource() == source, "TerraBlender must see the real MultiNoise source");
+            generator.createState(registries.lookupOrThrow(Registries.STRUCTURE_SET), random, 81723);
+            var solar = ((mx.issacinzunza.biosphereworlds.worldgen.BiosphereBiomeSourceAccess) source).biosphereworlds$solarBiomes();
+            for (int cell : new int[]{-1, 0}) {
+                for (var body : generator.layout().systemAtCell(cell, cell).bodies()) {
+                    int x = Math.floorDiv((int) body.x(), 4);
+                    int y = Math.floorDiv((int) body.y(), 4);
+                    int z = Math.floorDiv((int) body.z(), 4);
+                    var adapted = solar.climateSampler(x, y, z, sampler);
+                    if (!enabled) helper.assertTrue(adapted == sampler, "Disabled climate must return the identical sampler");
+                    var point = sampler.sample(x, y, z);
+                    float temperature = switch (body.central() ? settings.centralClimate() : body.climate()) {
+                        case HOT -> 0.8F;
+                        case TEMPERATE -> 0.0F;
+                        case COLD -> -0.8F;
+                    };
+                    var expectedPoint = enabled ? new net.minecraft.world.level.biome.Climate.TargetPoint(
+                            net.minecraft.world.level.biome.Climate.quantizeCoord(temperature), point.humidity(),
+                            point.continentalness(), point.erosion(), point.depth(), point.weirdness()) : point;
+                    helper.assertTrue(adapted.sample(x, y, z).equals(expectedPoint), "Climate must match the previous target point exactly");
+                    var expected = body.central() ? registries.registryOrThrow(Registries.BIOME).getHolderOrThrow(Biomes.BADLANDS)
+                            : source.getNoiseBiome(expectedPoint);
+                    helper.assertTrue(source.getNoiseBiome(x, y, z, sampler).equals(expected), "Real MultiNoise queries must apply Solar climate and central overrides");
+                    helper.assertTrue(source.getNoiseBiome(x, 10000, z, sampler).is(Biomes.THE_VOID), "Solar void must survive the direct MultiNoise route");
+                }
+            }
+            var vanilla = MultiNoiseBiomeSource.createFromPreset(parameters);
+            helper.assertTrue(((mx.issacinzunza.biosphereworlds.worldgen.BiosphereBiomeSourceAccess) vanilla).biosphereworlds$solarBiomes() == null,
+                    "A separate vanilla source must have no Solar state");
+            helper.assertTrue(vanilla.getNoiseBiome(0, 10000, 0, sampler).equals(vanilla.getNoiseBiome(sampler.sample(0, 10000, 0))),
+                    "Vanilla biome queries must remain unchanged");
+        }
+        helper.succeed();
+    }
+
     @GameTest(template = "solar_empty", timeoutTicks = 1200)
     public static void radiusOneReproducesEmptySpawnColumn(GameTestHelper helper) throws ReflectiveOperationException {
         var level = helper.getLevel();

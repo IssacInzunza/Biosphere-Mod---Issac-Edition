@@ -9,6 +9,7 @@ import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
 import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.levelgen.DensityFunctions;
 
 import java.util.stream.Stream;
 
@@ -24,6 +25,9 @@ public final class SolarBiomeSource extends BiomeSource {
     private volatile SolarLayout layout;
     private Holder<Biome> hotCentral;
     private Holder<Biome> coldCentral;
+    private volatile Samplers climateSamplers;
+
+    private record Samplers(Climate.Sampler original, Climate.Sampler hot, Climate.Sampler temperate, Climate.Sampler cold) { }
 
     public SolarBiomeSource(BiomeSource source, Holder<Biome> voidBiome, SolarSettings settings) {
         this.source = source;
@@ -47,6 +51,13 @@ public final class SolarBiomeSource extends BiomeSource {
     }
 
     @Override public Holder<Biome> getNoiseBiome(int x, int y, int z, Climate.Sampler sampler) {
+        Holder<Biome> forced = forcedBiome(x, y, z);
+        if (forced != null) return forced;
+        return source.getNoiseBiome(x, y, z, climateSampler(x, y, z, sampler));
+    }
+
+    /** Null lets the real biome source (including TerraBlender) choose the biome. */
+    public Holder<Biome> forcedBiome(int x, int y, int z) {
         SolarLayout current = layout;
         if (current == null) throw new IllegalStateException("Solar biome lookup before world seed binding");
         SolarLayout.Body body = current.bodyAt(QuartPos.toBlock(x), QuartPos.toBlock(y), QuartPos.toBlock(z), -4);
@@ -56,17 +67,30 @@ public final class SolarBiomeSource extends BiomeSource {
                     : settings.centralClimate() == SolarLayout.Climate.HOT ? hotCentral : null;
             if (central != null) return central;
         }
-        if (!settings.climateEnabled() || !(source instanceof MultiNoiseBiomeSource multi)) {
-            return source.getNoiseBiome(x, y, z, sampler);
+        return null;
+    }
+
+    public Climate.Sampler climateSampler(int x, int y, int z, Climate.Sampler sampler) {
+        if (!settings.climateEnabled() || !(source instanceof MultiNoiseBiomeSource)) return sampler;
+        SolarLayout current = layout;
+        if (current == null) throw new IllegalStateException("Solar biome lookup before world seed binding");
+        SolarLayout.Body body = current.bodyAt(QuartPos.toBlock(x), QuartPos.toBlock(y), QuartPos.toBlock(z), -4);
+        if (body == null) return sampler;
+        Samplers cached = climateSamplers;
+        if (cached == null || cached.original() != sampler) {
+            cached = new Samplers(sampler, withTemperature(sampler, 0.8F), withTemperature(sampler, 0.0F), withTemperature(sampler, -0.8F));
+            climateSamplers = cached;
         }
-        Climate.TargetPoint point = sampler.sample(x, y, z);
         SolarLayout.Climate climate = body.central() ? settings.centralClimate() : body.climate();
-        float temperature = switch (climate) {
-            case HOT -> 0.8F;
-            case TEMPERATE -> 0.0F;
-            case COLD -> -0.8F;
+        return switch (climate) {
+            case HOT -> cached.hot();
+            case TEMPERATE -> cached.temperate();
+            case COLD -> cached.cold();
         };
-        return multi.getNoiseBiome(new Climate.TargetPoint(Climate.quantizeCoord(temperature), point.humidity(),
-                point.continentalness(), point.erosion(), point.depth(), point.weirdness()));
+    }
+
+    private static Climate.Sampler withTemperature(Climate.Sampler original, float temperature) {
+        return new Climate.Sampler(DensityFunctions.constant(temperature), original.humidity(), original.continentalness(),
+                original.erosion(), original.depth(), original.weirdness(), original.spawnTarget());
     }
 }

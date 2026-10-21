@@ -75,6 +75,13 @@ The sun retains its separate magma/ice profile and protected Stronghold depth.
 Existing v1–v4 snapshots retain their old terrain logic: **create a new Solar world
 for the shared terrain profile**. Previously generated chunks are not regenerated.
 
+Solar exposes its underlying `minecraft:multi_noise` biome source so TerraBlender
+can initialize Biomes O' Plenty regions and surface rules. A per-source Solar
+hook applies the void/central biome overrides and changes only the sampler's
+temperature before positional biome selection. Climate disabled keeps the original
+sampler. Existing generated chunks are unchanged; verify BOP in newly generated
+planet terrain, since the hot/cold central body deliberately uses a fixed biome.
+
 ### Solar-specific options — SolarOrbits
 
 | Option | Default | Range | Behavior |

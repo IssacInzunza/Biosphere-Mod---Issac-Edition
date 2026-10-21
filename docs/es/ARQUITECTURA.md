@@ -1147,6 +1147,30 @@ ChunkAccess.java:129 permite publicar el block entity durante worldgen.
 
 ### Fuentes para la reutilización del terreno Solar v5
 
+Solar expone directamente el `MultiNoiseBiomeSource` al generador para que
+TerraBlender inicialice regiones, biomas y reglas de superficie. `SolarBiomeSource`
+conserva el estado Solar y el codec anterior; `MixinMultiNoiseBiomeSource` recibe
+esa referencia por instancia, devuelve vacío o el bioma central cuando corresponde
+y adapta la temperatura del sampler antes de la consulta posicional de TerraBlender.
+Con clima desactivado devuelve el mismo sampler. Las instantáneas de samplers son
+inmutables y se publican mediante una referencia volatile; el clon superficial de
+TerraBlender conserva el estado Solar. Las fuentes vanilla no reciben esa marca.
+La serialización del generador sigue guardando la fuente interna y los ajustes Solar.
+
+Referencia TerraBlender 1.21.1: `LevelUtils.shouldApplyToBiomeSource` (líneas 60–63)
+exige MultiNoise; `MixinMultiNoiseBiomeSource.getNoiseBiome` (43–47) selecciona
+regiones con coordenadas, y `MixinNoiseBasedChunkGenerator.modifyBiomeSource`
+(15–22) clona la fuente por chunk. Fuentes oficiales:
+[LevelUtils](https://github.com/Glitchfiend/TerraBlender/blob/1.21.1/Common/src/main/java/terrablender/util/LevelUtils.java),
+[biomas](https://github.com/Glitchfiend/TerraBlender/blob/1.21.1/Common/src/main/java/terrablender/mixin/MixinMultiNoiseBiomeSource.java),
+[clonado](https://github.com/Glitchfiend/TerraBlender/blob/1.21.1/Common/src/main/java/terrablender/mixin/MixinNoiseBasedChunkGenerator.java).
+La firma de `Climate.Sampler` quedó validada mediante compilación y GameTest;
+no se consultó la caché de fuentes Minecraft para este cambio. La prueba
+`solarExposesMultiNoiseAndPreservesClimateRouting` comprueba la fuente visible,
+el vacío, el bioma central, los valores climáticos anteriores y el no-op con
+clima apagado. La generación de BOP y sus superficies requiere validación
+en juego con TerraBlender y BOP instalados.
+
 En la misma caché NeoForm citada arriba: RandomState.java:18, 31–42 y 101–125;
 NoiseGeneratorSettings.java:19–30; NoiseChunk.java:138–159; NoiseBasedChunkGenerator.java:84–98.
 SolarRandomStateAccess expone únicamente el catálogo de parámetros para construir
