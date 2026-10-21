@@ -1,5 +1,35 @@
 # Arquitectura de Biosphere Worlds
 
+## Estrella guía Solar
+
+`SolarEvents.guide` comprueba primero `SolarChunkGenerator` y envía cada diez ticks
+el centro X/Z y radio del sistema de cada jugador mediante `SolarGuidePayload`,
+solo a conexiones con ese canal. No se transmite la semilla ni se replica el layout.
+`BiosphereWorldsClient` dibuja una estrella pixelada lavanda/violeta en `AFTER_SKY`,
+antes del terreno y del vidrio, sin escribir profundidad; apunta al centro en X/Z
+con elevación fija aproximada de 22 grados y un pulso de cinco segundos.
+`SolarLayout.guideOpacity` usa el radio horizontal existente: desvanece en los últimos
+64 bloques y devuelve cero en el límite y fuera. Cerca del centro desvanece en 16
+bloques para evitar una dirección indefinida. Los datos quedan ligados a la instancia
+del nivel, caducan tras 40 ticks sin actualizaciones y se limpian al desconectar.
+`SolarOrbits.solar_guide_enabled` en `config/biosphereworlds/SolarSystems.toml`
+vale `true` por defecto. Es una opción de ejecución de `SphereConfig.SolarOptions`,
+no se incluye en `SolarConfig.snapshot()` ni en el codec del mundo. En el servidor
+se comprueba después del tipo de generador y antes de consultar la geometría o
+crear/enviar paquetes. En el cliente se comprueba al recibir y antes de calcular
+opacidad, dirección, pulso o modificar el estado de renderizado; apagada descarta
+los datos. Desactivarla solo en el cliente no impide que el servidor envíe paquetes.
+Si se desactiva en un servidor dedicado, la última guía recibida caduca en hasta
+40 ticks de juego (unos dos segundos a 20 TPS). No cambia generación ni geometría;
+funciona con layouts guardados 1–6.
+
+Prueba manual pendiente: día/noche, vidrio y paredes opacas, entrada/salida del
+radio, cambio de sistema, teletransporte, dimensiones, reconexión y servidor dedicado;
+comprobar también gráficos rápidos, detallados y fabulosos. `SolarGuideTest` verifica
+el desvanecimiento y los límites, incluido el vacío entre sistemas.
+Verificar además el interruptor en cliente y servidor, su reactivación y mundos
+existentes. El cableado de configuración, red y renderizado requiere prueba en juego.
+
 ## Correcciones de auditoría Solar — C1–C4
 
 `SolarChunkGenerator.createState` conserva la resolución compartida de minerales,
@@ -170,6 +200,7 @@ cascarón se aplica también a sus lunas y se excluye de los heightmaps.
 | `system_gap` | `1500` | 0–16000 blocks / bloques | Separación mínima de espacio vacío entre los límites exteriores de sistemas vecinos, en bloques. El tamaño del sistema se calcula automáticamente a partir de los tamaños y distancias planetarias. |
 | `climate_direction` | `0` | 0–1 (deslizador entero) | 0: centro de magma/lava, planetas interiores cálidos, intermedios templados y exteriores fríos. 1: centro de hielo compacto, interiores fríos, intermedios templados y exteriores cálidos. Con pocos planetas se conserva al menos uno templado. |
 | `guardians_enabled` | `true` | booleano | Genera doce jaulas de ghasts, phantoms y blazes que cubren el sol, con frecuencia y población acotadas. No modifica otros mobs. Se guarda al crear cada mundo Solar. |
+| `solar_guide_enabled` | `true` | booleano | Interruptor de ejecución, también para mundos existentes. Apagado en el servidor omite consultas de geometría y paquetes de la guía para todos; apagado localmente descarta datos y omite cálculos de orientación y dibujo. Tras apagarlo en el servidor, una guía ya recibida caduca en hasta 40 ticks. |
 
 ### Ajustes generales independientes — Settings
 

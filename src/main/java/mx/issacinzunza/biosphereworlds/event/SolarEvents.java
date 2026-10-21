@@ -23,6 +23,17 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 public final class SolarEvents {
     private SolarEvents() { }
 
+    @SubscribeEvent public static void guide(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)
+                || !(player.serverLevel().getChunkSource().getGenerator() instanceof SolarChunkGenerator generator)) return;
+        if (!mx.issacinzunza.biosphereworlds.config.SolarConfig.OPTIONS.SOLAR_GUIDE_ENABLED.get()) return;
+        if (player.tickCount % 10 != 0 || !player.connection.hasChannel(SolarGuidePayload.TYPE)) return;
+        var center = generator.layout().systemAtBlock(player.getX(), player.getZ()).central();
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
+                new SolarGuidePayload(player.level().dimension().location().toString(), center.x(), center.z(),
+                        generator.layout().params().systemRadius()));
+    }
+
     @SubscribeEvent public static void chunkLoaded(ChunkEvent.Load event) {
         if (!(event.getLevel() instanceof ServerLevel level)
                 || !(level.getChunkSource().getGenerator() instanceof SolarChunkGenerator generator)) return;

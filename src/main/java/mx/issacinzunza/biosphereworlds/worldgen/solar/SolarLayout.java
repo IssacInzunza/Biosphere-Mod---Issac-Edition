@@ -191,6 +191,16 @@ public final class SolarLayout {
     public Params params() { return params; }
     public int version() { return version; }
 
+    /** Horizontal system envelope; smoothly fades the guide over the last 64 blocks. */
+    public static float guideOpacity(double x, double z, double centerX, double centerZ, int radius) {
+        if (radius <= 0) return 0;
+        double distance = Math.hypot(x - centerX, z - centerZ);
+        double edge = Math.clamp((radius - distance) / 64.0, 0, 1);
+        // The bearing is undefined at the center; fade there instead of flipping abruptly.
+        double center = Math.clamp(distance / 16.0, 0, 1);
+        return (float) (edge * edge * (3 - 2 * edge) * center * center * (3 - 2 * center));
+    }
+
     public System systemAtBlock(double x, double z) {
         return systemAtCell((int) Math.floor(x / params.spacing()), (int) Math.floor(z / params.spacing()));
     }

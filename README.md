@@ -6,18 +6,30 @@ Select **Solar System - Issac Edition** for independent solar generation.
 Both configuration files live under **config/biosphereworlds/**:
 
 - `BiosphereWorlds.toml` controls the original Biospheres generator.
-- `SolarSystems.toml` controls Solar, with familiar general settings plus five Solar controls.
+- `SolarSystems.toml` controls Solar, with familiar general settings plus six Solar controls.
 
 Their values are independent. A shared definition in SphereConfig supplies the same
 labels, defaults and detailed descriptions without duplicating the option logic.
 Old root-level files are copied on first start, without deleting the originals or
 overwriting destinations. The latest unified settings take precedence over an older
 experimental Solar file when initializing the new Solar config.
-Settings are saved with each world's generator. **Create a new Solar world to see
+Worldgen settings are saved with each world's generator. **Create a new Solar world to see
 the revised orbits and central surface.** Existing Solar snapshots retain their
 original layout (versions 1–5); new worlds use version 6. Editing the TOML does not
 relocate saved planets or silently replace a saved world's settings.
 Generate Structures must be enabled.
+Solar worlds also show a violet End-themed guide star toward the current system's
+center, slightly above the horizon. It pulses gently, fades over the last 64 blocks
+of the horizontal system radius, and disappears outside it. Opaque blocks hide it;
+glass remains transparent. This visual also applies to existing Solar worlds and
+receives only the current center/radius from the server, without changing worldgen.
+For navigation without this aid, set `SolarOrbits.solar_guide_enabled = false`
+in `config/biosphereworlds/SolarSystems.toml`. The default is `true`. This runtime
+toggle applies to existing worlds: disabled on the server, it skips guide geometry
+queries and sends no guide packets; disabled on your client, it discards received
+guide data and skips orientation calculations and drawing. A server may still send
+packets to a client that hides the star locally. After a server-side disable, an
+already received star expires within 40 game ticks (about two seconds at 20 TPS).
 Initial spawn selects the first temperate planet in system (0,0) and uses its
 natural surface height. Solar and classic Biospheres share the same login/respawn
 correction: if the block at the player's feet is a shell material, search downward
@@ -92,6 +104,7 @@ planet terrain, since the hot/cold central body deliberately uses a fixed biome.
 | `system_gap` | `1500` | 0–16000 blocks / bloques | Minimum empty gap between the outer envelopes of neighboring systems, in blocks. System size is calculated from planet sizes and distances automatically. |
 | `climate_direction` | `0` | 0–1 (integer slider) | 0: magma/lava center, warm inner planets, temperate middle, cold exterior. 1: packed-ice center, cold inner planets, temperate middle, warm exterior. With very few planets, at least one stays temperate. |
 | `guardians_enabled` | `true` | boolean | Generate twelve ghast, phantom and blaze cages covering the sun, with bounded spawn rates and population. Other mobs are unaffected. Saved with each new Solar world. |
+| `solar_guide_enabled` | `true` | boolean | Runtime guide-star toggle, also for existing worlds. False on the server stops guide queries and packets for everyone; false locally discards guide data and stops orientation calculations/rendering for that client. A previously received guide expires within 40 ticks after server-side disable. |
 
 ### Familiar general options — Settings
 

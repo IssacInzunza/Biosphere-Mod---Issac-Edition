@@ -139,6 +139,7 @@ public class SphereConfig {
         public final ModConfigSpec.IntValue SOLAR_SYSTEM_GAP;
         public final ModConfigSpec.IntValue SOLAR_CLIMATE_DIRECTION;
         public final ModConfigSpec.BooleanValue SOLAR_GUARDIANS_ENABLED;
+        public final ModConfigSpec.BooleanValue SOLAR_GUIDE_ENABLED;
 
         public SolarOptions(ModConfigSpec.Builder builder) {
             SOLAR_PLANET_COUNT = builder.translation("biosphereworlds.configuration.solar_planet_count")
@@ -156,6 +157,9 @@ public class SphereConfig {
             SOLAR_GUARDIANS_ENABLED = builder.translation("biosphereworlds.configuration.solar_guardians_enabled")
                     .comment("Generate twelve surface-covering cages for ghast, phantom and blaze guardians. Eight guardians within 32 blocks of a player, 24 per sun; up to two every 8-12 seconds. Existing marked cages upgrade when enabled. Other mobs are unaffected. Saved with each new Solar world.")
                     .define("guardians_enabled", true);
+            SOLAR_GUIDE_ENABLED = builder.translation("biosphereworlds.configuration.solar_guide_enabled")
+                    .comment("Enable the violet guide star toward the current Solar system center. Runtime setting, including existing worlds. False on the server stops guide calculations and packets for everyone; false on a client disables its guide rendering and orientation calculations. Server changes may take up to 40 ticks to hide an already received guide.")
+                    .define("solar_guide_enabled", true);
         }
     }
 
