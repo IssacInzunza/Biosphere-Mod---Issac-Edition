@@ -15,13 +15,13 @@ import java.util.List;
  * @param guardians saved central-defense switch and legacy interval settings
  * @param environment saved ocean and bedrock-liner options
  * @param general independent Solar sphere, shell and satellite options
- * @param layoutVersion persisted compatibility revision, from 1 through 6
+ * @param layoutVersion persisted compatibility revision, from 1 through 7
  */
 public record SolarSettings(SolarLayout.Params geometry, boolean climateEnabled,
                             SolarLayout.Climate centralClimate, Guardians guardians, Environment environment,
                             General general, int layoutVersion) {
     public SolarSettings {
-        if (layoutVersion < 1 || layoutVersion > 6) throw new IllegalArgumentException("Unknown Solar layout version");
+        if (layoutVersion < 1 || layoutVersion > 7) throw new IllegalArgumentException("Unknown Solar layout version");
     }
     public SolarSettings(SolarLayout.Params geometry, boolean climateEnabled, SolarLayout.Climate centralClimate,
                          Guardians guardians, Environment environment) {
@@ -174,7 +174,7 @@ public record SolarSettings(SolarLayout.Params geometry, boolean climateEnabled,
             Guardians.CODEC.fieldOf("guardians").forGetter(SolarSettings::guardians),
             Environment.CODEC.fieldOf("environment").forGetter(SolarSettings::environment),
             General.CODEC.optionalFieldOf("general", General.legacy()).forGetter(SolarSettings::general),
-            Codec.intRange(1, 6).optionalFieldOf("layout_version", 1).forGetter(SolarSettings::layoutVersion)
+            Codec.intRange(1, 7).optionalFieldOf("layout_version", 1).forGetter(SolarSettings::layoutVersion)
     ).apply(i, SolarSettings::new));
 
     public static SolarSettings configured() { return SolarConfig.snapshot(); }

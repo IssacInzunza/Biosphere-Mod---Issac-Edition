@@ -15,7 +15,7 @@ overwriting destinations. The latest unified settings take precedence over an ol
 experimental Solar file when initializing the new Solar config.
 Worldgen settings are saved with each world's generator. **Create a new Solar world to see
 the revised orbits and central surface.** Existing Solar snapshots retain their
-original layout (versions 1–5); new worlds use version 6. Editing the TOML does not
+original layout (versions 1–6); new worlds use version 7. Editing the TOML does not
 relocate saved planets or silently replace a saved world's settings.
 Generate Structures must be enabled.
 Solar worlds also show a violet End-themed guide star toward the current system's
@@ -47,9 +47,15 @@ catalog, and reopening does not apply TOML edits to an existing world's snapshot
 Changed mods/tags can change the resolved catalog after restarting; partially
 generated moons may therefore contain different minerals across old/new chunks.
 
-Each planet occupies a distinct orbit in new layout-v6 worlds, retaining its existing
+Each planet occupies a distinct orbit in layout-v6 and newer worlds, retaining its existing
 seeded angular placement and configured Y. The system envelope grows automatically
 to include every orbit, its moons and the configured gap between systems.
+In layout 7, a moon candidate above the build ceiling is lowered along its original
+radial distance, preserving its size, surface gap, seed and horizontal direction.
+Its elevation may fall below the configured minimum to fit the full volume.
+All collision and system-boundary checks still apply; impossible candidates are
+omitted. A seeded count of zero stays zero. Layouts 1–6 and classic Biospheres
+retain their previous placement; existing worlds are not migrated.
 Planet distance is a **minimum gap between surfaces**, rather than
 a distance to a randomly chosen neighboring planet. The system envelope is calculated
 automatically, including room for satellites; it is no longer a user-facing option.
@@ -135,8 +141,8 @@ as large as their parent are omitted.
 | `satellites_min_gap_percent` | `25` | 0–1000 % | Minimum surface gap from the parent, as a percentage of its radius. The absolute minimum in satellites_min_gap_blocks also applies. |
 | `satellites_max_gap_percent` | `75` | 0–1000 % | Maximum sampled gap from the parent as a percentage of its radius. Must be at least the minimum percentage; the absolute minimum still takes precedence. |
 | `satellites_min_gap_blocks` | `16` | 0–1024 blocks / bloques | Absolute minimum gap between a satellite and any planet or moon, in blocks. The larger of this value and the sampled percentage gap is used. |
-| `satellites_min_elevation_degrees` | `30` | 0–90° | Minimum angle above the parent's horizontal plane, in degrees. Must not exceed the maximum elevation. |
-| `satellites_max_elevation_degrees` | `55` | 0–90° | Maximum angle in degrees; 90 is directly above the parent. Candidates outside build height are omitted. |
+| `satellites_min_elevation_degrees` | `30` | 0–90° | Preferred minimum angle above the parent's horizontal plane. Must not exceed the maximum. Solar layout 7 may lower it to fit a complete moon below the build ceiling. |
+| `satellites_max_elevation_degrees` | `55` | 0–90° | Maximum angle in degrees; 90 is directly above the parent. Solar layout 7 adapts candidates above the ceiling; candidates still outside build height are omitted. |
 | `satellites_excluded_ores` | `classic exclusions / exclusiones clásicas` | IDs or #tags / ids o #tags | Ore block ids or #tags that must not be selected. Exclusions override inclusions. Defaults exclude ancient debris, Nether ores and deepslate ores. |
 | `satellites_included_ores` | `[]` | IDs or #tags / ids o #tags | Extra ore ids or #tags, in addition to c:ores_in_ground/stone. Only usable solid blocks without block entities are accepted. |
 | `satellites_mod_ore_weight` | `3` | 0–1000 | Selection weight for mod ores; vanilla ores retain their own weights. Zero excludes mod ores from selection. |

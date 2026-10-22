@@ -21,7 +21,7 @@ opacidad, dirección, pulso o modificar el estado de renderizado; apagada descar
 los datos. Desactivarla solo en el cliente no impide que el servidor envíe paquetes.
 Si se desactiva en un servidor dedicado, la última guía recibida caduca en hasta
 40 ticks de juego (unos dos segundos a 20 TPS). No cambia generación ni geometría;
-funciona con layouts guardados 1–6.
+funciona con layouts guardados 1–7.
 
 Prueba manual pendiente: día/noche, vidrio y paredes opacas, entrada/salida del
 radio, cambio de sistema, teletransporte, dimensiones, reconexión y servidor dedicado;
@@ -55,7 +55,7 @@ mundo y sus materiales guardados; también reconoce las lunas. No existe rechazo
 exclusivo de Solar por falta de espacio, ni se crean plataformas o agrandan radios.
 Un radio positivo no garantiza superficie habitable; radio 1 no tiene terreno interior.
 
-Los mundos nuevos usan layout 6; versiones, codecs y rutas históricas no cambian.
+Los mundos nuevos usan layout 7; los layouts guardados 1–6 conservan sus rutas históricas.
 Las pruebas y aceptación integral pendiente se registran en `PROGRESS.md`.
 
 ## Corrección del forro central de bedrock
@@ -76,6 +76,25 @@ comprueba Y=63/64/80/127, generación de bedrock, conservación de piedra superi
 y heightmaps. La comparación del escritor usa reglas de terreno compartidas;
 no constituye por sí sola una referencia independiente de esta política nueva.
 
+
+## Adaptación vertical de lunas (layout 7)
+
+Solo las nuevas instantáneas Solar usan layout 7. `SolarLayout.moons` activa la
+adaptación de `SatellitePlacement`: si el candidato supera Y=319, baja su centro
+hasta que quepa entero y recalcula el desplazamiento horizontal manteniendo la
+distancia al planeta. Conserva radio, hueco sorteado, azimut, seed y cantidad
+solicitada. Puede bajar del mínimo de elevación configurado; si no cabe ni en el
+ecuador del planeta, se omite. Se mantienen los chequeos de suelo, techo,
+colisiones, márgenes y envolvente del sistema. No se recortan lunas ni se mueve
+o redimensiona el planeta. El hash que sortea cero lunas sigue produciendo cero.
+
+El codec acepta 1–7 y conserva el valor por defecto 1 para snapshots sin versión.
+Los layouts 1–6 y Biospheres clásico usan la ruta anterior exacta. No se migran
+mundos existentes ni se añade configuración. La regresión de la semilla
+`-7284467477822061774` verifica P4 de radio 484: cero lunas en layout 6, dos en 7.
+Las pruebas puras cubren límites, separación, determinismo y comparación con una
+copia literal de la colocación anterior. Queda verificar en juego el spawn,
+las lunas completas y los heightmaps, además de reabrir un mundo layout 6.
 
 ## Revisión de órbitas y defensa central (layout 6)
 
@@ -230,8 +249,8 @@ se omiten candidatos tan grandes como su planeta.
 | `satellites_min_gap_percent` | `25` | 0–1000 % | Separación mínima entre superficies del satélite y su planeta, como porcentaje del radio del planeta. También se aplica el mínimo absoluto en bloques. |
 | `satellites_max_gap_percent` | `75` | 0–1000 % | Separación máxima sorteada respecto al planeta como porcentaje de su radio. Debe ser mayor o igual al porcentaje mínimo; el mínimo absoluto en bloques sigue teniendo prioridad. |
 | `satellites_min_gap_blocks` | `16` | 0–1024 blocks / bloques | Separación mínima absoluta entre un satélite y cualquier planeta u otra luna, en bloques. Se usa el mayor valor entre este mínimo y la separación porcentual sorteada. |
-| `satellites_min_elevation_degrees` | `30` | 0–90° | Ángulo mínimo sobre el plano horizontal del planeta, en grados. No puede superar la elevación máxima. |
-| `satellites_max_elevation_degrees` | `55` | 0–90° | Ángulo máximo en grados; 90 queda directamente encima del planeta. Se omiten las posiciones que superen la altura de construcción. |
+| `satellites_min_elevation_degrees` | `30` | 0–90° | Ángulo mínimo preferido sobre el plano horizontal del planeta. No puede superar el máximo. Solar layout 7 puede bajarlo para alojar la luna completa bajo el techo. |
+| `satellites_max_elevation_degrees` | `55` | 0–90° | Ángulo máximo en grados; 90 queda directamente encima del planeta. Solar layout 7 adapta candidatos sobre el techo; se omiten los que sigan fuera de los límites verticales. |
 | `satellites_excluded_ores` | `classic exclusions / exclusiones clásicas` | IDs or #tags / ids o #tags | Ids de bloque o #tags que no se elegirán como mineral. Las exclusiones tienen prioridad sobre las inclusiones. Por defecto se excluyen escombros ancestrales, minerales del Nether y menas de deepslate. |
 | `satellites_included_ores` | `[]` | IDs or #tags / ids o #tags | Ids de minerales o #tags adicionales a c:ores_in_ground/stone. Solo se aceptan bloques sólidos utilizables, sin entidades de bloque. |
 | `satellites_mod_ore_weight` | `3` | 0–1000 | Peso de selección de las menas de otros mods; las vanilla conservan sus pesos. Cero excluye las menas de mods de la selección. |

@@ -175,7 +175,7 @@ public final class SolarLayout {
     }
 
     public SolarLayout(long seed, Params params, int version, PlacementOptions options) {
-        if (version < 1 || version > 6) throw new IllegalArgumentException("Unknown Solar layout version");
+        if (version < 1 || version > 7) throw new IllegalArgumentException("Unknown Solar layout version");
         this.seed = seed;
         this.params = params;
         this.version = version;
@@ -369,7 +369,7 @@ public final class SolarLayout {
                 b.x, b.y, b.z, b.radius)).toList();
         for (int i = 0; i < planets.size(); i++) {
             if (version >= 4 && planets.get(i).central()) continue;
-            for (var moon : SatellitePlacement.place(spheres.get(i), spheres, placement, bounds)) {
+            for (var moon : SatellitePlacement.place(spheres.get(i), spheres, placement, bounds, version >= 7)) {
                 if (moon.radius() >= planets.get(i).radius) continue;
                 if (Math.hypot(moon.centerX() - central.x, moon.centerZ() - central.z) + moon.radius() > params.systemRadius) continue;
                 boolean valid = true;

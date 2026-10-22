@@ -696,7 +696,7 @@ public final class SolarWorldgenGameTests {
     @GameTest(template = "solar_empty")
     public static void solarUsesIndependentConfiguration(GameTestHelper helper) {
         var settings = SolarConfig.snapshot();
-        helper.assertTrue(settings.layoutVersion() == 6, "New Solar worlds must save layout 6");
+        helper.assertTrue(settings.layoutVersion() == 7, "New Solar worlds must save layout 7");
         var general = settings.general();
         helper.assertTrue(SolarConfig.GENERAL.RADIUS != SphereConfig.RADIUS && SolarConfig.GENERAL.SPHERE_BLOCK != SphereConfig.SPHERE_BLOCK, "Solar and Biospheres must hold distinct configuration values");
         helper.assertTrue(general.centerY() == SolarConfig.GENERAL.CENTER_Y.get().intValue(), "Solar must read the independent Solar center Y");
@@ -804,7 +804,7 @@ public final class SolarWorldgenGameTests {
         var stronghold = registries.registryOrThrow(Registries.STRUCTURE).getHolderOrThrow(ResourceKey.create(
                 Registries.STRUCTURE, ResourceLocation.withDefaultNamespace("stronghold")));
         var defaults = SolarSettings.defaults();
-        for (int version : new int[]{2, 6}) for (long seed : new long[]{0, -1, Long.MIN_VALUE, 81723, -4634224182739581737L}) {
+        for (int version : new int[]{2, 6, 7}) for (long seed : new long[]{0, -1, Long.MIN_VALUE, 81723, -4634224182739581737L}) {
             var noise = registries.registryOrThrow(Registries.NOISE_SETTINGS).getHolderOrThrow(version < 5
                     ? NoiseGeneratorSettings.OVERWORLD : ResourceKey.create(Registries.NOISE_SETTINGS,
                             ResourceLocation.fromNamespaceAndPath("biosphereworlds", "biospheres")));

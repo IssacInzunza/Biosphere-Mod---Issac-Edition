@@ -52,6 +52,19 @@ public final class SatellitePlacement {
                                                      List<SphereLayout.Sphere> neighbours,
                                                      SphereLayout.Params params,
                                                      Bounds bounds) {
+        return place(principal, neighbours, params, bounds, false);
+    }
+
+    /**
+     * Solar layout 7 may lower an otherwise too-high moon, preserving its radial
+     * distance, size, seed and azimuth. Older layouts use the unchanged path above.
+     * The configured minimum elevation may be relaxed; all volume checks still apply.
+     */
+    public static List<SphereLayout.Satellite> place(SphereLayout.Sphere principal,
+                                                     List<SphereLayout.Sphere> neighbours,
+                                                     SphereLayout.Params params,
+                                                     Bounds bounds,
+                                                     boolean fitHeight) {
         if (!params.satellitesEnabled() || params.satellitesMaxCount() <= 0) {
             return List.of();
         }
@@ -65,7 +78,7 @@ public final class SatellitePlacement {
         List<SphereLayout.Satellite> placed = new ArrayList<>(count);
         for (int index = 0; index < count; index++) {
             for (int attempt = 0; attempt < ATTEMPTS_PER_SATELLITE; attempt++) {
-                SphereLayout.Satellite candidate = candidate(principal, params, bounds, index, attempt);
+                SphereLayout.Satellite candidate = candidate(principal, params, bounds, index, attempt, fitHeight);
                 if (candidate != null
                         && isValid(candidate, principal, neighbours, placed, params, bounds, margin)) {
                     placed.add(candidate);
@@ -85,7 +98,8 @@ public final class SatellitePlacement {
                                                     SphereLayout.Params params,
                                                     Bounds bounds,
                                                     int index,
-                                                    int attempt) {
+                                                    int attempt,
+                                                    boolean fitHeight) {
         int radius = principal.radius();
         double margin = params.satellitesMinGapBlocks();
 
@@ -113,9 +127,19 @@ public final class SatellitePlacement {
         double angle = baseAngle + index * GOLDEN_ANGLE + (unit(seed, 5) - 0.5) * ANGLE_JITTER;
 
         double horizontal = distance * Math.cos(elevation);
+        double centerY = principal.centerY() + distance * Math.sin(elevation);
+        if (fitHeight && centerY + satelliteRadius > WORLD_MAX_Y) {
+            // Set the center directly: the integer ceiling and radius sum exactly.
+            double fittedY = (double) WORLD_MAX_Y - satelliteRadius;
+            double vertical = fittedY - principal.centerY();
+            if (vertical < 0.0) {
+                return null; // No room even at the parent's equator; do not move it.
+            }
+            centerY = fittedY;
+            horizontal = Math.sqrt(distance * distance - vertical * vertical);
+        }
         double centerX = principal.centerX() + horizontal * Math.cos(angle);
         double centerZ = principal.centerZ() + horizontal * Math.sin(angle);
-        double centerY = principal.centerY() + distance * Math.sin(elevation);
 
         // El chequeo de celda se hace aqui tambien para descartar pronto; isValid lo
         // repite con el margen explicito.

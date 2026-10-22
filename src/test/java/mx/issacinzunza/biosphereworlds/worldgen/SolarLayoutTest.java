@@ -13,6 +13,100 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class SolarLayoutTest {
     @Test
+    void largeSpawnPlanetRecoversItsTwoMoonsOnlyInLayoutSeven() {
+        long seed = -7284467477822061774L;
+        var params = largeMoonParams(3);
+        var options = new SolarLayout.PlacementOptions(62, 8, 12, 25, 75);
+        var old = new SolarLayout(seed, params, 6, options).systemAtCell(0, 0);
+        var current = new SolarLayout(seed, params, 7, options).systemAtCell(0, 0);
+        assertEquals(old.bodies(), current.bodies());
+        var spawn = current.bodies().stream().filter(b -> !b.central()
+                && b.climate() == SolarLayout.Climate.TEMPERATE).findFirst().orElseThrow();
+        assertEquals(current.bodies().get(4), spawn);
+        assertEquals(484, spawn.radius());
+        assertEquals(62, spawn.y());
+        assertEquals(-4723902467518963098L, spawn.id());
+        assertEquals(2, SatellitePlacementTest.requestedMoons(spawn.id(), 3));
+        assertEquals(0, old.moons().stream().filter(m -> m.planetId() == spawn.id()).count());
+        assertEquals(2, current.moons().stream().filter(m -> m.planetId() == spawn.id()).count());
+        long firstId = current.bodies().get(1).id();
+        assertEquals(0, SatellitePlacementTest.requestedMoons(firstId, 3));
+        assertTrue(current.moons().stream().noneMatch(m -> m.planetId() == firstId));
+        assertEquals(old.bodies(), new SolarLayout(seed, largeMoonParams(0), 7, options).systemAtCell(0, 0).bodies());
+        assertTrue(new SolarLayout(seed, largeMoonParams(0), 7, options).systemAtCell(0, 0).moons().isEmpty());
+    }
+
+    @Test
+    void fittedMoonsRespectFullVolumesGapsAndSystemEnvelope() {
+        var params = largeMoonParams(3);
+        int checked = 0;
+        for (int y : new int[]{-64, -40, 62, 250, 319}) {
+            for (long seed : new long[]{-7284467477822061774L, 0, -1, Long.MIN_VALUE, Long.MAX_VALUE}) {
+                var layout = new SolarLayout(seed, params, 7, new SolarLayout.PlacementOptions(y, 8, 12, 25, 75));
+                for (int cell = -3; cell <= 3; cell++) {
+                    var system = layout.systemAtCell(cell, -cell);
+                    for (var moon : system.moons()) {
+                        checked++;
+                        var s = moon.sphere();
+                        var parent = system.bodies().stream().filter(b -> b.id() == moon.planetId()).findFirst().orElseThrow();
+                        assertFalse(parent.central());
+                        assertTrue(s.radius() < parent.radius());
+                        assertTrue(s.centerY() - s.radius() >= -64);
+                        assertTrue(s.centerY() + s.radius() <= 319);
+                        assertTrue(Math.hypot(s.centerX() - system.central().x(), s.centerZ() - system.central().z())
+                                + s.radius() <= params.systemRadius());
+                        for (var body : system.bodies()) {
+                            double gap = moonDistance(s, body.x(), body.y(), body.z()) - s.radius() - body.radius();
+                            assertTrue(gap >= params.satelliteGap() - 1e-8);
+                            if (body.id() == parent.id()) {
+                                assertTrue(gap >= Math.max(16, parent.radius() * .25) - 1e-8);
+                                assertTrue(gap <= Math.max(16, parent.radius() * .75) + 1e-8);
+                            }
+                        }
+                        for (var other : system.moons()) {
+                            if (other == moon) continue;
+                            var s2 = other.sphere();
+                            assertTrue(moonDistance(s, s2.centerX(), s2.centerY(), s2.centerZ())
+                                    >= s.radius() + s2.radius() + params.satelliteGap() - 1e-8);
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(checked > 100);
+    }
+
+    @Test
+    void layoutSevenIsDeterministicAcrossOrderCacheEvictionAndThreads() throws Exception {
+        var params = largeMoonParams(3);
+        var options = new SolarLayout.PlacementOptions(62, 8, 12, 25, 75);
+        var shared = new SolarLayout(-7284467477822061774L, params, 7, options);
+        var tasks = new ArrayList<Callable<Void>>();
+        for (int i = -300; i <= 300; i++) {
+            int cell = i;
+            tasks.add(() -> {
+                assertEquals(new SolarLayout(-7284467477822061774L, params, 7, options).systemAtCell(cell, -cell),
+                        shared.systemAtCell(cell, -cell));
+                return null;
+            });
+        }
+        Collections.shuffle(tasks, new java.util.Random(27));
+        try (var pool = Executors.newFixedThreadPool(4)) {
+            for (var result : pool.invokeAll(tasks)) result.get();
+        }
+    }
+
+    private static SolarLayout.Params largeMoonParams(int count) {
+        return new SolarLayout.Params(SolarLayout.requiredSingleOrbitSystemRadius(8, 512, 180, 1000, 75, 12, 16),
+                5000, 8, 256, 512, 180, 1000, 1000, false, 30, 40, 30, count, 30, 55, 16);
+    }
+
+    private static double moonDistance(SphereLayout.Satellite moon, double x, double y, double z) {
+        return Math.sqrt(Math.pow(moon.centerX() - x, 2) + Math.pow(moon.centerY() - y, 2)
+                + Math.pow(moon.centerZ() - z, 2));
+    }
+
+    @Test
     void distinctOrbitsKeepConfiguredHeightEvenBeyondBuildLimits() {
         int region = SolarLayout.requiredSingleOrbitSystemRadius(4, 512, 180, 400, 75, 12, 16);
         var p = new SolarLayout.Params(region, 1500, 4, 512, 512, 180, 400, 400, false, 30, 40, 30, 0, 30, 55, 16);
