@@ -101,11 +101,18 @@ satellites_mod_ore_density_permille = 20
 - `satellites_min_size_percent` / `satellites_max_size_percent`: Satellite radius as a percentage of the main sphere radius (`1..100`; defaults `8` and `12`). If the minimum is greater than the maximum, the maximum is used for both.
 - `satellites_min_gap_percent` / `satellites_max_gap_percent`: Gap between the satellite and main sphere surfaces, as a percentage of the main radius (`0..1000`). The absolute minimum is `satellites_min_gap_blocks`.
 - `satellites_min_gap_blocks`: Absolute minimum gap in blocks with the main sphere, and also the safety margin from the cell border and from other satellites (`0..1024`).
-- `satellites_min_elevation_degrees` / `satellites_max_elevation_degrees`: Elevation angle of the satellites above the main sphere center (`0..90`). Satellite centers are always at or above the main sphere center.
+- `satellites_min_elevation_degrees` / `satellites_max_elevation_degrees`: Preferred elevation angle of the satellites above the main sphere center (`0..90`). A candidate above the build ceiling is lowered, possibly below the configured minimum, while preserving its radial distance, size, gap, seed and horizontal direction. Satellite centers stay at or above the main sphere center. Full-volume height, cell-boundary and collision checks still apply.
 - `satellites_excluded_ores`: Block ids or `#tags` that must never be chosen for a satellite core. Defaults: `minecraft:ancient_debris`, `minecraft:nether_quartz_ore`, `minecraft:nether_gold_ore` and `#c:ores_in_ground/deepslate`. Invalid entries are ignored with a warning.
 - `satellites_included_ores`: Block ids or `#tags` added to the candidates even when they are not in `#c:ores_in_ground/stone`, for mods that do not tag their ores. Empty by default. Invalid entries are ignored with a warning.
 - `satellites_mod_ore_weight`: Selection weight for ores added by other mods (`0..1000`, default `3`). Vanilla ores keep their stage-2 weights.
 - `satellites_mod_ore_density_permille`: Ore blocks per 1000 core blocks for mod ores (`0..1000`, default `20` = 2 %). Vanilla ores keep their stage-2 densities.
+
+The vertical satellite placement fix also affects newly generated chunks in
+existing worlds because Biospheres uses global configuration and has no saved
+placement version. Saved chunks are not rebuilt: satellites spanning old and new
+chunks can be incomplete. A new world avoids that boundary. Small cells or
+collisions can still prevent placement; a seeded count of zero stays zero,
+and disabled satellites remain a no-op.
 
 Mod ores are discovered dynamically from the `#c:ores_in_ground/stone` block tag: that tag contains exactly the ores whose host ground is stone, so deepslate, netherrack, Nether, End and ancient debris variants stay out. The exclusion list is an extra safety net and the inclusion list covers mods that do not tag their ores. Candidates are ordered vanilla first (unchanged) and then mod ores sorted by block id; the exclusion list wins over tags and inclusion. Only blocks with a usable default state are accepted: no air, no fluids, no block entity, and a full solid cube (`canOcclude`).
 

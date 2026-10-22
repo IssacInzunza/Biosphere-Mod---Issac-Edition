@@ -1,5 +1,28 @@
 # Arquitectura de Biosphere Worlds
 
+## Corrección de altura de satélites
+
+`SphereLayout.satellitesAtCell` activa la adaptación vertical de
+`SatellitePlacement`: si el candidato supera Y=319, baja su centro hasta que quepa
+entero y recalcula el desplazamiento horizontal manteniendo la distancia al
+planeta. Conserva radio, hueco sorteado, azimut, seed y cantidad solicitada. Puede
+bajar del mínimo de elevación configurado; si no cabe ni en el ecuador, se omite.
+Se mantienen los chequeos de suelo, techo, límites de celda, ocho vecinas y otros
+satélites. No se recortan lunas ni se mueve o redimensiona la principal.
+
+No hay versión de colocación persistida: el arreglo afecta también a chunks nuevos
+de mundos existentes. No reconstruye chunks guardados; una luna entre chunks
+antiguos y nuevos puede quedar incompleta. Un mundo nuevo evita esa discontinuidad.
+Una celda estrecha o las colisiones todavía pueden impedir la colocación. Satélites
+apagados retornan antes de consultar la caché o calcular geometría; no cambia la
+puerta que excluye mundos vanilla ni el hash del radio. No se añade configuración.
+
+La regresión usa celda (0,0), radios 256–512, Y=62 y spacing=4000: la principal tiene
+radio 415, solicita una luna y ahora la coloca. Con spacing=500 se sigue omitiendo
+por falta de espacio horizontal. Las pruebas cubren semillas, tamaños, distancias,
+vecinos, límites completos, ceros sorteados, caché y concurrencia con radios grandes.
+Queda verificar en juego lunas, heightmaps, puentes y fronteras de chunks antiguos.
+
 Guía de lectura para **Biosphere Worlds - Issac Edition**, fork de
 NeoBiosphere para Minecraft 1.21.1 y NeoForge 21.1.216. Las rutas de este
 documento son relativas a la raíz del repositorio. Cuando una afirmación no se
@@ -611,7 +634,7 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 | `satellites_min_gap_percent` | `IntValue` | `25` (rango `0..1000`) | `SatellitePlacement.candidate` | Hueco mínimo entre superficies como porcentaje del radio principal. |
 | `satellites_max_gap_percent` | `IntValue` | `75` (rango `0..1000`) | `SatellitePlacement.candidate` | Hueco máximo entre superficies como porcentaje del radio principal. |
 | `satellites_min_gap_blocks` | `IntValue` | `16` (rango `0..1024`) | `SatellitePlacement.place` | Hueco mínimo absoluto con la principal y margen de seguridad respecto al borde de la celda y a otros satélites. |
-| `satellites_min_elevation_degrees` | `IntValue` | `30` (rango `0..90`) | `SatellitePlacement.candidate` | Ángulo de elevación mínimo sobre el centro de la principal. |
+| `satellites_min_elevation_degrees` | `IntValue` | `30` (rango `0..90`) | `SatellitePlacement.candidate` | Ángulo mínimo preferido; puede reducirse para alojar el volumen completo bajo el techo sin alterar distancia ni radio. |
 | `satellites_max_elevation_degrees` | `IntValue` | `55` (rango `0..90`) | `SatellitePlacement.candidate` | Ángulo de elevación máximo sobre el centro de la principal. |
 | `satellites_excluded_ores` | `ConfigValue<List<? extends String>>` | debris, cuarzo y oro del Nether, `#c:ores_in_ground/deepslate` | `SatelliteMineralCatalog.rebuild` | Ids o `#tags` que nunca se eligen para el núcleo. Entradas inválidas se ignoran con aviso. |
 | `satellites_included_ores` | `ConfigValue<List<? extends String>>` | vacía | `SatelliteMineralCatalog.rebuild` | Ids o `#tags` añadidos aunque no estén en `#c:ores_in_ground/stone`, para mods sin tags. |

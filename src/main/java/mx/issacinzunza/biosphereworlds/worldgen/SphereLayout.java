@@ -317,7 +317,7 @@ public final class SphereLayout {
                 principal.centerX() - half, principal.centerX() + half,
                 principal.centerZ() - half, principal.centerZ() + half);
 
-        List<Satellite> placed = SatellitePlacement.place(principal, neighbours, params, bounds);
+        List<Satellite> placed = SatellitePlacement.place(principal, neighbours, params, bounds, true);
         SatelliteCell fresh = new SatelliteCell(cellX, cellZ, List.copyOf(placed));
         cache.set(slot, fresh);
 
