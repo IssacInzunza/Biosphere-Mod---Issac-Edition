@@ -434,8 +434,9 @@ la etapa 3 la amplía con un catálogo dinámico:
   menas de piedra; deepslate, netherrack, Nether, End y debris quedan fuera.
 - Opciones: `satellites_excluded_ores`, `satellites_included_ores`,
   `satellites_mod_ore_weight` (3) y `satellites_mod_ore_density_permille` (20).
-  Se reconstruye solo al arrancar o al recargar tags, así que los cambios se
-  aplican al reabrir el mundo o con `/reload`.
+  El catálogo se invalida al arrancar o recargar tags y se resuelve en el próximo
+  uso clásico con satélites activos. Los cambios se aplican al reabrir o con
+  `/reload`; un catálogo vacío o sin peso positivo produce un error explícito.
 - Log INFO una vez por reconstrucción con candidatos `(id, peso, densidad)`,
   excluidos e ignorados.
 - Cambiar mods o listas entre sesiones puede dejar un satélite a medio generar
@@ -449,6 +450,7 @@ Con `satellites_enabled = false`:
   antes de cualquier cálculo.
 - `SphereCarver` no entra en el bucle de satélites y `MixinHeightmap` comprueba
   la opción antes de llamar a `SphereLayout`.
+- No se resuelve ni valida el catálogo mineral clásico.
 - La geometría de las principales es bit a bit la misma; las pruebas de
   equivalencia usan el constructor de cuatro argumentos de `Params`, que deja
   los satélites apagados.
@@ -465,7 +467,9 @@ solo los bloques de cascarón por encima de `center_y`. Así un satélite sobre 
 esfera no contamina `WORLD_SURFACE_WG` ni `OCEAN_FLOOR_WG` y no altera calles de
 aldea ni vegetación de abajo.
 
-Limitación numérica: con `center_y = 62` y los valores por defecto solo caben
-satélites si el radio principal es menor de unos 200-300 bloques. A 55° el límite
-es el techo (319); a 30° es el ancho de la celda (spacing/2). Por encima de ese
-radio la colocación omite satélites sin error.
+El ajuste de techo baja candidatos demasiado altos hasta que su volumen completo
+quede bajo Y319, conservando tamaño, semilla, azimut y distancia radial. Puede
+relajar el mínimo de elevación; sigue comprobando celda, colisiones y separación.
+Recupera satélites en esferas grandes si hay espacio horizontal suficiente. Los
+candidatos que no caben ni tras el ajuste se siguen omitiendo. El clásico activa
+este arreglo; solar lo activa desde layout7 y conserva versiones1–6.

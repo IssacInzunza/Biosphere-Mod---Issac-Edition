@@ -47,15 +47,17 @@ public class SphereConfig {
         var general = new GeneralOptions(BUILDER);
         RADIUS = general.RADIUS;
         MIN_RADIUS = general.MIN_RADIUS;
-        SPACING = BUILDER.comment("Spacing between the spheres").define("spacing", 500);
+        SPACING = BUILDER.comment("Spacing between the spheres (positive integer)").define("spacing", 500,
+                value -> isIntegerInRange(value, 1, Integer.MAX_VALUE));
         CENTER_Y = general.CENTER_Y;
         SPHERE_BLOCK = general.SPHERE_BLOCK;
         ONLY_UPPER_HEMISPHERE = BUILDER.comment("Generate only the upper hemisphere of the spheres").define("only_upper_hemisphere", false);
         CLOSE_OPEN_TOP = general.CLOSE_OPEN_TOP;
         BEDROCK_MODE = general.BEDROCK_MODE;
         GENERATE_BRIDGE = BUILDER.comment("Generate bridges between spheres").define("generate_bridge", true);
-        BRIDGE_BLOCK = BUILDER.comment("Block used for the bridges").define("bridge_block", "minecraft:oak_planks", SphereConfig::validateItemName);
-        BRIDGE_RADIUS = BUILDER.comment("Radius of the bridges").define("bridge_radius", 1);
+        BRIDGE_BLOCK = BUILDER.comment("Block used for the bridges").define("bridge_block", "minecraft:oak_planks", SphereConfig::validateBlockName);
+        BRIDGE_RADIUS = BUILDER.comment("Radius of the bridges (0..46340)").define("bridge_radius", 1,
+                value -> isIntegerInRange(value, 0, 46340));
         RESTRICT_STRUCTURES_TO_SPHERES = BUILDER.comment("Restrict structure starts to the inside of spheres").define("restrict_structures_to_spheres", true);
         STRUCTURE_EDGE_MARGIN = BUILDER.comment("Minimum distance between a structure start and a sphere edge").defineInRange("structure_edge_margin", 16, 0, 128);
         DEBUG_BIOME_LOOKUPS = BUILDER.comment("Log outside-sphere biome lookup routes at DEBUG level").define("debug_biome_lookups", false);
@@ -104,10 +106,13 @@ public class SphereConfig {
         public final ModConfigSpec.IntValue SATELLITES_MOD_ORE_WEIGHT;
         public final ModConfigSpec.IntValue SATELLITES_MOD_ORE_DENSITY_PERMILLE;
         public GeneralOptions(ModConfigSpec.Builder builder) {
-            RADIUS = builder.comment("Max radius of the spheres").define("radius", 128);
-            MIN_RADIUS = builder.comment("Min radius of the spheres (same as radius for fixed size)").define("min_radius", 128);
-            CENTER_Y = builder.comment("Center Y level for sphere generation").define("center_y", 62);
-            SPHERE_BLOCK = builder.comment("Blocks used for the spheres, randomly assigned per sphere").defineListAllowEmpty("sphere_block", java.util.List.of("minecraft:glass"), SphereConfig::validateItemName);
+            RADIUS = builder.comment("Max radius of the spheres (1..46340; integer-square safety limit)").define("radius", 128,
+                    value -> isIntegerInRange(value, 1, 46340));
+            MIN_RADIUS = builder.comment("Min radius of the spheres (1..radius; same as radius for fixed size)").define("min_radius", 128,
+                    value -> isIntegerInRange(value, 1, 46340));
+            CENTER_Y = builder.comment("Center Y level for sphere generation (integer)").define("center_y", 62,
+                    value -> isIntegerInRange(value, Integer.MIN_VALUE, Integer.MAX_VALUE));
+            SPHERE_BLOCK = builder.comment("Blocks used for the spheres, randomly assigned per sphere").defineListAllowEmpty("sphere_block", java.util.List.of("minecraft:glass"), SphereConfig::validateBlockName);
             CLOSE_OPEN_TOP = builder.comment("Close spheres cut by the build limit with a flat cap at the top buildable Y, using the sphere shell block").define("close_open_top", false);
             BEDROCK_MODE = builder.comment("Bedrock at the world floor. floor: keep the bedrock_floor surface rule at the bottom of the world. none: no bedrock at the bottom, the floor is deepslate instead (the Create Diesel Generators pumpjack needs bedrock, so it will not work with this value). shell: floor plus a bedrock lining of 3 blocks on the inside of the glass shell in the lower half of each sphere. With only_upper_hemisphere enabled, shell behaves exactly like floor.").defineEnum("bedrock_mode", BedrockMode.FLOOR);
             EDGE_OCEAN_ENABLED = builder.comment("Flood the band next to the sphere shell with ocean: the terrain is clamped down to a flat floor so water reaches the glass").define("edge_ocean_enabled", false);
@@ -170,8 +175,16 @@ public class SphereConfig {
         SHELL
     }
 
-    private static boolean validateItemName(final Object obj) {
-        return obj instanceof String itemName && BuiltInRegistries.ITEM.containsKey(ResourceLocation.parse(itemName));
+    private static boolean validateBlockName(final Object obj) {
+        if (!(obj instanceof String name)) return false;
+        ResourceLocation id = ResourceLocation.tryParse(name);
+        return id != null && BuiltInRegistries.BLOCK.containsKey(id);
+    }
+
+    private static boolean isIntegerInRange(Object value, int min, int max) {
+        if (!(value instanceof Number number)) return false;
+        double numeric = number.doubleValue();
+        return numeric >= min && numeric <= max && numeric == Math.rint(numeric);
     }
 
     /**

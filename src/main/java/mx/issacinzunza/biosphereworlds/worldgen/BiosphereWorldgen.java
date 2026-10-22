@@ -1,12 +1,8 @@
 package mx.issacinzunza.biosphereworlds.worldgen;
 
-import net.minecraft.world.level.levelgen.Aquifer;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 
 public final class BiosphereWorldgen {
-    private static final java.util.Set<Aquifer.NoiseBasedAquifer> BIOSPHERE_AQUIFERS =
-            java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
-
     private BiosphereWorldgen() {
     }
 
@@ -30,14 +26,6 @@ public final class BiosphereWorldgen {
 
     public static boolean isBiosphereNoiseChunk(NoiseChunk noiseChunk) {
         return ((BiosphereNoiseChunkAccess) noiseChunk).biosphereworlds$isBiosphere();
-    }
-
-    public static void markAquifer(Aquifer.NoiseBasedAquifer aquifer) {
-        BIOSPHERE_AQUIFERS.add(aquifer);
-    }
-
-    public static boolean isBiosphereAquifer(Aquifer.NoiseBasedAquifer aquifer) {
-        return BIOSPHERE_AQUIFERS.contains(aquifer);
     }
 
     public static boolean isBiosphereChunk(Object chunk) {

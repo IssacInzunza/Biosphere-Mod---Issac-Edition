@@ -124,15 +124,11 @@ public final class SolarChunkGenerator extends NoiseBasedChunkGenerator {
                 var options = settings.general().satellites();
                 var resolved = SatelliteMineralCatalog.resolve(BuiltInRegistries.BLOCK, options.included(), options.excluded(),
                         options.modWeight(), options.modDensity());
-                minerals = resolved.candidates();
+                minerals = resolved.requireSelectable("Solar");
                 BiosphereWorlds.LOGGER.info("Solar satellite minerals bound: candidates={} excluded={} ignored={}",
                         minerals, resolved.excluded(), resolved.ignored());
                 if (!resolved.ignored().isEmpty()) BiosphereWorlds.LOGGER.warn(
                         "Solar satellite mineral entries ignored: {}", resolved.ignored());
-                // Mineral already rejects negative weights; at least one positive weight is necessary and sufficient.
-                if (minerals.stream().noneMatch(mineral -> mineral.weight() > 0)) throw new IllegalArgumentException(
-                        "Solar satellite mineral selection requires at least one positive-weight candidate after exclusions; "
-                                + "check satellites_included_ores, satellites_excluded_ores and satellites_mod_ore_weight in the world's settings");
             }
             var terrain = settings.layoutVersion() >= 5 ? createTerrainRandom(random, seed, geometry, settings) : null;
             var volume = new SolarVolumePainter(geometry, settings, minerals, getSeaLevel());

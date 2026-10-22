@@ -11,23 +11,17 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Aquifer.NoiseBasedAquifer.class)
 public class MixinNoiseBasedAquifer {
     @Shadow @Final private net.minecraft.world.level.levelgen.NoiseChunk noiseChunk;
 
-    @Inject(method = "<init>", at = @At("TAIL"))
-    private void markBiosphereAquifer(CallbackInfo ci) {
-        if (BiosphereWorldgen.isBiosphereNoiseChunk(noiseChunk)) {
-            BiosphereWorldgen.markAquifer((Aquifer.NoiseBasedAquifer)(Object)this);
-        }
-    }
-
     @Inject(method = "computeSubstance", at = @At("HEAD"), cancellable = true)
     private void onComputeSubstance(DensityFunction.FunctionContext context, double substance, CallbackInfoReturnable<BlockState> cir) {
-        if (!BiosphereWorldgen.isBiosphereAquifer((Aquifer.NoiseBasedAquifer)(Object)this)) {
+        // El NoiseChunk se marca al terminar su construccion, despues del acuifero.
+        // Consultarlo aqui evita retener ambos objetos en un registro estatico.
+        if (!BiosphereWorldgen.isBiosphereNoiseChunk(noiseChunk)) {
             return;
         }
 

@@ -387,6 +387,36 @@ class SatellitePlacementTest {
     }
 
     @Test
+    void classicLargeCellRecoversRequestedMoonWithoutChangingPrincipal() {
+        var params = new SphereLayout.Params(4000, CENTER_Y, 256, 512,
+                true, MAX_COUNT, 8, 12, 25, 75, 16, 30, 55);
+        var layout = layout(params);
+        var principal = layout.sphereAtCell(0, 0);
+        assertEquals(415, principal.radius());
+        assertEquals(62, principal.centerY());
+        assertEquals(1, LegacySatellitePlacement.countAt(0, 0, MAX_COUNT));
+        assertTrue(LegacySatellitePlacement.place(principal, List.of(), params,
+                new LegacySatellitePlacement.Bounds(-2000, 2000, -2000, 2000)).isEmpty());
+        var moons = layout.satellitesAtCell(0, 0);
+        assertEquals(1, moons.size());
+        var moon = moons.getFirst();
+        assertTrue(moon.centerY() + moon.radius() <= 319);
+        var previous = LegacySatellitePlacement.candidate(principal, params,
+                new LegacySatellitePlacement.Bounds(-2000, 2000, -2000, 2000), 0, 0);
+        assertEquals(previous.seed(), moon.seed());
+        assertEquals(previous.radius(), moon.radius());
+        assertEquals(Math.atan2(previous.centerZ(), previous.centerX()),
+                Math.atan2(moon.centerZ(), moon.centerX()), 1e-12);
+        assertEquals(distance(previous.centerX(), previous.centerY(), previous.centerZ(), 0, 62, 0),
+                distance(moon.centerX(), moon.centerY(), moon.centerZ(), 0, 62, 0), 1e-10);
+        assertTrue(layout.isInsideSatellite(moon.centerX(), moon.centerY(), moon.centerZ()));
+        assertEquals(principal, layout.sphereAtCell(0, 0));
+        var tight = layout(new SphereLayout.Params(500, CENTER_Y, 256, 512,
+                true, MAX_COUNT, 8, 12, 25, 75, 16, 30, 55));
+        assertTrue(tight.satellitesAtCell(0, 0).isEmpty());
+    }
+
+    @Test
     void heightFitKeepsSeedsSizesAzimuthAndRadialGaps() {
         var params = new SphereLayout.Params(4000, 62, 484, 484,
                 true, 3, 8, 12, 25, 75, 16, 30, 55);

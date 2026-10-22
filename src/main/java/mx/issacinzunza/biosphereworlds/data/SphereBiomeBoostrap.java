@@ -2,11 +2,11 @@ package mx.issacinzunza.biosphereworlds.data;
 
 import mx.issacinzunza.biosphereworlds.BiosphereWorlds;
 import mx.issacinzunza.biosphereworlds.registry.ModCarvers;
+import mx.issacinzunza.biosphereworlds.registry.ModFeature;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.levelgen.GenerationStep;
@@ -28,7 +28,7 @@ public class SphereBiomeBoostrap
         addCarver(context, "sphere_carver", ModCarvers.BIOSPHERE_CARVER_KEY);
         addCarver(context, "sphere_bridge_carver", ModCarvers.BIOSPHERE_BRIDGE_CARVER_KEY);
         addFeature(context,"sphere_snow", HolderSet.direct(biomes.getOrThrow(Biomes.THE_VOID))
-                , ResourceKey.create(Registries.PLACED_FEATURE, ResourceLocation.parse("freeze_top_layer")));
+                , ModFeature.SPHERE_SNOW_KEY);
 //        addFeatureForAll(context, "sphere_feature", ModFeature.BIOSPHERE_FEATURE_KEY);
     }
 

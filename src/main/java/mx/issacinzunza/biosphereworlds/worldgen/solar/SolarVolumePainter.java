@@ -129,11 +129,8 @@ public final class SolarVolumePainter {
         if (shell) {
             for (var moon : moons) {
                 var s = moon.sphere();
-                var layers = SatelliteLayers.layers(s.radius());
-                var mineral = layers.hasCore() ? SatelliteLayers.selectMineral(s.seed(), minerals) : null;
                 BlockState satelliteShell = shellState(system.bodies().stream().filter(b -> b.id() == moon.planetId()).findFirst().orElseThrow());
-                BlockState ore = mineral == null ? Blocks.STONE.defaultBlockState()
-                        : BuiltInRegistries.BLOCK.get(ResourceLocation.parse(mineral.blockId())).defaultBlockState();
+                var materials = new mx.issacinzunza.biosphereworlds.worldgen.SatelliteMaterials(s, satelliteShell, minerals);
                 for (int x = Math.max(chunk.getPos().getMinBlockX(), (int) Math.floor(s.centerX() - s.radius()));
                      x <= Math.min(chunk.getPos().getMaxBlockX(), (int) Math.ceil(s.centerX() + s.radius())); x++) {
                     for (int z = Math.max(chunk.getPos().getMinBlockZ(), (int) Math.floor(s.centerZ() - s.radius()));
@@ -141,13 +138,7 @@ public final class SolarVolumePainter {
                         for (int y = (int) Math.floor(s.centerY() - s.radius()); y <= Math.ceil(s.centerY() + s.radius()); y++) {
                             double d = moon.squaredDistanceTo(x, y, z);
                             if (!moon.containsSquaredDistance(d)) continue;
-                            BlockState state = switch (SatelliteLayers.regionAt(layers, d)) {
-                                case SHELL -> satelliteShell;
-                                case MAGMA -> Blocks.MAGMA_BLOCK.defaultBlockState();
-                                case STONE -> Blocks.STONE.defaultBlockState();
-                                case CORE -> mineral != null && SatelliteLayers.isOre(s.seed(), x, y, z, mineral.densityPermille())
-                                        ? ore : Blocks.STONE.defaultBlockState();
-                            };
+                            BlockState state = materials.stateAt(d, x, y, z);
                             pos.set(x, y, z);
                             if (!chunk.getBlockState(pos).equals(state)) chunk.setBlockState(pos, state, false);
                         }

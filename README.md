@@ -125,8 +125,8 @@ as large as their parent are omitted.
 
 | Option | Default | Range | Behavior |
 |---|---|---|---|
-| `min_radius` | `128` | positive integer | Smallest orbital sphere radius, in blocks. Must not exceed radius. Set both radii equal for fixed sizes. |
-| `radius` | `128` | positive integer | Largest orbital sphere radius, in blocks. The central Stronghold sphere keeps its required safe size automatically. |
+| `min_radius` | `128` | integer 1..46340 | Smallest orbital sphere radius, in blocks. Must not exceed radius. Set both radii equal for fixed sizes. |
+| `radius` | `128` | integer 1..46340 | Largest orbital sphere radius, in blocks. Technical upper limit, not a recommended gameplay size. The central Stronghold sphere keeps its required safe size automatically. |
 | `center_y` | `62` | −64–319 | Exact orbital center Y. Oversized spheres are clipped at world height. The Stronghold center remains Y=127. |
 | `sphere_block` | `minecraft:glass` | block IDs / ids de bloques | Block ids used for the sphere shells; each sphere selects one deterministically. Empty, missing or unusable choices fall back to glass. Automatic bridges are disabled in Solar. |
 | `close_open_top` | `false` | boolean | Close planets cut by the build limit with a flat shell cap at Y=319. Disabled leaves the opening. Does not shrink the configured radius. |
@@ -196,9 +196,9 @@ Using a fresh world is strongly recommended to avoid broken borders with previou
 
 ## Configuration
 
-Config file path in development environment: `run/config/BiosphereWorlds.toml`
+Config file path in development environment: `run/config/biosphereworlds/BiosphereWorlds.toml`
 
-Typical path in normal client/server installations: `<game_dir>/config/BiosphereWorlds.toml`
+Typical path in normal client/server installations: `<game_dir>/config/biosphereworlds/BiosphereWorlds.toml`
 
 ### Main Settings
 
@@ -241,9 +241,9 @@ satellites_mod_ore_weight = 3
 satellites_mod_ore_density_permille = 20
 ```
 
-- `radius`: Maximum sphere radius.
-- `min_radius`: Minimum sphere radius. Set equal to `radius` for fixed-size spheres; set lower to enable per-sphere random sizing.
-- `spacing`: Distance between sphere center points on the grid.
+- `radius`: Maximum sphere radius, integer `1..46340` (technical integer-square limit, not a recommended gameplay size).
+- `min_radius`: Minimum sphere radius, integer `1..radius`. Set equal to `radius` for fixed-size spheres; set lower to enable per-sphere random sizing. An inverted pair is rejected before classic worldgen or creation of a new Solar snapshot.
+- `spacing`: Positive integer distance between sphere center points on the grid.
 - `center_y`: Y level of sphere centers.
 - `sphere_block`: List of block IDs used for sphere shells. Each sphere randomly picks one type from the list, deterministically based on its grid position. For example `["minecraft:glass", "minecraft:stone", "minecraft:obsidian"]`.
 - `only_upper_hemisphere`: Generate only upper hemispheres when enabled.
@@ -251,7 +251,7 @@ satellites_mod_ore_density_permille = 20
 - `bedrock_mode`: Bedrock at the world floor. `floor` (default) keeps the `bedrock_floor` surface rule at the bottom of the world (Y -64 to -60, noisy, only where there is stone). `none` leaves no bedrock at the bottom: the carver turns that bedrock into deepslate, so the world floor can be mined through (the Create Diesel Generators pumpjack needs bedrock, so it will not work with this value). `shell` is `floor` plus a 3-block bedrock lining on the inside of the glass shell in the lower half of each sphere (`y <= center_y`), which replaces any block except the shell itself and gives an accessible bedrock layer to build on. With `only_upper_hemisphere` enabled, `shell` behaves exactly like `floor` (there is no lower half to line). Only affects newly generated chunks.
 - `generate_bridge`: Enable or disable bridges between adjacent spheres.
 - `bridge_block`: Block used for bridges.
-- `bridge_radius`: Bridge radius (larger values make thicker bridges).
+- `bridge_radius`: Bridge radius, integer `0..46340` (larger values make thicker bridges; zero preserves the empty bridge behavior).
 - `restrict_structures_to_spheres`: Keep structure starts inside biospheres when enabled.
 - `structure_edge_margin`: Extra inward margin, in blocks, for structure start positions.
 - `debug_biome_lookups`: Enable temporary DEBUG logging for outside-sphere biome routes.
@@ -271,7 +271,7 @@ satellites_mod_ore_density_permille = 20
 
 Mod ores are discovered dynamically from the `#c:ores_in_ground/stone` block tag: that tag contains exactly the ores whose host ground is stone, so deepslate, netherrack, Nether, End and ancient debris variants stay out. The exclusion list is an extra safety net and the inclusion list covers mods that do not tag their ores. Candidates are ordered vanilla first (unchanged) and then mod ores sorted by block id; the exclusion list wins over tags and inclusion. Only blocks with a usable default state are accepted: no air, no fluids, no block entity, and a full solid cube (`canOcclude`).
 
-The catalog is a `volatile` immutable snapshot rebuilt only when the game tags update. **Changes to these lists, the mod ore weight or density apply when the world is reopened or with `/reload`**, not immediately after editing the TOML. The rebuild writes one INFO line with the final candidates `(id, weight, density)` plus the excluded and ignored entries; use it to build your exclusion list. If the snapshot is not ready yet, the game uses the stage-2 vanilla list and logs a warning.
+The classic catalog is a `volatile` immutable snapshot invalidated when game tags update and resolved on the next enabled classic use, before biome/block generation. Vanilla worlds and disabled satellites do not resolve it. **Changes to these lists, the mod ore weight or density apply when the world is reopened or with `/reload`**, not immediately after editing the TOML. Resolution writes one INFO line with final candidates `(id, weight, density)` and excluded/ignored entries. An empty or all-zero-weight catalog produces a configuration error; excluded ores are never silently restored by a vanilla fallback. Correct the lists/weight and reload before generating more chunks.
 
 If you install or remove mods, or change these lists between sessions, **a satellite that was only partially generated can show more than one mineral**: chunks generated under the old candidate list keep their mineral, and chunks generated later use the new one.
 
@@ -281,7 +281,7 @@ Each satellite picks one mineral for its whole core, deterministically from its 
 
 **Small cores have high variance.** A default-size satellite usually holds a few dozen to a few hundred ore blocks, but a small or unlucky one can end up with very little or even no mineral of its chosen type. That is intentional: the ore is a per-block hash, not a guaranteed payout.
 
-With `center_y = 62`, satellites only fit when the main radius is below roughly 200-300 blocks (at 55 degrees the build limit is the constraint; at 30 degrees the cell width is). Larger main spheres simply generate few or no satellites. The exact ceiling depends on the size, gap and elevation ranges.
+Classic satellites that exceed Y319 are lowered while preserving size, placement seed, azimuth and radial distance to their parent. This can relax the minimum elevation and recovers moons around large spheres when sufficient horizontal space exists. Full-volume, cell and collision checks still apply; a narrow cell or an oversized moon can still prevent placement. Solar applies this adjustment only to layout7; layouts1–6 retain their saved behavior.
 
 ### Tuning Notes
 

@@ -1,6 +1,9 @@
 package mx.issacinzunza.biosphereworlds.mixin;
 
 import mx.issacinzunza.biosphereworlds.worldgen.BiosphereChunkAccess;
+import mx.issacinzunza.biosphereworlds.worldgen.BiosphereWorldgen;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
@@ -11,6 +14,11 @@ public abstract class MixinChunkAccess implements BiosphereChunkAccess {
 
     @Override
     public boolean biosphereworlds$isBiosphere() {
+        // LevelChunk conoce su mundo tanto tras promocion como tras leer de disco.
+        // ProtoChunk sigue usando la marca establecida por el generador.
+        if (((ChunkAccess) (Object) this).getLevel() instanceof ServerLevel level) {
+            return BiosphereWorldgen.isBiosphereGenerator(level.getChunkSource().getGenerator());
+        }
         return biosphereworlds$biosphere;
     }
 

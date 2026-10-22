@@ -28,6 +28,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * sitios, que solo diverge por encima de ~2^24; se comprueba por separado.</p>
  */
 class SphereLayoutEquivalenceTest {
+    @org.junit.jupiter.api.Test
+    void configuredRadiiRejectInvalidDomainsWithoutChangingLegacyHash() {
+        SphereLayout.validateConfiguredRadii(1, 46340);
+        SphereLayout.validateConfiguredRadii(256, 512);
+        for (int[] pair : new int[][]{{0, 128}, {-1, 128}, {129, 128}, {1, 46341}}) {
+            org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                    () -> SphereLayout.validateConfiguredRadii(pair[0], pair[1]));
+        }
+        // El API geometrico conserva su comportamiento historico, incluida la rama min > max.
+        var legacy = new SphereLayout(new SphereLayout.Params(500, 62, 129, 128));
+        assertEquals(128, legacy.radiusAt(0, 0));
+    }
+
 
     /** Copia literal de la geometria anterior. Solo como oraculo de la prueba. */
     static final class Legacy {

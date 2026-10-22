@@ -34,13 +34,12 @@ public abstract class MixinMultiNoiseBiomeSource implements BiosphereBiomeSource
             return;
         }
 
-        Holder<Biome> biomeHolder = this.getNoiseBiome(sampler.sample(x, y, z));
-
         int i = QuartPos.toBlock(x);
         int j = QuartPos.toBlock(y);
         int k = QuartPos.toBlock(z);
         boolean outsideSphere = !SphereLayout.current().isInside(i, j, k, -4);
         if (SphereConfig.DEBUG_BIOME_LOOKUPS.get() && outsideSphere) {
+            Holder<Biome> biomeHolder = this.getNoiseBiome(sampler.sample(x, y, z));
             BiosphereWorlds.LOGGER.debug("biome-route=MultiNoiseBiomeSource#getNoiseBiome sampler=({},{},{}) block=({},{},{}) before={} marked={}",
                 x, y, z, i, j, k,
                 biomeHolder.unwrapKey().map(key -> key.location().toString()).orElse("unregistered"),

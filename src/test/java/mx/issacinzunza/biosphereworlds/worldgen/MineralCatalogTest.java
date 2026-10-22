@@ -17,6 +17,20 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class MineralCatalogTest {
 
     @Test
+    void selectionValidationRejectsEmptyAndZeroWithoutReorderingCandidates() {
+        assertFalse(MineralCatalog.hasSelectableMineral(List.of()));
+        var zero = new SatelliteLayers.Mineral("minecraft:stone", 0, 20);
+        assertFalse(MineralCatalog.hasSelectableMineral(List.of(zero)));
+        var positive = new SatelliteLayers.Mineral("minecraft:iron_ore", 1, 20);
+        var mixed = List.of(zero, positive);
+        assertTrue(MineralCatalog.hasSelectableMineral(mixed));
+        for (long seed : new long[]{0, -1, Long.MIN_VALUE, 81273}) {
+            assertEquals(positive, SatelliteLayers.selectMineral(seed, mixed));
+        }
+        assertTrue(MineralCatalog.hasSelectableMineral(SatelliteLayers.VANILLA_MINERALS));
+    }
+
+    @Test
     void nonemptyZeroWeightCatalogReproducesDeferredSelectionFailure() {
         var excluded = SatelliteLayers.VANILLA_MINERALS.stream().map(SatelliteLayers.Mineral::blockId).toList();
         var minerals = MineralCatalog.assemble(SatelliteLayers.VANILLA_MINERALS,

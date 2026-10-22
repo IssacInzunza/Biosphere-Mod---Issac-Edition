@@ -46,7 +46,8 @@ public record MultipleSpheresDistanceFunction(
 
     @Override
     public double maxValue() {
-        return 2.0; // possible max value
+        // FunctionContext no limita Y; la distancia normalizada no tiene cota finita.
+        return Double.POSITIVE_INFINITY;
     }
 
     @Override

@@ -1,0 +1,6 @@
+{
+  "feature": "biosphereworlds:sphere_snow",
+  "placement": [
+    { "type": "minecraft:biome" }
+  ]
+}

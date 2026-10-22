@@ -55,9 +55,6 @@ public abstract class MixinNoiseBasedChunkGenerator implements BiosphereGenerato
                                          RandomState random, org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<NoiseChunk> cir) {
         if (biosphereworlds$isBiosphereGenerator()) {
             BiosphereWorldgen.markNoiseChunk(cir.getReturnValue());
-            if (cir.getReturnValue().aquifer() instanceof Aquifer.NoiseBasedAquifer aquifer) {
-                BiosphereWorldgen.markAquifer(aquifer);
-            }
             ((BiosphereChunkAccess) chunk).biosphereworlds$setBiosphere(true);
         }
     }
@@ -67,6 +64,11 @@ public abstract class MixinNoiseBasedChunkGenerator implements BiosphereGenerato
                                           ChunkAccess chunk, CallbackInfoReturnable<java.util.concurrent.CompletableFuture<ChunkAccess>> cir) {
         if (biosphereworlds$isBiosphereGenerator()) {
             BiosphereWorldgen.markBiomeSource(((NoiseBasedChunkGenerator)(Object)this).getBiomeSource());
+            // Validar antes de generar bloques, y sin resolver un catalogo desactivado.
+            var layout = mx.issacinzunza.biosphereworlds.worldgen.SphereLayout.current();
+            if (layout.params().satellitesEnabled() && layout.params().satellitesMaxCount() > 0) {
+                mx.issacinzunza.biosphereworlds.event.SatelliteMineralCatalog.candidates();
+            }
         }
     }
 

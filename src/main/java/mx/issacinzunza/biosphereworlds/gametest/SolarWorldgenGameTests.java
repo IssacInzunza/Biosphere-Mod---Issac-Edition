@@ -231,7 +231,7 @@ public final class SolarWorldgenGameTests {
         long previousNanos = 0;
         long currentNanos = 0;
         int comparisons = 0;
-        for (int version : new int[]{1, 2, 4, 5, 6}) {
+        for (int version : new int[]{1, 2, 3, 4, 5, 6, 7}) {
             for (boolean cold : new boolean[]{false, true}) {
                 var general = new SolarSettings.General(64,
                         java.util.List.of("minecraft:blue_stained_glass", "invalid id", "minecraft:water"),

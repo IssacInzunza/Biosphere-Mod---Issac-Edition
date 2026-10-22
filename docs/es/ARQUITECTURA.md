@@ -1,5 +1,35 @@
 # Arquitectura de Biosphere Worlds
 
+## Correcciones de arquitectura — 22 de octubre de 2026
+
+- Acuíferos: el mixin consulta la marca de su propio `NoiseChunk` después de su
+  construcción; ya no existe un conjunto estático que retenga acuíferos/chunks.
+- Heightmaps clásicos: primado, actualización y lectura descendente consultan
+  satélites en coordenadas mundiales. El filtrado histórico del cascarón principal
+  se mantiene; un `LevelChunk` consulta el generador de su mundo, evitando depender
+  de un boolean que no se copia al promover o cargar desde disco.
+- El clásico activa el ajuste de techo de `7f08beb`/`5f48474`: conserva radio,
+  semilla, azimut y distancia radial de satélites grandes. Solar7 conserva su
+  ajuste, mientras Solar1–6 conserva la colocación histórica.
+- `SatelliteMaterials` comparte resolución y elección del material entre carver
+  clásico y pintor solar. Los bucles y el orden aritmético de distancias permanecen
+  en cada escritor; los oráculos de pruebas no usan la nueva clase.
+- Catálogo clásico: `TagsUpdatedEvent` solo invalida; la siguiente generación
+  clásica con satélites activos resuelve y valida antes de generar bloques. No hay
+  resolución en vanilla o con satélites apagados. Ambos presets exigen al menos
+  un candidato de peso positivo y no restauran minerales excluidos por fallback.
+- `SphereSnowFeature` conserva `SnowAndFreezeFeature` vanilla, con comprobación de
+  generador clásico/solar antes de cualquier lectura del mundo. El modificador de
+  `the_void` usa esta feature; no se sustituye ni intercepta la feature vanilla.
+- La fuente de biomas histórica conserva su codec e incluye `the_void` entre los
+  posibles. Sus búsquedas heredadas examinan cada candidato a través del wrapper,
+  en lugar de descartar solamente el primer resultado exterior.
+
+La configuración clásica sigue teniendo autoridad global; esta tanda no migra
+su persistencia ni activa campos antiguos del codec que antes no se utilizaban.
+Los snapshots solares y sus versiones no cambian. Sigue pendiente la validación
+jugable de mundos antiguos, portales, aldeas, multijugador y mods externos.
+
 ## Estrella guía Solar
 
 `SolarEvents.guide` comprueba primero `SolarChunkGenerator` y envía cada diez ticks
@@ -233,8 +263,8 @@ se omiten candidatos tan grandes como su planeta.
 
 | Opción | Predeterminado | Rango | Efecto |
 |---|---|---|---|
-| `min_radius` | `128` | entero positivo | Radio mínimo de los planetas orbitales, en bloques. No puede superar el radio máximo. Pon ambos radios iguales para obtener tamaños fijos. |
-| `radius` | `128` | entero positivo | Radio máximo de los planetas orbitales, en bloques. La biosfera del Stronghold conserva automáticamente el tamaño necesario para alojarlo completo. |
+| `min_radius` | `128` | entero 1..46340 | Radio mínimo de los planetas orbitales, en bloques. No puede superar el radio máximo. Pon ambos radios iguales para obtener tamaños fijos. |
+| `radius` | `128` | entero 1..46340 | Radio máximo de los planetas orbitales; límite técnico, no recomendación de tamaño. La biosfera del Stronghold conserva automáticamente el tamaño necesario para alojarlo completo. |
 | `center_y` | `62` | −64–319 | Altura Y exacta del centro de los planetas orbitales. La altura del mundo recorta las esferas que la superan. El centro del Stronghold permanece en Y=127. |
 | `sphere_block` | `minecraft:glass` | block IDs / ids de bloques | Ids de bloque para los cascarones. Cada esfera elige uno de forma determinista. Si la lista está vacía o el bloque no es válido, se usa vidrio. Los puentes automáticos están desactivados en Solar. |
 | `close_open_top` | `false` | booleano | Tapa las esferas cortadas por el límite de construcción con el bloque del cascarón en Y=319. Desactivado deja el corte abierto; no reduce el radio. |
@@ -281,8 +311,8 @@ inmutable con semilla, geometría, ruido propio, escritor y Stronghold. SolarVol
 escribe cascarón, superficie central y lunas, y filtra heightmaps. Resuelve la paleta
 una sola vez; omite aire superior únicamente por encima de bloques existentes y
 cuerpos. Conserva el reinicio/primado de heightmaps en cada fase. SatelliteMineralCatalog
-resuelve ids/tags para ambos presets; cada llamador conserva su política de fallback.
-Con satélites Solar apagados no se resuelve ni valida un catálogo sin uso.
+resuelve ids/tags para ambos presets y comparte validación de peso positivo.
+Con satélites apagados no se resuelve ni valida un catálogo sin uso.
 No verificado: escrituras de mods que eviten esas rutas, C2ME, activación real del
 portal, ojos, locate en un mundo jugable y rendimiento prolongado. La conservación
 de la lógica clásica no sustituye una comparación de chunks contra su copia anterior.
@@ -333,7 +363,7 @@ puede demostrar leyendo el código, se marca como **No verificado:**.
   ensamblado puro de candidatos: vanilla primero, mods ordenados por id,
   exclusiones y deduplicación.
 - `src/main/java/mx/issacinzunza/biosphereworlds/event/SatelliteMineralCatalog.java` —
-  catálogo `volatile` e inmutable reconstruido en `TagsUpdatedEvent`; descubre
+  catálogo `volatile` e inmutable invalidado en `TagsUpdatedEvent` y resuelto en el siguiente uso clásico activo; descubre
   menas de piedra por `#c:ores_in_ground/stone`, resuelve inclusión/exclusión y
   escribe un INFO por reconstrucción.
 - `src/main/java/mx/issacinzunza/biosphereworlds/density/MultipleSpheresDistanceFunction.java` —
@@ -876,17 +906,17 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 
 | Opción TOML | Tipo Java | Valor por defecto | Dónde se lee | Efecto |
 |---|---|---:|---|---|
-| `radius` | `ConfigValue<Number>` | `128` | `SphereCarver.getSphereRadius` | Radio máximo de las esferas y límite usado cuando `min_radius == radius`. |
-| `min_radius` | `ConfigValue<Number>` | `128` | `SphereCarver.getSphereRadius` | Radio mínimo; si es menor que `radius`, el hash de la celda elige un radio entre ambos. |
+| `radius` | `ConfigValue<Number>` | `128` | `SphereLayout.radiusAt` | Radio máximo entero 1..46340 y límite usado cuando `min_radius == radius`. |
+| `min_radius` | `ConfigValue<Number>` | `128` | `SphereLayout.radiusAt` | Radio mínimo entero 1..radius; si es menor que `radius`, el hash de la celda elige un radio entre ambos. |
 | `spacing` | `ConfigValue<Number>` | `500` | `SphereCarver`, `MultipleSpheresDistanceFunction`, `SphereBridgeCarver`, `MixinNoiseBasedAquifer`, utilidades | Distancia entre centros en X/Z y tamaño de la cuadrícula. |
 | `center_y` | `ConfigValue<Number>` | `62` | carvers, density function, estructuras, aquifer, heightmap y spawn handler | Altura Y del centro de cada esfera y referencia vertical de varias comprobaciones. |
-| `sphere_block` | `ConfigValue<List<? extends String>>` | `["minecraft:glass"]` | `SphereCarver.getSphereBlockState`, `SphereUtil`, `PlayerSpawnHandler`, `MixinHeightmap` | Lista de ids de bloques posibles para el cascarón; la celda selecciona uno determinísticamente. Se valida contra `BuiltInRegistries.ITEM`, aunque luego se usa como bloque. |
+| `sphere_block` | `ConfigValue<List<? extends String>>` | `["minecraft:glass"]` | `SphereCarver.getSphereBlockState`, `SphereUtil`, `PlayerSpawnHandler`, `MixinHeightmap` | Lista de ids de bloques posibles para el cascarón; la celda selecciona uno determinísticamente. Se valida contra `BuiltInRegistries.BLOCK` con sintaxis segura. |
 | `only_upper_hemisphere` | `ConfigValue<Boolean>` | `false` | `SphereCarver.carve` | Activa el modo de hemisferio superior y sus reglas especiales de reemplazo bajo Y 55. |
 | `close_open_top` | `BooleanValue` | `false` | `SphereCarver.carve` | Cierra con una tapa plana en el Y colocable más alto (319) las esferas cortadas por el límite de construcción, usando el bloque del cascarón. Solo afecta a mundos nuevos. |
 | `bedrock_mode` | `EnumValue<BedrockMode>` | `floor` | `SphereCarver.carve` | Bedrock del suelo del mundo. `floor`: se mantiene la regla `bedrock_floor` de la surface_rule en el fondo (Y −64..−60, solo donde hay piedra). `none`: sin bedrock en el fondo; el carver sustituye esa bedrock por deepslate, así que el suelo se puede minar (el pumpjack de Create Diesel Generators necesita bedrock y no funcionará). `shell`: lo de `floor` más un forro de bedrock de 3 bloques por dentro del cascarón de vidrio en la mitad inferior (`y <= center_y`), que sustituye cualquier bloque salvo el cascarón. Con `only_upper_hemisphere` activo, `shell` se comporta exactamente como `floor`. Solo afecta a chunks nuevos. |
 | `generate_bridge` | `ConfigValue<Boolean>` | `true` | `SphereBridgeCarver.carve` | Activa o desactiva la colocación de puentes entre centros vecinos. |
 | `bridge_block` | `ConfigValue<String>` | `"minecraft:oak_planks"` | `SphereBridgeCarver.carve` | Id del bloque usado por los puentes. |
-| `bridge_radius` | `ConfigValue<Number>` | `1` | `SphereBridgeCarver.carveBridge` | Grosor radial del tubo de puente. |
+| `bridge_radius` | `ConfigValue<Number>` | `1` | `SphereBridgeCarver.carveBridge` | Grosor radial entero 0..46340; cero conserva el puente vacío. |
 | `restrict_structures_to_spheres` | `ConfigValue<Boolean>` | `true` | `MixinChunkGeneratorStructures.restrictStructureToSphere` | Activa la cancelación de inicios de estructura fuera de las esferas. |
 | `structure_edge_margin` | `IntValue` | `16` (rango `0..128`) | `MixinChunkGeneratorStructures.restrictStructureToSphere` | Margen adicional hacia dentro del radio para el punto inicial de una estructura. |
 | `debug_biome_lookups` | `BooleanValue` | `false` | `MixinMultiNoiseBiomeSource`, `MixinChunkGeneratorBiomeSource` | Escribe rutas DEBUG para consultas de bioma fuera de las esferas y para marcar el source. |
@@ -908,11 +938,14 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 | `satellites_mod_ore_density_permille` | `IntValue` | `20` (rango `0..1000`) | `SatelliteMineralCatalog.rebuild` | Bloques de mineral por 1000 del núcleo para minerales de mods. |
 
 La validación de `sphere_block` y `bridge_block` está en
-`SphereConfig.validateItemName(Object)`: exige un `String` y que el
-`ResourceLocation` exista en el registro de **items**. **No verificado:** el
-código no comprueba explícitamente el registro de bloques durante la carga;
-un id que sea item pero no un bloque podría producir un estado de bloque no
-válido al leerlo desde `BuiltInRegistries.BLOCK`.
+`SphereConfig.validateBlockName(Object)`: exige un `String`, comprueba la sintaxis
+con `ResourceLocation.tryParse` y consulta el registro de bloques. Un ítem sin
+bloque o un identificador mal formado se rechaza. Se conserva la lista vacía
+intencional. Los radios configurados son enteros `1..46340`, `spacing` es positivo
+y `bridge_radius` admite `0..46340`; el límite evita desbordar los cuadrados `int`,
+no garantiza rendimiento adecuado para radios enormes. NeoForge corrige valores
+individuales inválidos conforme al esquema. Una pareja `min_radius > radius`
+produce error antes de la generación clásica o del snapshot solar nuevo.
 
 Las parejas `min`/`max` de los satélites se validan en el constructor de
 `SphereLayout.Params`: cada valor se recorta a su rango y, si el mínimo supera al

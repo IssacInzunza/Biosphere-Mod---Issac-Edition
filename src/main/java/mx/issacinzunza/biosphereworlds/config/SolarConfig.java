@@ -23,10 +23,8 @@ public final class SolarConfig {
     private SolarConfig() { }
 
     public static SolarSettings snapshot() {
-        if (GENERAL.MIN_RADIUS.get().intValue() < 1
-                || GENERAL.MIN_RADIUS.get().intValue() > GENERAL.RADIUS.get().intValue()) {
-            throw new IllegalArgumentException("Solar Systems requires Settings.min_radius <= Settings.radius, both positive");
-        }
+        mx.issacinzunza.biosphereworlds.worldgen.SphereLayout.validateConfiguredRadii(
+                GENERAL.MIN_RADIUS.get().intValue(), GENERAL.RADIUS.get().intValue());
         boolean cold = OPTIONS.SOLAR_CLIMATE_DIRECTION.get() == 1;
         var general = new SolarSettings.General(GENERAL.CENTER_Y.get().intValue(), List.copyOf(GENERAL.SPHERE_BLOCK.get()), GENERAL.BEDROCK_MODE.get(),
                 new SolarSettings.Satellites(GENERAL.SATELLITES_MIN_SIZE_PERCENT.get(), GENERAL.SATELLITES_MAX_SIZE_PERCENT.get(), GENERAL.SATELLITES_MIN_GAP_PERCENT.get(),

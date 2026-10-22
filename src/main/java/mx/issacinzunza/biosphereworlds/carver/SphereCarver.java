@@ -184,7 +184,7 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                         generated |= carveSatellite(chunk, satellite, blockState,
                                 chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
                     }
-                    if (gridX == 0 && gridZ == 0
+                    if (gridX == 0 && gridZ == 0 && BiosphereWorlds.LOGGER.isDebugEnabled()
                             && LOGGED_SATELLITES_CELL_ZERO.compareAndSet(false, true)) {
                         logSatellitesCellZero(satellites);
                     }
@@ -212,13 +212,8 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
         double radius = satellite.radius();
         double outerRadiusSq = radius * radius;
 
-        SatelliteLayers.Layers layers = SatelliteLayers.layers(satellite.radius());
-        SatelliteLayers.Mineral mineral = layers.hasCore()
-                ? SatelliteLayers.selectMineral(satellite.seed(), SatelliteMineralCatalog.candidates())
-                : null;
-        BlockState oreState = mineral == null
-                ? null
-                : BuiltInRegistries.BLOCK.get(ResourceLocation.parse(mineral.blockId())).defaultBlockState();
+        var materials = new mx.issacinzunza.biosphereworlds.worldgen.SatelliteMaterials(satellite, shellState,
+                SatelliteLayers.layers(satellite.radius()).hasCore() ? SatelliteMineralCatalog.candidates() : List.of());
 
         int minX = Math.max(chunkStartX, (int) Math.floor(satellite.centerX() - radius));
         int maxX = Math.min(chunkEndX, (int) Math.ceil(satellite.centerX() + radius));
@@ -227,8 +222,6 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
         int minY = Math.max(chunk.getMinBuildHeight(), (int) Math.floor(satellite.centerY() - radius));
         int maxY = Math.min(chunk.getMaxBuildHeight() - 1, (int) Math.ceil(satellite.centerY() + radius));
 
-        BlockState bodyState = Blocks.STONE.defaultBlockState();
-        BlockState magmaState = Blocks.MAGMA_BLOCK.defaultBlockState();
         boolean generated = false;
 
         for (int x = minX; x <= maxX; x++) {
@@ -250,13 +243,7 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                         continue;
                     }
 
-                    BlockState state = switch (SatelliteLayers.regionAt(layers, distanceSq)) {
-                        case SHELL -> shellState;
-                        case MAGMA -> magmaState;
-                        case STONE -> bodyState;
-                        case CORE -> SatelliteLayers.isOre(satellite.seed(), x, y, z,
-                                mineral.densityPermille()) ? oreState : bodyState;
-                    };
+                    BlockState state = materials.stateAt(distanceSq, x, y, z);
                     chunk.setBlockState(new BlockPos(x, y, z), state, false);
                     generated = true;
                 }

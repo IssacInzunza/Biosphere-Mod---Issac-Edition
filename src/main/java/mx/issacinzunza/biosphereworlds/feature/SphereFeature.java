@@ -21,6 +21,9 @@ public class SphereFeature extends Feature<SphereFeature.Config> {
 
     @Override
     public boolean place(@NotNull FeaturePlaceContext<Config> context) {
+        if (!mx.issacinzunza.biosphereworlds.worldgen.BiosphereWorldgen.isBiosphereGenerator(context.chunkGenerator())) {
+            return false;
+        }
         Config config = context.config();
         WorldGenLevel level = context.level();
         BlockPos origin = context.origin();

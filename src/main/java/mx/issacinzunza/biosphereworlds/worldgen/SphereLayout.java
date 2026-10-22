@@ -137,6 +137,7 @@ public final class SphereLayout {
         int centerY = SphereConfig.CENTER_Y.get().intValue();
         int minRadius = SphereConfig.MIN_RADIUS.get().intValue();
         int maxRadius = SphereConfig.RADIUS.get().intValue();
+        validateConfiguredRadii(minRadius, maxRadius);
         boolean satellitesEnabled = SphereConfig.SATELLITES_ENABLED.get();
         int satellitesMaxCount = Math.max(0, SphereConfig.SATELLITES_MAX_COUNT.get());
         int satellitesMinSizePercent = clamp(SphereConfig.SATELLITES_MIN_SIZE_PERCENT.get(), 1, 100);
@@ -181,6 +182,13 @@ public final class SphereLayout {
                 satellitesMinElevation, satellitesMaxElevation));
         current = fresh;
         return fresh;
+    }
+
+    /** Valida la entrada de configuracion sin cambiar el hash ni el contrato geometrico legacy. */
+    public static void validateConfiguredRadii(int minRadius, int maxRadius) {
+        if (minRadius < 1 || minRadius > maxRadius || maxRadius > 46340) {
+            throw new IllegalArgumentException("Biospheres requires 1 <= Settings.min_radius <= Settings.radius <= 46340");
+        }
     }
 
     private static int clamp(int value, int min, int max) {
@@ -317,7 +325,7 @@ public final class SphereLayout {
                 principal.centerX() - half, principal.centerX() + half,
                 principal.centerZ() - half, principal.centerZ() + half);
 
-        List<Satellite> placed = SatellitePlacement.place(principal, neighbours, params, bounds);
+        List<Satellite> placed = SatellitePlacement.place(principal, neighbours, params, bounds, true);
         SatelliteCell fresh = new SatelliteCell(cellX, cellZ, List.copyOf(placed));
         cache.set(slot, fresh);
 
