@@ -2,6 +2,9 @@
 .gradle/
 build/
 
+# Local work files
+/work/
+
 # Local Minecraft development files
 run/
 logs/
