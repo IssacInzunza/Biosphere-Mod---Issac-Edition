@@ -151,7 +151,6 @@ exclusivo de Solar por falta de espacio, ni se crean plataformas o agrandan radi
 Un radio positivo no garantiza superficie habitable; radio 1 no tiene terreno interior.
 
 Los mundos nuevos usan layout 7; los layouts guardados 1–6 conservan sus rutas históricas.
-Las pruebas y aceptación integral pendiente se registran en `PROGRESS.md`.
 
 ## Corrección del forro central de bedrock
 

@@ -4,6 +4,10 @@ build/
 
 # Local work files
 /work/
+/AUDITORIA_ARQUITECTURA_BIOSPHERES.md
+/AUDIT_SOLAR_SYSTEM.md
+/PLAN_REFACTORIZACION_BIOSPHERES.md
+/PROGRESS.md
 
 # Local Minecraft development files
 run/

@@ -159,7 +159,7 @@ Natural End portal/frame writes through WorldGenRegion and marked ProtoChunks ar
 accepted only within an authorized central Stronghold piece placement (the portal
 room for vanilla, or the replacement's own pieces).
 Other mods that bypass those paths are not certified. Nether and End retain vanilla
-generation. See `PROGRESS.md` for acceptance tests still pending, including actual
+generation. Acceptance tests are still pending, including actual
 portal activation, eyes, locate, external mods and prolonged exploration.
 
 Biosphere Worlds – Issac Edition is a fork of [NeoBiosphere](https://github.com/mlus-asuka/NeoBiosphere) by mlus, for NeoForge 1.21.1. Full credit to the original author for the concept and base code.
