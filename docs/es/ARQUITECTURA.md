@@ -25,10 +25,50 @@
   posibles. Sus búsquedas heredadas examinan cada candidato a través del wrapper,
   en lugar de descartar solamente el primer resultado exterior.
 
-La configuración clásica sigue teniendo autoridad global; esta tanda no migra
-su persistencia ni activa campos antiguos del codec que antes no se utilizaban.
-Los snapshots solares y sus versiones no cambian. Sigue pendiente la validación
-jugable de mundos antiguos, portales, aldeas, multijugador y mods externos.
+La tanda inicial mantuvo la autoridad global clásica. La fase P7 posterior añade
+persistencia exclusivamente a mundos clásicos nuevos, según la decisión del usuario.
+Los snapshots solares y sus versiones no cambian. El usuario validó visualmente la
+tanda inicial; siguen pendientes portales, multijugador y mods externos.
+
+## Persistencia clásica por mundo — P7
+
+`ClassicWorldSettings` contiene una receta inmutable de geometría, cascarón,
+hemisferio, tapa, bedrock, puentes, océano, restricciones de estructuras y minerales
+ya resueltos. `ClassicWorldData` la guarda en `data/biosphereworlds_classic.dat`, con
+`schema_version=1`. El orden, peso y densidad del catálogo se conservan al reabrir;
+los cambios posteriores de tags/TOML no alteran esa receta. El diagnóstico DEBUG
+queda fuera del guardado. No hay opciones nuevas ni migración automática.
+
+`MixinClassicWorldStorage` comprueba generador clásico y Overworld antes de leer
+datos o configuración. Usa el indicador vanilla `isInitialized`: si el mundo es
+nuevo y no hay receta, captura; si existe receta, carga y valida; si ya estaba
+inicializado y no hay receta, conserva la ruta global legacy. Un archivo existente
+ilegible, versión desconocida o bloque requerido ausente produce un error explícito.
+La deserialización semántica ocurre fuera del lector vanilla de SavedData, que
+captura excepciones y devuelve null; así no se confunde corrupción con ausencia.
+
+La vinculación ocurre después de crear `DimensionDataStorage` y antes de `ChunkMap`.
+Un evento `LevelEvent.Load` sería demasiado tardío: el motor ya habría creado
+`RandomState` y el estado de estructuras. `MixinClassicChunkMap` adapta una copia del
+router con `ClassicDensityFunction`; conserva el holder original, los codecs
+históricos y los registros compartidos. Los adaptadores runtime recorren sus hijos
+en `mapAll` y conservan la aritmética clásica, incluido el hash histórico.
+
+La misma referencia de receta/layout se propaga al generador, fuente de biomas,
+ProtoChunk y NoiseChunk. LevelChunk la obtiene de su generador al promoverse o
+recargarse. `MixinClassicChunkStorage` también restaura ProtoChunks deserializados
+antes de reconstruir sus heightmaps y continuar la generación. Carvers, heightmaps, acuíferos, restricción de estructuras y corrección
+de aparición consultan esa referencia; null mantiene las rutas legacy. No se usa
+un contexto global ni ThreadLocal para seleccionar el mundo. El ajuste al techo de
+satélites continúa en `SphereLayout`/`SatellitePlacement` sin cambios.
+
+El alcance es el Overworld del preset clásico. No se capturan vanilla, Solar,
+Nether o End. Ausencia del archivo en un mundo ya inicializado significa legacy:
+el archivo debe acompañar las copias de seguridad del mundo. El banco adicional
+verificó en dos procesos reales crear un mundo clásico, cerrar, editar TOML y
+reabrir: tanto chunks nuevos como antiguos conservan la receta guardada. La ruta
+legacy continúa cubierta por GameTests; un mundo anterior sin receta sigue el
+TOML como antes. Alcance y límites en [VERIFICACION-MOTOR-2026-10-22.md](VERIFICACION-MOTOR-2026-10-22.md).
 
 ## Estrella guía Solar
 

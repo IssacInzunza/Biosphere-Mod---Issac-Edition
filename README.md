@@ -200,6 +200,19 @@ Config file path in development environment: `run/config/biosphereworlds/Biosphe
 
 Typical path in normal client/server installations: `<game_dir>/config/biosphereworlds/BiosphereWorlds.toml`
 
+**New classic Biospheres worlds save their generation recipe** in
+`<world>/data/biosphereworlds_classic.dat` (schema 1). It includes geometry,
+shells, bridges, bedrock, ocean settings, structure restrictions and the resolved
+satellite mineral list. Later TOML edits or tag reloads do not change that world's
+recipe. Create a new world to apply different generation settings. Diagnostic
+logging remains a runtime setting.
+
+**Existing classic worlds without this file keep their previous behavior:** they
+continue reading the classic TOML and are not automatically migrated. Solar keeps
+its own existing snapshot format. A corrupt/unsupported classic recipe or a
+missing required block is reported as an error instead of silently using new
+defaults. Preserve the recipe file together with the rest of a world backup.
+
 ### Main Settings
 
 ```toml
@@ -271,9 +284,9 @@ satellites_mod_ore_density_permille = 20
 
 Mod ores are discovered dynamically from the `#c:ores_in_ground/stone` block tag: that tag contains exactly the ores whose host ground is stone, so deepslate, netherrack, Nether, End and ancient debris variants stay out. The exclusion list is an extra safety net and the inclusion list covers mods that do not tag their ores. Candidates are ordered vanilla first (unchanged) and then mod ores sorted by block id; the exclusion list wins over tags and inclusion. Only blocks with a usable default state are accepted: no air, no fluids, no block entity, and a full solid cube (`canOcclude`).
 
-The classic catalog is a `volatile` immutable snapshot invalidated when game tags update and resolved on the next enabled classic use, before biome/block generation. Vanilla worlds and disabled satellites do not resolve it. **Changes to these lists, the mod ore weight or density apply when the world is reopened or with `/reload`**, not immediately after editing the TOML. Resolution writes one INFO line with final candidates `(id, weight, density)` and excluded/ignored entries. An empty or all-zero-weight catalog produces a configuration error; excluded ores are never silently restored by a vanilla fallback. Correct the lists/weight and reload before generating more chunks.
+For **existing classic worlds without a saved recipe**, the catalog is a `volatile` immutable snapshot invalidated when game tags update and resolved on the next enabled classic use, before biome/block generation. Changes to lists, weight or density apply on reopen or `/reload`. New classic worlds resolve the catalog at creation and persist its exact order, weights and densities; they do not rebuild it from later tags or TOML edits. Vanilla worlds and disabled satellites do not resolve it. An empty or all-zero-weight active catalog produces a configuration error; excluded ores are never silently restored by a vanilla fallback.
 
-If you install or remove mods, or change these lists between sessions, **a satellite that was only partially generated can show more than one mineral**: chunks generated under the old candidate list keep their mineral, and chunks generated later use the new one.
+In classic worlds without a saved recipe, changing mods or lists between sessions can give **a partially generated satellite more than one mineral**. New classic recipes keep their resolved choices; removing a required mineral block produces an explicit error on reopening.
 
 Satellite placement is deterministic and depends only on the cell coordinates and the options above: no world seed, chunk generation order or shared state. Each satellite is validated with its full volume: it must fit inside its main sphere's cell with the safety margin, stay between Y -64 and 319, and not overlap the main sphere, neighbouring main spheres or the other satellites of the same cell. If no valid position is found after a limited number of attempts, that satellite is skipped without an error.
 

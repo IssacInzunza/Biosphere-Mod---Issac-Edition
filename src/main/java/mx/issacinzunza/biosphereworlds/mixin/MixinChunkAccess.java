@@ -10,6 +10,18 @@ import org.spongepowered.asm.mixin.Unique;
 @Mixin(net.minecraft.world.level.chunk.ChunkAccess.class)
 public abstract class MixinChunkAccess implements BiosphereChunkAccess {
     @Unique
+    private mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound biosphereworlds$classicWorld;
+
+    @Override public mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound biosphereworlds$classicWorld() {
+        if (((ChunkAccess) (Object) this).getLevel() instanceof ServerLevel level) {
+            return BiosphereWorldgen.classicWorld(level.getChunkSource().getGenerator());
+        }
+        return biosphereworlds$classicWorld;
+    }
+    @Override public void biosphereworlds$setClassicWorld(mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound world) {
+        biosphereworlds$classicWorld = world;
+    }
+    @Unique
     private boolean biosphereworlds$biosphere;
 
     @Override

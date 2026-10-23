@@ -10,7 +10,14 @@ import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
 import java.util.stream.Stream;
 
-public final class BiosphereBiomeSource extends BiomeSource {
+public final class BiosphereBiomeSource extends BiomeSource implements ClassicWorldSettings.Access {
+    private volatile ClassicWorldSettings.Bound classicWorld;
+
+    @Override public ClassicWorldSettings.Bound biosphereworlds$classicWorld() { return classicWorld; }
+    @Override public void biosphereworlds$setClassicWorld(ClassicWorldSettings.Bound world) {
+        if (classicWorld != null && classicWorld != world) throw new IllegalStateException("Classic biome wrapper shared between worlds");
+        classicWorld = world;
+    }
     public static final MapCodec<BiosphereBiomeSource> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             BiomeSource.CODEC.fieldOf("source").forGetter(BiosphereBiomeSource::source),
             Biome.CODEC.fieldOf("void_biome").forGetter(BiosphereBiomeSource::voidBiome)
@@ -49,8 +56,8 @@ public final class BiosphereBiomeSource extends BiomeSource {
     // Las busquedas heredadas consultan este wrapper en cada candidato y siguen
     // buscando si el mas cercano cae en el vacio. El codec historico se conserva.
 
-    private static boolean isInsideSphere(int x, int y, int z) {
-        return SphereLayout.current().isInside(x, y, z, -4);
+    private boolean isInsideSphere(int x, int y, int z) {
+        return BiosphereWorldgen.classicLayout(this).isInside(x, y, z, -4);
     }
 
     public Holder<Biome> voidBiome() {

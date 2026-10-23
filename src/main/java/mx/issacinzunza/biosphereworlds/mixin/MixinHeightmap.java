@@ -67,11 +67,13 @@ public class MixinHeightmap {
             return original;
         }
         // La correccion de satelites no cambia el filtrado historico del cascaron principal.
-        if (filterClassicShell && SphereUtil.isSphereBlock(original) && y > SphereConfig.CENTER_Y.get().intValue()) {
+        var world = BiosphereWorldgen.classicWorld(chunk);
+        if (filterClassicShell && (world == null ? SphereUtil.isSphereBlock(original) : world.isShell(original))
+                && y > (world == null ? SphereConfig.CENTER_Y.get().intValue() : world.settings().geometry().centerY())) {
             return Blocks.AIR.defaultBlockState();
         }
-        if (SphereConfig.SATELLITES_ENABLED.get()
-                && SphereLayout.current().isInsideSatellite(chunk.getPos().getMinBlockX() + (x & 15), y,
+        if ((world == null ? SphereConfig.SATELLITES_ENABLED.get() : world.settings().geometry().satellitesEnabled())
+                && BiosphereWorldgen.classicLayout(chunk).isInsideSatellite(chunk.getPos().getMinBlockX() + (x & 15), y,
                         chunk.getPos().getMinBlockZ() + (z & 15))) {
             return Blocks.AIR.defaultBlockState();
         }

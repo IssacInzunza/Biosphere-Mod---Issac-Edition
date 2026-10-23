@@ -20,6 +20,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = MultiNoiseBiomeSource.class, priority = 500)
 public abstract class MixinMultiNoiseBiomeSource implements BiosphereBiomeSourceAccess {
+    @org.spongepowered.asm.mixin.Unique
+    private volatile mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound biosphereworlds$classicWorld;
+
+    @Override public mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound biosphereworlds$classicWorld() {
+        return biosphereworlds$classicWorld;
+    }
+    @Override public void biosphereworlds$setClassicWorld(mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound world) {
+        if (biosphereworlds$classicWorld != null && biosphereworlds$classicWorld != world) {
+            throw new IllegalStateException("Classic biome source shared between different worlds");
+        }
+        biosphereworlds$classicWorld = world;
+    }
     @Shadow public abstract Holder<Biome> getNoiseBiome(Climate.TargetPoint targetPoint);
 
     @Inject(method = "getNoiseBiome(IIILnet/minecraft/world/level/biome/Climate$Sampler;)Lnet/minecraft/core/Holder;", at = @At("HEAD"), cancellable = true)
@@ -37,7 +49,7 @@ public abstract class MixinMultiNoiseBiomeSource implements BiosphereBiomeSource
         int i = QuartPos.toBlock(x);
         int j = QuartPos.toBlock(y);
         int k = QuartPos.toBlock(z);
-        boolean outsideSphere = !SphereLayout.current().isInside(i, j, k, -4);
+        boolean outsideSphere = !BiosphereWorldgen.classicLayout(this).isInside(i, j, k, -4);
         if (SphereConfig.DEBUG_BIOME_LOOKUPS.get() && outsideSphere) {
             Holder<Biome> biomeHolder = this.getNoiseBiome(sampler.sample(x, y, z));
             BiosphereWorlds.LOGGER.debug("biome-route=MultiNoiseBiomeSource#getNoiseBiome sampler=({},{},{}) block=({},{},{}) before={} marked={}",

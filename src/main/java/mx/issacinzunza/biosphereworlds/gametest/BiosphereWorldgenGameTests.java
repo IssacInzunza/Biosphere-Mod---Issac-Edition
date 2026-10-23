@@ -138,7 +138,11 @@ public final class BiosphereWorldgenGameTests {
                 var proto = chunk(helper, helper.absolutePos(BlockPos.ZERO));
                 var pending = generator.createBiomes(random, Blender.empty(), helper.getLevel().structureManager(), proto);
                 // El worker consulta estructuras mediante tareas del servidor: atenderlas antes de join.
-                helper.getLevel().getServer().managedBlock(pending::isDone);
+                pending.orTimeout(30, java.util.concurrent.TimeUnit.SECONDS);
+                helper.getLevel().getServer().managedBlock(() -> {
+                    helper.getLevel().getChunkSource().pollTask();
+                    return pending.isDone();
+                });
                 pending.join();
                 helper.assertTrue(cache.get(null) == null, "Disabled classic satellites must not resolve an invalid catalog");
             }

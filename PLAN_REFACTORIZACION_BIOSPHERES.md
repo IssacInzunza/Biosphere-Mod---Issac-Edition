@@ -2,7 +2,7 @@
 
 Fecha: 22 de octubre de 2026. Base: `0ed8eae`. Objetivo exclusivo: Minecraft 1.21.1, NeoForge 21.1.216, Java21.
 
-**Implementación autorizada y realizada por fases; estado vigente en la sección 16.** Las secciones 1–15 conservan el diseño y los criterios de aceptación originales, que no deben confundirse con pruebas ya completadas. Los hallazgos y ubicaciones del commit base están en [AUDITORIA_ARQUITECTURA_BIOSPHERES.md](C:/Personal/NeoBiosphere/AUDITORIA_ARQUITECTURA_BIOSPHERES.md). La persistencia clásica requiere la decisión específica descrita en la sección 13; las pruebas manuales y con mods externos siguen pendientes.
+**Implementación autorizada y realizada por fases; estado vigente en la sección 16.** Las secciones 1–15 conservan el diseño y los criterios de aceptación originales, que no deben confundirse con pruebas ya completadas. Los hallazgos y ubicaciones del commit base están en [AUDITORIA_ARQUITECTURA_BIOSPHERES.md](C:/Personal/NeoBiosphere/AUDITORIA_ARQUITECTURA_BIOSPHERES.md). Para P7 el usuario eligió expresamente guardar solo mundos clásicos nuevos y mantener los existentes en la ruta actual; la implementación y sus límites se registran abajo.
 
 ## 1. Objetivos de la refactorización
 
@@ -253,7 +253,7 @@ Antes de implementar persistencia clásica se necesita elegir y documentar el co
 
 La recomendación es mantener una ruta legacy explícita hasta disponer de un diseño aprobado y fixtures de partidas. No escribir una migración silenciosa ni prometer reconstruir parámetros históricos que no existen en el guardado. Los mundos existentes se prueban mediante copias autorizadas; la auditoría no creó ni modificó esas copias.
 
-**Diseño concreto propuesto para una fase posterior (no implementado):**
+**Diseño de P7, posteriormente autorizado para mundos nuevos:**
 
 - Autoridad por dimensión clásica mediante un dato persistido propio, con `schema_version` y una receta inmutable; ausencia del dato significa la ruta global legacy, nunca «usar defaults nuevos». No activar los campos históricos de codec hoy ignorados.
 - Capturar una sola vez, al crear explícitamente un mundo con esta modalidad, la geometría principal, puentes, materiales, bedrock, océano, satélites y restricciones de estructuras. Mantener fuera los ajustes de diagnóstico. La receta debe pasar por la misma validación antes de publicarse.
@@ -262,7 +262,7 @@ La recomendación es mantener una ruta legacy explícita hasta disponer de un di
 - No migrar partidas antiguas al abrirlas. Una migración futura, solicitada expresamente sobre una copia, solo puede fijar la configuración que el usuario confirme; no reconstruye la receta pasada ni elimina fronteras entre chunks ya distintos.
 - Aceptación: dos mundos con recetas diferentes en el mismo proceso, reinicio sin TOML original, tags cambiados, bloque faltante, versión desconocida rechazada y equivalencia legacy. Ninguna de estas garantías de persistencia se atribuye a los cambios actuales.
 
-Esta propuesta añade formato y ciclo de vida y excede una corrección acotada. Se recomienda conservar ahora la ruta legacy y evaluar esa fase separadamente; no se añadieron opciones, codecs ni datos guardados para anticiparla.
+Esta propuesta añadió formato y ciclo de vida y se separó de la tanda inicial. El usuario autorizó después P7 con la política «Solo mundos nuevos; existentes conservan su comportamiento actual». Se mantiene la ruta legacy para partidas ya inicializadas sin receta, sin migrarlas ni añadir opciones de configuración.
 
 ### Despliegue y reversión de cada fase futura
 
@@ -341,18 +341,18 @@ Si una fase no cumple aceptación, detener esa fase y explicar la evidencia. No 
 
 ## 16. Plan incremental de implementación
 
-**Estado actual: correcciones implementadas, build y pruebas automatizadas aprobados, documentación actualizada.** No se considera terminada toda la matriz de aceptación manual ni la propuesta de persistencia.
+**Estado actual: tanda inicial verificada; P7 implementada y validada automáticamente, incluido reinicio real con TOML cambiado.** La verificación adicional del motor se detalla en [VERIFICACION-MOTOR-2026-10-22.md](docs/es/VERIFICACION-MOTOR-2026-10-22.md). Los mods externos y una sesión con clientes reales siguen pendientes.
 
 | Prioridad / hallazgos | Resultado implementado | Límite pendiente |
 |---|---|---|
-| P0 / P0b, COMP-005 | Build con Java 21; ajuste clásico al techo recuperado y protegido con regresión; solar 1–7 conservado | Comprobación visual en esferas grandes |
-| P1, PERF-001 | Eliminado el conjunto estático fuerte de acuíferos; cada acuífero consulta la marca de su NoiseChunk | No hay heap dump ni medición de memoria liberada |
-| P2, GEN-001 / COMP-001 | Coordenadas mundiales en update/prime/downward; LevelChunk consulta el generador de su mundo | Falta prueba jugable de aldeas y reapertura positiva de mundo clásico; el test de promoción cubre vanilla con marca obsoleta |
+| P0 / P0b, COMP-005 | Build con Java 21; ajuste clásico al techo recuperado y protegido con regresión; solar 1–7 conservado | Comprobación visual reportada como satisfactoria por el usuario |
+| P1, PERF-001 | Eliminado el conjunto estático fuerte de acuíferos; cada acuífero consulta la marca de su NoiseChunk; 8 acuíferos y 8 NoiseChunks reales liberados tras GC | La muestra no acredita ausencia de toda fuga en partidas largas |
+| P2, GEN-001 / COMP-001 | Coordenadas mundiales en update/prime/downward; LevelChunk consulta el generador de su mundo | Aldeas/vegetación y reapertura reportadas como satisfactorias por el usuario; el test automatizado de promoción cubre vanilla con marca obsoleta |
 | P3, CFG-001/002/003 | Registro de bloques, enteros/rangos, min <= max y catálogo con peso positivo; resolución clásica diferida e inmutable, sin restaurar exclusiones | Valores individuales inválidos siguen la corrección estándar de NeoForge; el par incoherente y catálogo inválido fallan antes de generar bloques |
 | P4, API-001 | Cota superior infinita correcta para el dominio del contexto; composición MAX probada con la función real | Se conserva expresamente el caso histórico del hash MIN_VALUE |
-| P5, COMP-002 | Nieve propia limitada a ambos presets; gate en feature histórica; catálogo no resuelto con satélites apagados o cantidad cero | No hay comparación completa de un mundo vanilla con/sin mod |
-| P6, PERF-002/003 | Evitado muestreo redundante de bioma, conteo de minerales sin DEBUG y preparación de puentes apagados | Sin perfil ni porcentaje de mejora; spawn, pasadas del pintor y recorrido de carvers conservados |
-| P7, ARCH-001 | Diseño concreto en sección 13 | Sin implementación ni migración de persistencia; el clásico sigue usando configuración global |
+| P5, COMP-002 | Nieve propia limitada a ambos presets; catálogo apagado sin resolución; 18 chunks FULL con/sin mod idénticos en generación ordenada, tres dimensiones | Muestreo acotado, no todas las semillas/biomas; control concurrente vanilla también presenta variabilidad |
+| P6, PERF-002/003 | Evitado muestreo redundante de bioma, conteo de minerales sin DEBUG y preparación de puentes apagados; perfil JFR y tres pasadas medidos | Sin porcentaje histórico de mejora; candidatos del perfil requieren diagnóstico separado |
+| P7, ARCH-001 | Receta por mundo nuevo; antiguos sin receta conservan TOML; reinicio real con TOML cambiado conserva chunks guardados y nuevos | Compatibilidad externa y revisión visual con cliente |
 | P8, DUP-001 / ARCH-002 | SatelliteMaterials comparte exclusivamente selección de bloques; ambos escritores preservan aritmética, recorridos y oráculos literales | No se elimina todo el acoplamiento de tipos entre layouts |
 | P9, COMP-004 | Wrapper histórico conserva codec e incluye void; búsqueda heredada continúa tras candidatos exteriores | COMP-003: C2ME, TerraBlender, strongholds y concurrencia externa requieren matriz real |
 | P10, MAINT-001/002 / TEST-001 | Documentación sincronizada, IDs históricos conservados y cobertura de integración ampliada | No se eliminan registros antiguos ni se declara completa la cobertura de jugabilidad |
@@ -381,7 +381,36 @@ Durante el desarrollo del último test se corrigieron una llamada al gestor de e
 
 Contratos Minecraft contrastados en **MC-S**, el ZIP de fuentes identificado en la auditoría: `ServerLevel.java:329` (`structureManager`), `NoiseBasedChunkGenerator.java:77` (`createBiomes` asíncrono), `BlockableEventLoop.java:130` (`managedBlock`), `ChunkAccess.java:559` (`getLevel`) y `BiomeSource.java:109` (búsqueda por candidatos). No se atribuyen a JUnit pruebas de arranque de NeoForge.
 
-**Pendientes explícitos:** heap/perfil, comparación de mundos vanilla completos, reapertura clásica positiva, inspección jugable de aldeas/satélites/portales, multijugador y mods externos. P7 conserva solo diseño. Las validaciones automatizadas anteriores no sustituyen esos criterios.
+**Validación manual reportada por el usuario — 22 de octubre de 2026:** confirmó que realizó las comprobaciones propuestas y que funcionan bien: satélites en esferas grandes, aldeas/vegetación, cierre y reapertura, y revisión de clásico/solar/vanilla. Es evidencia comunicada por el usuario, sin captura ni medición independiente del agente. También percibió cargas más rápidas; no se atribuye un porcentaje de mejora. Indicó expresamente que probará los mods externos más adelante.
+
+**Validación adicional posterior (22–23 de octubre):** comparación exacta de 18 chunks FULL vanilla con/sin mod, reinicio P7, viajes clásico↔Nether y clásico↔End con una entidad, eventos de varios ServerPlayers, referencias débiles de acuíferos y perfil JFR completados. **Pendientes explícitos:** clientes reales/red/renderizado, activación del marco del End/búsqueda de stronghold, partidas largas, matriz más amplia de generación y mods externos. No se equiparan los eventos de jugadores sin canal de red a una sesión multijugador completa.
+
+### P7 — Persistencia clásica autorizada después de la tanda inicial
+
+Base de esta fase: `09b3061` (commit existente al reanudar, no creado por el agente). El usuario decidió **solo mundos nuevos; existentes conservan su comportamiento actual**.
+
+- `ClassicWorldSettings` captura geometría, materiales, hemisferio/tapa, bedrock, puentes, océano, restricciones de estructuras y catálogo mineral resuelto. Su `Bound` contiene el layout propio del mundo. El diagnóstico sigue siendo runtime.
+- `ClassicWorldData` guarda `data/biosphereworlds_classic.dat`, esquema 1. Un mundo ya inicializado sin archivo continúa legacy; no se le crea un archivo ni se intenta adivinar su receta histórica. Corrupción, versión desconocida, rangos inválidos o bloques requeridos ausentes producen un error explícito.
+- `MixinClassicWorldStorage` vincula la receta antes de `ChunkMap`. `MixinClassicChunkMap` crea el ruido desde una copia adaptada del router, conservando los holders/codecs/JSON originales. `ClassicDensityFunction` conserva operaciones y recorrido del hijo, sin modificar el algoritmo geométrico.
+- Generador, fuente de biomas, ProtoChunk y NoiseChunk comparten una referencia por mundo. LevelChunk la recupera de su generador. Carvers, heightmaps, acuíferos, restricciones y corrección de aparición consultan esa receta; sin receta conservan la ruta anterior.
+- `MixinClassicChunkStorage` restaura chunks incompletos antes de reconstruir heightmaps y al devolver el chunk deserializado. No usa el evento de carga para descubrir el mundo: `ChunkDataEvent.Load` no proporciona nivel para un ProtoChunk sin dueño.
+- No se modifican `SatellitePlacement`, `SphereLayout`, `SolarSettings`, versiones solares, `mod_version`, scripts de build ni `biospheres.json`. No se cambia la política de mundos antiguos ni se migran partidas del usuario.
+
+Las clases nuevas corresponden a receta, guardado, adaptador de densidad y tres puntos de integración del ciclo de vida. Son necesarias para evitar estado global por mundo y para vincular antes del ruido/heightmaps; no forman un generador nuevo ni una jerarquía de estrategias.
+
+Fuentes verificadas en **MC-S**: `ServerChunkCache.java:87` (almacenamiento antes de ChunkMap), `ChunkMap.java:183` (RandomState antes de createState), `MinecraftServer.java:376` (indicador inicializado), `DimensionDataStorage.java:66` (lectura que captura excepciones), `ChunkSerializer.java:85,229` (deserialización y primado), `ProtoChunk.java:221,236` (avance de estado y acceso a biomas). El ZIP también contiene `net/neoforged/neoforge/common/IOUtilities.java:199`, utilizado para esperar el guardado real en pruebas.
+
+**Resultado automatizado P7 (22 de octubre de 2026):** build exitoso, **109/109 JUnit** y **32/32 GameTests**, sin fallos. Registro: [work/p7-validation.log](C:/Personal/NeoBiosphere/work/p7-validation.log). Se usa el mismo comando e init script aislado de la tanda inicial; las nuevas fixtures se crean en subcarpetas con UUID dentro del directorio temporal GameTest de `work/`.
+
+Los tres GameTests nuevos verifican:
+
+1. Ausencia legacy sin leer TOML ni crear receta; guardado real y reapertura con un nuevo `DimensionDataStorage`; catálogo exacto; versión desconocida, radio incoherente, bloque ausente, payload incompleto y archivo no NBT rechazados sin fallback.
+2. Igualdad de bits de densidad clásica/distancia y océano, activado/desactivado, y visita del hijo de `mapAll`.
+3. Construcción real de varios `ServerLevel` temporales: nuevo, legacy y vanilla; dos recetas clásicas distintas simultáneas; cambio de TOML en ejecución; cierre/reapertura con TOML posteriormente inválido y DEBUG activado durante la vinculación. Comparación exacta de bloques, biomas y heightmaps del chunk de prueba `(-8,0)` tras biomas, ruido y ambos carvers. Promoción a LevelChunk y deserialización de ProtoChunk con heightmaps ausentes para forzar su reconstrucción.
+
+La comparación acotada de chunks no equivale a generar mundos completos: no ejecuta toda la decoración/superficie/estructura del pipeline ni acredita compatibilidad con mods externos. La suite solar conserva sus 336 casos de equivalencia. Se corrigió la espera de tareas en un test anterior y se añadió el avance de estado que realiza el pipeline normal en la fixture por etapas; se repitió la suite sin relajar igualdad ni eliminar aserciones. El ERROR de lectura del archivo no NBT es deliberado en la prueba de corrupción, no un test fallido.
+
+El escenario de crear/cerrar/cambiar TOML/reabrir y generar terreno nuevo se ejecutó después automáticamente en dos procesos reales: dos chunks guardados y tres nuevos coincidieron con el control; un mundo nuevo adoptó los valores cambiados. La ruta legacy permanece cubierta por los GameTests anteriores. Sigue pendiente la revisión visual con cliente y la compatibilidad externa; no se atribuye al usuario una prueba manual posterior a P7. Véase el [informe del motor](docs/es/VERIFICACION-MOTOR-2026-10-22.md).
 
 **Secuencia original de referencia, con el estado actual indicado arriba:**
 

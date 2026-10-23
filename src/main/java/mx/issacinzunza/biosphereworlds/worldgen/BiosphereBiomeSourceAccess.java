@@ -1,6 +1,6 @@
 package mx.issacinzunza.biosphereworlds.worldgen;
 
-public interface BiosphereBiomeSourceAccess {
+public interface BiosphereBiomeSourceAccess extends ClassicWorldSettings.Access {
     boolean biosphereworlds$isBiosphereBiomeSource();
 
     void biosphereworlds$setBiosphereBiomeSource(boolean biosphere);

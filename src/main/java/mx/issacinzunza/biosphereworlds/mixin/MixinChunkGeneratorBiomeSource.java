@@ -25,7 +25,7 @@ public abstract class MixinChunkGeneratorBiomeSource {
                 BiosphereWorlds.LOGGER.debug("biome-route=ChunkGenerator#getBiomeSource source={} marked={} outside-origin={}",
                         cir.getReturnValue().getClass().getName(),
                         BiosphereWorldgen.isBiosphereBiomeSource(cir.getReturnValue()),
-                        !SphereLayout.current().isInside(x, SphereConfig.CENTER_Y.get().intValue(), z, -4));
+                        !BiosphereWorldgen.classicLayout(this).isInside(x, BiosphereWorldgen.classicLayout(this).params().centerY(), z, -4));
             }
         }
     }

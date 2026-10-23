@@ -32,17 +32,17 @@ public abstract class MixinChunkGeneratorStructures {
             ((StructureManagerAccessor) structureManager).biosphereworlds$getLevel();
         boolean isOverworld = levelAccessor instanceof Level level && level.dimension() == Level.OVERWORLD
             || levelAccessor instanceof WorldGenRegion region && region.getLevel().dimension() == Level.OVERWORLD;
-        if (!BiosphereWorldgen.isBiosphereGenerator(this)
-            || !SphereConfig.RESTRICT_STRUCTURES_TO_SPHERES.get()
-            || !isOverworld) {
+        if (!BiosphereWorldgen.isBiosphereGenerator(this) || !isOverworld) {
             return;
         }
+        var world = BiosphereWorldgen.classicWorld(this);
+        if (!(world == null ? SphereConfig.RESTRICT_STRUCTURES_TO_SPHERES.get() : world.settings().structures().restricted())) return;
 
-        SphereLayout layout = SphereLayout.current();
+        SphereLayout layout = BiosphereWorldgen.classicLayout(this);
         int centerX = chunkPos.getMiddleBlockX();
         int centerZ = chunkPos.getMiddleBlockZ();
         SphereLayout.Sphere sphere = layout.sphereContaining(centerX, centerZ);
-        int edgeMargin = SphereConfig.STRUCTURE_EDGE_MARGIN.get().intValue();
+        int edgeMargin = world == null ? SphereConfig.STRUCTURE_EDGE_MARGIN.get().intValue() : world.settings().structures().margin();
 
         // Solo restringe el inicio del chunk candidato; no garantiza que todas las piezas queden dentro.
         if (!layout.isInside(centerX, sphere.centerY(), centerZ, edgeMargin)) {

@@ -25,7 +25,7 @@ public class MixinNoiseBasedAquifer {
             return;
         }
 
-        SphereLayout layout = SphereLayout.current();
+        SphereLayout layout = BiosphereWorldgen.classicLayout(noiseChunk);
 
         int x = context.blockX();
         int y = context.blockY();

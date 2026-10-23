@@ -434,9 +434,10 @@ la etapa 3 la amplía con un catálogo dinámico:
   menas de piedra; deepslate, netherrack, Nether, End y debris quedan fuera.
 - Opciones: `satellites_excluded_ores`, `satellites_included_ores`,
   `satellites_mod_ore_weight` (3) y `satellites_mod_ore_density_permille` (20).
-  El catálogo se invalida al arrancar o recargar tags y se resuelve en el próximo
-  uso clásico con satélites activos. Los cambios se aplican al reabrir o con
-  `/reload`; un catálogo vacío o sin peso positivo produce un error explícito.
+  En mundos clásicos legacy, el catálogo se invalida al arrancar o recargar tags y
+  se resuelve en el próximo uso con satélites activos. En mundos nuevos desde P7,
+  la receta guarda la lista resuelta y conserva sus pesos, densidades y orden al
+  reabrir. Un catálogo activo vacío o sin peso positivo produce un error explícito.
 - Log INFO una vez por reconstrucción con candidatos `(id, peso, densidad)`,
   excluidos e ignorados.
 - Cambiar mods o listas entre sesiones puede dejar un satélite a medio generar

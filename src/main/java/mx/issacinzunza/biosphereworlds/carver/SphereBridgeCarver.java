@@ -35,14 +35,15 @@ public class SphereBridgeCarver extends SphereCarver {
         if (!BiosphereWorldgen.isBiosphereChunk(chunk)) {
             return false;
         }
-        if (!SphereConfig.GENERATE_BRIDGE.get()) return false;
+        var world = BiosphereWorldgen.classicWorld(chunk);
+        if (!(world == null ? SphereConfig.GENERATE_BRIDGE.get() : world.settings().bridges().enabled())) return false;
 
-        SphereLayout layout = SphereLayout.current();
+        SphereLayout layout = BiosphereWorldgen.classicLayout(chunk);
         int spacing = layout.params().spacing();
-        int bridgeRadius = SphereConfig.BRIDGE_RADIUS.get().intValue();
+        int bridgeRadius = world == null ? SphereConfig.BRIDGE_RADIUS.get().intValue() : world.settings().bridges().radius();
 
         BlockState bridgeState = BuiltInRegistries.BLOCK.get(
-                ResourceLocation.parse(SphereConfig.BRIDGE_BLOCK.get())).defaultBlockState();
+                ResourceLocation.parse(world == null ? SphereConfig.BRIDGE_BLOCK.get() : world.settings().bridges().block())).defaultBlockState();
 
         int chunkStartX = chunkPos.getMinBlockX();
         int chunkStartZ = chunkPos.getMinBlockZ();

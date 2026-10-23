@@ -69,9 +69,11 @@ public class PlayerSpawnHandler {
                 radius = moon.sphere().radius();
             }
         } else {
-            isShell = SphereUtil::isSphereBlock;
+            var generator = ((ServerLevel) level).getChunkSource().getGenerator();
+            var world = BiosphereWorldgen.classicWorld(generator);
+            isShell = world == null ? SphereUtil::isSphereBlock : world::isShell;
             if (!isShell.test(level.getBlockState(currentPos))) return;
-            radius = SphereLayout.current().sphereContaining(currentPos.getX(), currentPos.getZ()).radius();
+            radius = BiosphereWorldgen.classicLayout(generator).sphereContaining(currentPos.getX(), currentPos.getZ()).radius();
         }
 
         BlockPos targetPos = findValidPosition(level, currentPos, radius, isShell);
