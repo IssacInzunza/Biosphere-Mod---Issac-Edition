@@ -50,6 +50,30 @@ class SphereEdgeOceanTest {
     // ------------------------------------------------------------------
 
     @Test
+    void sharedMathMatchesLiteralPreviousImplementationBitForBit() {
+        Random random = new Random(19102026L);
+        for (Config config : CONFIGS) {
+            var layout = layout(config);
+            for (boolean enabled : new boolean[]{false, true}) for (int width : new int[]{0, 1, 20, 100}) {
+                for (int i = 0; i < 5000; i++) {
+                    int x = random.nextInt(4 * config.spacing()) - 2 * config.spacing();
+                    int z = random.nextInt(4 * config.spacing()) - 2 * config.spacing();
+                    int y = random.nextInt(384) - 64;
+                    int depth = random.nextInt(101);
+                    double input = random.nextDouble() * 8 - 4;
+                    for (Mode mode : Mode.values()) {
+                        double expected = SphereEdgeOceanLiteral.transform(
+                                mode == Mode.FLOOR ? SphereEdgeOceanLiteral.Mode.FLOOR : SphereEdgeOceanLiteral.Mode.CLIMATE,
+                                enabled, width, depth, layout, x, y, z, input);
+                        assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(
+                                SphereEdgeOcean.transform(mode, enabled, width, depth, layout, x, y, z, input)));
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     void desactivadaEsNoOpExactoBitABit() {
         Random random = new Random(20240202L);
         double[] values = {0.0, -0.0, 1.0, -1.0, 0.5, -0.5, 1.0e-9, -1.0e-9,

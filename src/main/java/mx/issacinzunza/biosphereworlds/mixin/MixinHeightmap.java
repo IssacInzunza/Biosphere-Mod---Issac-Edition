@@ -4,6 +4,8 @@ import mx.issacinzunza.biosphereworlds.config.SphereConfig;
 import mx.issacinzunza.biosphereworlds.util.SphereUtil;
 import mx.issacinzunza.biosphereworlds.worldgen.BiosphereWorldgen;
 import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
+import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkAccess;
+import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkGenerator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -12,6 +14,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -30,20 +33,15 @@ public class MixinHeightmap {
             ordinal = 0
     )
     private BlockState onUpdateBlockState(BlockState state, int x, int y, int z) {
-        if (!BiosphereWorldgen.isBiosphereChunk(this.chunk)) {
-            return state;
-        }
-        if (SphereUtil.isSphereBlock(state) && y > SphereConfig.CENTER_Y.get().intValue()) {
-            return Blocks.AIR.defaultBlockState();
-        }
-        // Todo el volumen de un satelite se comporta como aire: cascaron, cuerpo de
-        // piedra y cualquier bloque que ocupe su interior. Si no, un satelite sobre
-        // una esfera contaminaria WORLD_SURFACE_WG / OCEAN_FLOOR_WG y cambiaria las
-        // calles de aldea y la vegetacion de abajo.
-        if (SphereConfig.SATELLITES_ENABLED.get() && SphereLayout.current().isInsideSatellite(x, y, z)) {
-            return Blocks.AIR.defaultBlockState();
-        }
-        return state;
+        return biosphereworlds$heightmapState(this.chunk, x, y, z, state, true);
+    }
+
+    @Redirect(
+            method = "update",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/chunk/ChunkAccess;getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;")
+    )
+    private BlockState onDownwardRead(ChunkAccess instance, BlockPos pos) {
+        return biosphereworlds$heightmapState(instance, pos.getX(), pos.getY(), pos.getZ(), instance.getBlockState(pos), false);
     }
 
     @Redirect(
@@ -54,17 +52,32 @@ public class MixinHeightmap {
             )
     )
     private static BlockState onPrimeGetBlockState(ChunkAccess instance, BlockPos pos) {
-        BlockState original = instance.getBlockState(pos);
-        if (!BiosphereWorldgen.isBiosphereChunk(instance)) {
+        return biosphereworlds$heightmapState(instance, pos.getX(), pos.getY(), pos.getZ(), instance.getBlockState(pos), true);
+    }
+
+    /** Aplica la misma politica en primado, escritura y busqueda descendente. */
+    @Unique
+    private static BlockState biosphereworlds$heightmapState(ChunkAccess chunk, int x, int y, int z, BlockState original,
+                                                           boolean filterClassicShell) {
+        if (((SolarChunkAccess) chunk).biosphereworlds$solarLayout() != null) {
+            return SolarChunkGenerator.heightmapState(chunk, new BlockPos(
+                    chunk.getPos().getMinBlockX() + (x & 15), y, chunk.getPos().getMinBlockZ() + (z & 15)), original);
+        }
+        if (!BiosphereWorldgen.isBiosphereChunk(chunk)) {
             return original;
         }
-        if (SphereUtil.isSphereBlock(original) && pos.getY() > SphereConfig.CENTER_Y.get().intValue()) {
+        // La correccion de satelites no cambia el filtrado historico del cascaron principal.
+        var world = BiosphereWorldgen.classicWorld(chunk);
+        if (filterClassicShell && (world == null ? SphereUtil.isSphereBlock(original) : world.isShell(original))
+                && y > (world == null ? SphereConfig.CENTER_Y.get().intValue() : world.settings().geometry().centerY())) {
             return Blocks.AIR.defaultBlockState();
         }
-        if (SphereConfig.SATELLITES_ENABLED.get()
-                && SphereLayout.current().isInsideSatellite(pos.getX(), pos.getY(), pos.getZ())) {
+        if ((world == null ? SphereConfig.SATELLITES_ENABLED.get() : world.settings().geometry().satellitesEnabled())
+                && BiosphereWorldgen.classicLayout(chunk).isInsideSatellite(chunk.getPos().getMinBlockX() + (x & 15), y,
+                        chunk.getPos().getMinBlockZ() + (z & 15))) {
             return Blocks.AIR.defaultBlockState();
         }
         return original;
     }
+
 }

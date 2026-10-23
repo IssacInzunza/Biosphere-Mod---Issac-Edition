@@ -20,6 +20,11 @@ public final class MineralCatalog {
     private MineralCatalog() {
     }
 
+    /** Los pesos no negativos de Mineral necesitan al menos un candidato positivo. */
+    public static boolean hasSelectableMineral(List<SatelliteLayers.Mineral> candidates) {
+        return candidates.stream().anyMatch(mineral -> mineral.weight() > 0);
+    }
+
     public static List<SatelliteLayers.Mineral> assemble(List<SatelliteLayers.Mineral> vanilla,
                                                          Collection<String> tagOres,
                                                          Collection<String> included,

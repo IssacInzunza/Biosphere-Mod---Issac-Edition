@@ -57,7 +57,8 @@ public final class SatellitePlacement {
 
     /**
      * May lower an otherwise too-high satellite, preserving its radial distance,
-     * size, seed and azimuth. The overload above preserves the previous placement.
+     * size, seed and azimuth. Classic placement and Solar layout 7 enable this;
+     * older Solar layouts use the unchanged path above.
      * The configured minimum elevation may be relaxed; all volume checks still apply.
      */
     public static List<SphereLayout.Satellite> place(SphereLayout.Sphere principal,

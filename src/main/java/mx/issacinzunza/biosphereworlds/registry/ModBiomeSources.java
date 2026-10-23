@@ -13,6 +13,8 @@ public final class ModBiomeSources {
             DeferredRegister.create(Registries.BIOME_SOURCE, BiosphereWorlds.MODID);
     public static final DeferredHolder<MapCodec<? extends BiomeSource>, MapCodec<BiosphereBiomeSource>> BIOSPHERES =
             BIOME_SOURCES.register("biospheres", () -> BiosphereBiomeSource.CODEC);
+    public static final DeferredHolder<MapCodec<? extends BiomeSource>, MapCodec<mx.issacinzunza.biosphereworlds.worldgen.solar.SolarBiomeSource>> SOLAR =
+            BIOME_SOURCES.register("solar_systems", () -> mx.issacinzunza.biosphereworlds.worldgen.solar.SolarBiomeSource.CODEC);
 
     private ModBiomeSources() {
     }

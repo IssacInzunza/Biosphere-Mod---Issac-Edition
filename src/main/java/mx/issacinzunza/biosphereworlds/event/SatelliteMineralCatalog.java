@@ -21,15 +21,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
  * Catalogo de minerales de los satelites.
  *
- * <p>Se reconstruye una sola vez por carga de tags (arranque o recarga de
- * datapacks) y publica una lista inmutable. El worldgen corre en varios hilos y
- * solo lee esa referencia, asi que no hay estado compartido mutable.</p>
+ * <p>La carga de tags invalida la instantanea; solo un consumidor clasico activo
+ * la resuelve de nuevo. Se publica una lista inmutable despues de validarla.</p>
  */
 @EventBusSubscriber
 public final class SatelliteMineralCatalog {
@@ -38,75 +36,91 @@ public final class SatelliteMineralCatalog {
             Registries.BLOCK,
             ResourceLocation.fromNamespaceAndPath("c", "ores_in_ground/stone"));
 
-    private static final AtomicBoolean WARNED_FALLBACK = new AtomicBoolean();
-
     private static volatile List<SatelliteLayers.Mineral> candidates;
 
     private SatelliteMineralCatalog() {
     }
 
-    /** Lista actual; si aun no hay snapshot devuelve la vanilla de la etapa 2. */
+    /** Lista valida para un consumidor clasico con satelites habilitados. */
     public static List<SatelliteLayers.Mineral> candidates() {
         List<SatelliteLayers.Mineral> current = candidates;
-        if (current != null) {
-            return current;
+        if (current == null) {
+            synchronized (SatelliteMineralCatalog.class) {
+                current = candidates;
+                if (current == null) candidates = current = rebuild();
+            }
         }
-        if (WARNED_FALLBACK.compareAndSet(false, true)) {
-            BiosphereWorlds.LOGGER.warn(
-                    "satellite mineral catalog is not ready yet; using the vanilla fallback list");
-        }
-        return SatelliteLayers.VANILLA_MINERALS;
+        return current;
     }
 
     @SubscribeEvent
-    public static void onTagsUpdated(TagsUpdatedEvent event) {
+    public static synchronized void onTagsUpdated(TagsUpdatedEvent event) {
         if (!event.shouldUpdateStaticData()) {
             return;
         }
-        try {
-            rebuild(event);
-        } catch (RuntimeException exception) {
-            BiosphereWorlds.LOGGER.error(
-                    "could not rebuild the satellite mineral catalog; keeping the previous one",
-                    exception);
+        // No resolver registros/configuracion en mundos vanilla ni con la opcion apagada.
+        candidates = null;
+    }
+
+    private static List<SatelliteLayers.Mineral> rebuild() {
+        var resolved = resolve(BuiltInRegistries.BLOCK, SphereConfig.SATELLITES_INCLUDED_ORES.get(),
+                SphereConfig.SATELLITES_EXCLUDED_ORES.get(), SphereConfig.SATELLITES_MOD_ORE_WEIGHT.get(),
+                SphereConfig.SATELLITES_MOD_ORE_DENSITY_PERMILLE.get());
+        var ignored = resolved.ignored();
+        var excluded = resolved.excluded();
+        List<SatelliteLayers.Mineral> rebuilt = resolved.requireSelectable("Classic Biospheres");
+        BiosphereWorlds.LOGGER.info("satellite minerals rebuilt: candidates={} excluded={} ignored={}",
+                describe(rebuilt), excluded, ignored);
+        return rebuilt;
+    }
+
+    /**
+     * Resultado inmutable compartido por ambos presets; requireSelectable valida su uso en generacion.
+     * @param candidates mineral choices in stable selection order
+     * @param excluded resolved block ids removed by the exclusion rules
+     * @param ignored rejected ids/tags and their diagnostic reasons
+     */
+    public record Resolved(List<SatelliteLayers.Mineral> candidates, Set<String> excluded, Set<String> ignored) {
+        public Resolved {
+            candidates = List.copyOf(candidates);
+            excluded = java.util.Collections.unmodifiableSet(new LinkedHashSet<>(excluded));
+            ignored = java.util.Collections.unmodifiableSet(new LinkedHashSet<>(ignored));
+        }
+
+        /** Rechaza distribuciones vacias o sin peso sin restaurar minerales excluidos. */
+        public List<SatelliteLayers.Mineral> requireSelectable(String preset) {
+            if (!MineralCatalog.hasSelectableMineral(candidates)) {
+                throw new IllegalArgumentException(preset
+                        + " satellite mineral selection requires at least one positive-weight candidate after exclusions; "
+                        + "check satellites_included_ores, satellites_excluded_ores and satellites_mod_ore_weight in the world's settings");
+            }
+            return candidates;
         }
     }
 
-    private static void rebuild(TagsUpdatedEvent event) {
-        Registry<Block> registry = event.getRegistryAccess()
-                .registry(Registries.BLOCK)
-                .orElse(BuiltInRegistries.BLOCK);
-
+    /**
+     * Resolves the common ore tag and explicit ids/tags using one validation policy.
+     * Does not read global configuration, update caches or load chunks. Callers must
+     * skip this operation entirely when satellites are disabled.
+     *
+     * @param registry block registry from the current tag snapshot
+     * @param includes additional ore ids or #tags
+     * @param excludes ids or #tags taking precedence over every inclusion
+     * @param modWeight selection weight for non-vanilla ores
+     * @param modDensity ore blocks per thousand core blocks
+     * @return stable mineral order and diagnostics, all immutable
+     */
+    public static Resolved resolve(Registry<Block> registry, List<? extends String> includes,
+                                   List<? extends String> excludes, int modWeight, int modDensity) {
         Set<String> ignored = new LinkedHashSet<>();
         Set<String> excluded = new LinkedHashSet<>();
-        for (String entry : SphereConfig.SATELLITES_EXCLUDED_ORES.get()) {
-            resolve(entry, registry, excluded, ignored);
-        }
-
+        for (String entry : excludes) resolve(entry, registry, excluded, ignored);
         Set<String> included = new LinkedHashSet<>();
-        for (String entry : SphereConfig.SATELLITES_INCLUDED_ORES.get()) {
-            resolve(entry, registry, included, ignored);
-        }
-
+        for (String entry : includes) resolve(entry, registry, included, ignored);
         Set<String> tagOres = new LinkedHashSet<>();
         addTag(ORES_IN_STONE, registry, tagOres, ignored);
-
-        List<SatelliteLayers.Mineral> rebuilt = MineralCatalog.assemble(
-                SatelliteLayers.VANILLA_MINERALS,
-                tagOres,
-                included,
-                excluded,
-                SphereConfig.SATELLITES_MOD_ORE_WEIGHT.get(),
-                SphereConfig.SATELLITES_MOD_ORE_DENSITY_PERMILLE.get());
-        if (rebuilt.isEmpty()) {
-            BiosphereWorlds.LOGGER.warn(
-                    "satellite mineral catalog would be empty; falling back to the vanilla list");
-            rebuilt = SatelliteLayers.VANILLA_MINERALS;
-        }
-
-        candidates = rebuilt;
-        BiosphereWorlds.LOGGER.info("satellite minerals rebuilt: candidates={} excluded={} ignored={}",
-                describe(rebuilt), excluded, ignored);
+        return new Resolved(MineralCatalog.assemble(SatelliteLayers.VANILLA_MINERALS,
+                tagOres, included, excluded, modWeight, modDensity), excluded, ignored);
     }
 
     private static void resolve(String rawEntry, Registry<Block> registry,

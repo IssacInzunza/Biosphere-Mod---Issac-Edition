@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "biosphereworlds:biospheres"
+    "biosphereworlds:biospheres",
+    "biosphereworlds:solar_systems"
   ]
 }

@@ -22,3 +22,6 @@ replay_pid*.log
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local previews and scratch artifacts
+/work/

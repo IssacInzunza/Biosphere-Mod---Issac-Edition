@@ -35,14 +35,15 @@ public class SphereBridgeCarver extends SphereCarver {
         if (!BiosphereWorldgen.isBiosphereChunk(chunk)) {
             return false;
         }
+        var world = BiosphereWorldgen.classicWorld(chunk);
+        if (!(world == null ? SphereConfig.GENERATE_BRIDGE.get() : world.settings().bridges().enabled())) return false;
 
-        SphereLayout layout = SphereLayout.current();
+        SphereLayout layout = BiosphereWorldgen.classicLayout(chunk);
         int spacing = layout.params().spacing();
-        int bridgeRadius = SphereConfig.BRIDGE_RADIUS.get().intValue();
-        boolean enableBridges = SphereConfig.GENERATE_BRIDGE.get();
+        int bridgeRadius = world == null ? SphereConfig.BRIDGE_RADIUS.get().intValue() : world.settings().bridges().radius();
 
         BlockState bridgeState = BuiltInRegistries.BLOCK.get(
-                ResourceLocation.parse(SphereConfig.BRIDGE_BLOCK.get())).defaultBlockState();
+                ResourceLocation.parse(world == null ? SphereConfig.BRIDGE_BLOCK.get() : world.settings().bridges().block())).defaultBlockState();
 
         int chunkStartX = chunkPos.getMinBlockX();
         int chunkStartZ = chunkPos.getMinBlockZ();
@@ -62,17 +63,15 @@ public class SphereBridgeCarver extends SphereCarver {
                 double centerX = sphere.centerX();
                 double centerZ = sphere.centerZ();
 
-                if (enableBridges) {
-                    generated |= carveBridge(chunk, layout, centerX, centerZ, sphere.centerY(),
-                            centerX + spacing, centerZ, layout.sphereAtCell(gridX + 1, gridZ).centerY(),
-                            bridgeRadius, bridgeState,
-                            chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
+                generated |= carveBridge(chunk, layout, centerX, centerZ, sphere.centerY(),
+                        centerX + spacing, centerZ, layout.sphereAtCell(gridX + 1, gridZ).centerY(),
+                        bridgeRadius, bridgeState,
+                        chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
 
-                    generated |= carveBridge(chunk, layout, centerX, centerZ, sphere.centerY(),
-                            centerX, centerZ + spacing, layout.sphereAtCell(gridX, gridZ + 1).centerY(),
-                            bridgeRadius, bridgeState,
-                            chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
-                }
+                generated |= carveBridge(chunk, layout, centerX, centerZ, sphere.centerY(),
+                        centerX, centerZ + spacing, layout.sphereAtCell(gridX, gridZ + 1).centerY(),
+                        bridgeRadius, bridgeState,
+                        chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
             }
         }
 

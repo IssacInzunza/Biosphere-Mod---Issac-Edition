@@ -64,14 +64,12 @@ public final class SphereEdgeOcean {
      */
     public static double weight(SphereLayout layout, int blockX, int blockY, int blockZ, double widthFraction) {
         SphereLayout.Sphere sphere = layout.sphereContaining(blockX, blockZ);
-        int radius = sphere.radius();
-        if (radius <= 0) {
-            return 0.0;
-        }
+        return weight(sphere.radius(), blockX - sphere.centerX(), blockY - sphere.centerY(), blockZ - sphere.centerZ(), widthFraction);
+    }
 
-        double dx = blockX - sphere.centerX();
-        double dy = blockY - sphere.centerY();
-        double dz = blockZ - sphere.centerZ();
+    /** Same profile for any sphere geometry; no config or placement lookup. */
+    public static double weight(int radius, double dx, double dy, double dz, double widthFraction) {
+        if (radius <= 0) return 0.0;
         double s = Math.sqrt(dx * dx + dy * dy + dz * dz) / radius;
 
         if (s >= 1.0) {
@@ -104,6 +102,11 @@ public final class SphereEdgeOcean {
         }
 
         double b = weight(layout, blockX, blockY, blockZ, widthPercent / 100.0);
+        return transformWeighted(mode, depth, blockY, inputValue, b);
+    }
+
+    /** Shared density/climate transform, with the original arithmetic order. */
+    public static double transformWeighted(Mode mode, int depth, int blockY, double inputValue, double b) {
         if (b == 0.0) {
             return inputValue;
         }

@@ -67,15 +67,17 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
             return false;
         }
 
-        SphereLayout layout = SphereLayout.current();
-        boolean closeOpenTop = SphereConfig.CLOSE_OPEN_TOP.get();
+        var world = BiosphereWorldgen.classicWorld(chunk);
+        SphereLayout layout = BiosphereWorldgen.classicLayout(chunk);
+        boolean closeOpenTop = world == null ? SphereConfig.CLOSE_OPEN_TOP.get() : world.settings().closeOpenTop();
+        boolean onlyUpper = world == null ? SphereConfig.ONLY_UPPER_HEMISPHERE.get() : world.settings().onlyUpperHemisphere();
         int topCapY = chunk.getMaxBuildHeight() - 1;
 
         // bedrock_mode. Con floor no se activa ninguna rama nueva. El forro solo
         // existe con hemisphere completo: con only_upper_hemisphere no hay mitad
         // inferior que forrar y shell se comporta exactamente como floor.
-        BedrockMode bedrockMode = SphereConfig.BEDROCK_MODE.get();
-        boolean bedrockLiner = bedrockMode == BedrockMode.SHELL && !SphereConfig.ONLY_UPPER_HEMISPHERE.get();
+        BedrockMode bedrockMode = world == null ? SphereConfig.BEDROCK_MODE.get() : world.settings().bedrockMode();
+        boolean bedrockLiner = bedrockMode == BedrockMode.SHELL && !onlyUpper;
         BlockState bedrockState = bedrockLiner ? Blocks.BEDROCK.defaultBlockState() : null;
         if (bedrockMode == BedrockMode.NONE) {
             replaceBedrockFloor(chunk);
@@ -103,10 +105,11 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                 int centerY = (int) sphere.centerY();
 
                 int radius = sphere.radius();
-                if (SphereConfig.ONLY_UPPER_HEMISPHERE.get())
+                if (onlyUpper)
                     radius--;
 
-                BlockState blockState = getSphereBlockState(gridX, gridZ);
+                BlockState blockState = world == null ? getSphereBlockState(gridX, gridZ)
+                        : sphereBlockState(gridX, gridZ, world.settings().shellBlocks());
 
                 int minY = Math.max(chunk.getMinBuildHeight(), centerY - radius - 1);
                 int maxY = Math.min(chunk.getMaxBuildHeight(), centerY + radius + 1);
@@ -151,8 +154,8 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                             // una esfera cortada por el limite de construccion.
                             if (distanceSq <= outerRadiusSq
                                     && (distanceSq >= innerRadiusSq || (closeOpenTop && y == topCapY))) {
-                                if(!SphereConfig.ONLY_UPPER_HEMISPHERE.get() || canReplaceBlock(config, chunk.getBlockState(new BlockPos(x, y, z)))) {
-                                    if(SphereConfig.ONLY_UPPER_HEMISPHERE.get() && (y < 55 && !chunk.getBlockState(new BlockPos(x, y, z)).is(Blocks.WATER)))
+                                if(!onlyUpper || canReplaceBlock(config, chunk.getBlockState(new BlockPos(x, y, z)))) {
+                                    if(onlyUpper && (y < 55 && !chunk.getBlockState(new BlockPos(x, y, z)).is(Blocks.WATER)))
                                         continue;
                                     BlockPos pos = new BlockPos(x, y, z);
                                     chunk.setBlockState(pos, blockState, false);
@@ -184,9 +187,9 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                         generated |= carveSatellite(chunk, satellite, blockState,
                                 chunkStartX, chunkEndX, chunkStartZ, chunkEndZ);
                     }
-                    if (gridX == 0 && gridZ == 0
+                    if (gridX == 0 && gridZ == 0 && BiosphereWorlds.LOGGER.isDebugEnabled()
                             && LOGGED_SATELLITES_CELL_ZERO.compareAndSet(false, true)) {
-                        logSatellitesCellZero(satellites);
+                        logSatellitesCellZero(satellites, chunk);
                     }
                 }
             }
@@ -212,13 +215,8 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
         double radius = satellite.radius();
         double outerRadiusSq = radius * radius;
 
-        SatelliteLayers.Layers layers = SatelliteLayers.layers(satellite.radius());
-        SatelliteLayers.Mineral mineral = layers.hasCore()
-                ? SatelliteLayers.selectMineral(satellite.seed(), SatelliteMineralCatalog.candidates())
-                : null;
-        BlockState oreState = mineral == null
-                ? null
-                : BuiltInRegistries.BLOCK.get(ResourceLocation.parse(mineral.blockId())).defaultBlockState();
+        var materials = new mx.issacinzunza.biosphereworlds.worldgen.SatelliteMaterials(satellite, shellState,
+                SatelliteLayers.layers(satellite.radius()).hasCore() ? satelliteMinerals(chunk) : List.of());
 
         int minX = Math.max(chunkStartX, (int) Math.floor(satellite.centerX() - radius));
         int maxX = Math.min(chunkEndX, (int) Math.ceil(satellite.centerX() + radius));
@@ -227,8 +225,6 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
         int minY = Math.max(chunk.getMinBuildHeight(), (int) Math.floor(satellite.centerY() - radius));
         int maxY = Math.min(chunk.getMaxBuildHeight() - 1, (int) Math.ceil(satellite.centerY() + radius));
 
-        BlockState bodyState = Blocks.STONE.defaultBlockState();
-        BlockState magmaState = Blocks.MAGMA_BLOCK.defaultBlockState();
         boolean generated = false;
 
         for (int x = minX; x <= maxX; x++) {
@@ -250,13 +246,7 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                         continue;
                     }
 
-                    BlockState state = switch (SatelliteLayers.regionAt(layers, distanceSq)) {
-                        case SHELL -> shellState;
-                        case MAGMA -> magmaState;
-                        case STONE -> bodyState;
-                        case CORE -> SatelliteLayers.isOre(satellite.seed(), x, y, z,
-                                mineral.densityPermille()) ? oreState : bodyState;
-                    };
+                    BlockState state = materials.stateAt(distanceSq, x, y, z);
                     chunk.setBlockState(new BlockPos(x, y, z), state, false);
                     generated = true;
                 }
@@ -267,7 +257,12 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
     }
 
     /** Log DEBUG con las capas, el mineral y el mineral contado de la celda (0,0). */
-    private static void logSatellitesCellZero(List<SphereLayout.Satellite> satellites) {
+    private static List<SatelliteLayers.Mineral> satelliteMinerals(ChunkAccess chunk) {
+        var world = BiosphereWorldgen.classicWorld(chunk);
+        return world == null ? SatelliteMineralCatalog.candidates() : world.settings().minerals();
+    }
+
+    private static void logSatellitesCellZero(List<SphereLayout.Satellite> satellites, ChunkAccess chunk) {
         StringBuilder message = new StringBuilder("satellites cell=(0,0) count=")
                 .append(satellites.size());
         for (SphereLayout.Satellite satellite : satellites) {
@@ -280,7 +275,7 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                     .append(" magmaOuter=").append(layers.magmaOuterRadius());
             if (layers.hasCore()) {
                 SatelliteLayers.Mineral mineral = SatelliteLayers.selectMineral(
-                        satellite.seed(), SatelliteMineralCatalog.candidates());
+                        satellite.seed(), satelliteMinerals(chunk));
                 int oreBlocks = SatelliteLayers.countOre(satellite.seed(), layers,
                         mineral.densityPermille(),
                         satellite.centerX(), satellite.centerY(), satellite.centerZ());
@@ -336,7 +331,10 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
     }
 
     public static BlockState getSphereBlockState(int gridX, int gridZ) {
-        java.util.List<? extends String> sphereBlocks = SphereConfig.SPHERE_BLOCK.get();
+        return sphereBlockState(gridX, gridZ, SphereConfig.SPHERE_BLOCK.get());
+    }
+
+    private static BlockState sphereBlockState(int gridX, int gridZ, java.util.List<? extends String> sphereBlocks) {
         if (sphereBlocks.isEmpty()) return Blocks.AIR.defaultBlockState();
         int blockIndex = Math.abs(gridX * 31 + gridZ) % sphereBlocks.size();
         return BuiltInRegistries.BLOCK.get(

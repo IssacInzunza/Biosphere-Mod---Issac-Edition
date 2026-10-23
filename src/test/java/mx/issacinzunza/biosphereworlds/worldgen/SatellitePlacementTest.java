@@ -382,13 +382,23 @@ class SatellitePlacementTest {
                 new LegacySatellitePlacement.Bounds(-2000, 2000, -2000, 2000)).isEmpty());
         var moons = layout.satellitesAtCell(0, 0);
         assertEquals(1, moons.size());
-        assertTrue(layout.isInsideSatellite(moons.getFirst().centerX(), moons.getFirst().centerY(), moons.getFirst().centerZ()));
+        var moon = moons.getFirst();
+        assertTrue(moon.centerY() + moon.radius() <= 319);
+        var previous = LegacySatellitePlacement.candidate(principal, params,
+                new LegacySatellitePlacement.Bounds(-2000, 2000, -2000, 2000), 0, 0);
+        assertEquals(previous.seed(), moon.seed());
+        assertEquals(previous.radius(), moon.radius());
+        assertEquals(Math.atan2(previous.centerZ(), previous.centerX()),
+                Math.atan2(moon.centerZ(), moon.centerX()), 1e-12);
+        assertEquals(distance(previous.centerX(), previous.centerY(), previous.centerZ(), 0, 62, 0),
+                distance(moon.centerX(), moon.centerY(), moon.centerZ(), 0, 62, 0), 1e-10);
+        assertTrue(layout.isInsideSatellite(moon.centerX(), moon.centerY(), moon.centerZ()));
         assertEquals(principal, layout.sphereAtCell(0, 0));
-        // Height adaptation cannot recover a moon when the cell itself is too small.
         var tight = layout(new SphereLayout.Params(500, CENTER_Y, 256, 512,
                 true, MAX_COUNT, 8, 12, 25, 75, 16, 30, 55));
         assertTrue(tight.satellitesAtCell(0, 0).isEmpty());
     }
+
 
     @Test
     void classicLargeMoonsRespectCellsNeighboursAndSeededZeroCounts() {
@@ -473,22 +483,23 @@ class SatellitePlacementTest {
 
     @Test
     void heightFitKeepsSeedsSizesAzimuthAndRadialGaps() {
-        var params = new SphereLayout.Params(4000, 62, 415, 415,
+        var params = new SphereLayout.Params(4000, 62, 484, 484,
                 true, 3, 8, 12, 25, 75, 16, 30, 55);
-        var parent = new SphereLayout.Sphere(0, 0, 0, 62, 0, 415);
+        long planetId = -4723902467518963098L;
+        var parent = new SphereLayout.Sphere((int) planetId, (int) (planetId >>> 32), 0, 62, 0, 484);
         var bounds = new SatellitePlacement.Bounds(-2000, 2000, -2000, 2000);
         var oldBounds = new LegacySatellitePlacement.Bounds(-2000, 2000, -2000, 2000);
-        assertEquals(1, LegacySatellitePlacement.countAt(parent.cellX(), parent.cellZ(), 3));
+        assertEquals(2, LegacySatellitePlacement.countAt(parent.cellX(), parent.cellZ(), 3));
         double lowestTop = Double.POSITIVE_INFINITY;
-        for (int index = 0; index < 1; index++) {
+        for (int index = 0; index < 2; index++) {
             for (int attempt = 0; attempt < 16; attempt++) {
                 var previous = LegacySatellitePlacement.candidate(parent, params, oldBounds, index, attempt);
                 lowestTop = Math.min(lowestTop, previous.centerY() + previous.radius());
             }
         }
-        assertTrue(lowestTop > 319);
+        assertEquals(468.9989641942105, lowestTop, 1e-9);
         var fitted = SatellitePlacement.place(parent, List.of(), params, bounds, true);
-        assertEquals(1, fitted.size());
+        assertEquals(2, fitted.size());
         for (int index = 0; index < fitted.size(); index++) {
             var previous = LegacySatellitePlacement.candidate(parent, params, oldBounds, index, 0);
             var moon = fitted.get(index);
@@ -536,7 +547,11 @@ class SatellitePlacementTest {
         return ((long) cellX << 32) ^ (cellZ & 0xFFFFFFFFL);
     }
 
-    // Literal previous placement, independent of the implementation under test.
+    static int requestedMoons(long planetId, int maxCount) {
+        return LegacySatellitePlacement.countAt((int) planetId, (int) (planetId >>> 32), maxCount);
+    }
+
+    // Literal pre-layout-7 placement, independent of the implementation under test.
     static final class LegacySatellitePlacement {
 
         /** Limites verticales del mundo de la etapa 1. */

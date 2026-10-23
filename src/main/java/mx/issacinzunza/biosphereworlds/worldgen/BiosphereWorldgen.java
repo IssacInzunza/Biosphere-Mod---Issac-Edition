@@ -1,13 +1,19 @@
 package mx.issacinzunza.biosphereworlds.worldgen;
 
-import net.minecraft.world.level.levelgen.Aquifer;
 import net.minecraft.world.level.levelgen.NoiseChunk;
 
 public final class BiosphereWorldgen {
-    private static final java.util.Set<Aquifer.NoiseBasedAquifer> BIOSPHERE_AQUIFERS =
-            java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
-
     private BiosphereWorldgen() {
+    }
+
+    public static ClassicWorldSettings.Bound classicWorld(Object owner) {
+        return owner instanceof ClassicWorldSettings.Access access ? access.biosphereworlds$classicWorld() : null;
+    }
+
+    /** El consumidor ya ha comprobado el preset; null mantiene la ruta legacy. */
+    public static SphereLayout classicLayout(Object owner) {
+        var world = classicWorld(owner);
+        return world == null ? SphereLayout.current() : world.layout();
     }
 
     public static void markBiomeSource(Object source) {
@@ -30,14 +36,6 @@ public final class BiosphereWorldgen {
 
     public static boolean isBiosphereNoiseChunk(NoiseChunk noiseChunk) {
         return ((BiosphereNoiseChunkAccess) noiseChunk).biosphereworlds$isBiosphere();
-    }
-
-    public static void markAquifer(Aquifer.NoiseBasedAquifer aquifer) {
-        BIOSPHERE_AQUIFERS.add(aquifer);
-    }
-
-    public static boolean isBiosphereAquifer(Aquifer.NoiseBasedAquifer aquifer) {
-        return BIOSPHERE_AQUIFERS.contains(aquifer);
     }
 
     public static boolean isBiosphereChunk(Object chunk) {

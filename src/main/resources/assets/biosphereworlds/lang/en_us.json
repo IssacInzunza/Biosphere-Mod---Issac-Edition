@@ -1,4 +1,23 @@
 {
+  "biosphereworlds.configuration.section.biosphereworlds.biosphereworlds.toml": "Biospheres settings",
+  "biosphereworlds.configuration.section.biosphereworlds.biosphereworlds.toml.title": "Biospheres configuration",
+  "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml": "Solar System settings",
+  "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml.title": "Solar System configuration",
+  "generator.biosphereworlds.solar_systems": "Solar System - Issac Edition",
+  "biosphereworlds.configuration.solar_guide_enabled": "Solar guide star",
+  "biosphereworlds.configuration.solar_guide_enabled.tooltip": "Violet star pointing toward the current system center. Disable for navigation without a guide. Applies to existing worlds. Disabled on the server: no guide calculations or packets for anyone; an already received star expires within 40 ticks. Disabled only on your client: no star rendering or orientation calculations for you; the server may still send guide packets.",
+  "biosphereworlds.configuration.solar_guardians_enabled": "Central guardian cages",
+  "biosphereworlds.configuration.solar_guardians_enabled.tooltip": "Twelve cages defend the sun, including its interior. Activation range: 224 blocks. Up to two guardians per cycle, every 8–12 seconds. Limits: eight marked guardians within 32 blocks of a player and 24 per sun. Ghasts/blazes appear within 16 blocks; phantoms within 12 and only at night. Existing marked cages update when enabled. Peaceful and disabled mob spawning pause them. Destroyed cages are not rebuilt.",
+  "biosphereworlds.configuration.SolarOrbits": "Solar system",
+  "biosphereworlds.configuration.SolarOrbits.tooltip": "Solar-only planets, distances, numeric temperature, guardian cages and guide star. General sphere values are independent in SolarSystems.toml. Automatic bridges, classic grid spacing and hemispheres are disabled. The sun has no moons. Worldgen settings apply to new worlds; the guide toggle also applies to existing worlds.",
+  "biosphereworlds.configuration.solar_planet_count": "Planets per solar system",
+  "biosphereworlds.configuration.solar_planet_count.tooltip": "Exact number of orbital planets, excluding the central Stronghold sphere and satellites. Each planet has a distinct orbit. Its configured Y and existing angular placement are preserved. New Solar worlds only; saved worlds retain their geometry.",
+  "biosphereworlds.configuration.solar_planet_gap": "Minimum distance between planets",
+  "biosphereworlds.configuration.solar_planet_gap.tooltip": "Minimum empty gap between sphere surfaces, in blocks, never center-to-center distance. Also separates the central sphere from the inner orbit. Orbital geometry can produce larger gaps. Applies only to new Solar worlds; saved worlds retain their settings.",
+  "biosphereworlds.configuration.solar_system_gap": "Minimum distance between solar systems",
+  "biosphereworlds.configuration.solar_system_gap.tooltip": "Minimum empty gap between the outer envelopes of neighboring systems, in blocks. System size is calculated from planet sizes and distances automatically. Applies only to new Solar worlds; saved worlds retain their settings.",
+  "biosphereworlds.configuration.solar_climate_direction": "Central temperature (0 hot / 1 cold)",
+  "biosphereworlds.configuration.solar_climate_direction.tooltip": "Integer slider: 0 = magma/lava center, warm inner planets and cold exterior. 1 = packed-ice center, cold inner planets and warm exterior. The middle stays temperate. Applies only to new Solar worlds; saved worlds retain their settings.",
   "generator.biosphereworlds.biospheres": "Biospheres - Issac Edition",
 
   "biosphereworlds.configuration.title": "Biosphere Worlds Configuration",
@@ -9,38 +28,38 @@
   "biosphereworlds.configuration.Settings.tooltip": "Sphere size and spacing, shell and bridge blocks, structures, edge ocean and satellites.",
 
   "biosphereworlds.configuration.radius": "Maximum sphere radius",
-  "biosphereworlds.configuration.radius.tooltip": "Maximum radius of the spheres, in blocks (128 = default). Only affects newly generated worlds.",
+  "biosphereworlds.configuration.radius.tooltip": "Maximum sphere radius in blocks (128 by default). Applies to new worlds. Solar uses this value without a separate radius cap; enable close_open_top to close spheres cut by world height. The central Stronghold has a fixed size.",
 
   "biosphereworlds.configuration.min_radius": "Minimum sphere radius",
-  "biosphereworlds.configuration.min_radius.tooltip": "Minimum radius of the spheres. Set it equal to the maximum radius for fixed-size spheres, or lower for per-sphere random sizing. Only affects newly generated worlds.",
+  "biosphereworlds.configuration.min_radius.tooltip": "Minimum sphere radius. Set equal to the maximum for fixed sizes or lower for random sizes. Must be positive and no greater than the maximum in Solar. Applies to new worlds.",
 
   "biosphereworlds.configuration.spacing": "Sphere spacing",
-  "biosphereworlds.configuration.spacing.tooltip": "Distance between sphere center points on the grid, in blocks. Only affects newly generated worlds.",
+  "biosphereworlds.configuration.spacing.tooltip": "Distance between sphere center points on the grid, in blocks. Only affects newly generated worlds. Disabled in Solar Systems; use planet and system distances instead.",
 
   "biosphereworlds.configuration.center_y": "Sphere center Y",
-  "biosphereworlds.configuration.center_y.tooltip": "Y level used as the center of every sphere. Only affects newly generated worlds.",
+  "biosphereworlds.configuration.center_y.tooltip": "Sphere center Y for new worlds. Solar planets use this exact value; the central Stronghold stays at Y=127. World height clips oversized spheres.",
 
   "biosphereworlds.configuration.sphere_block": "Sphere shell blocks",
   "biosphereworlds.configuration.sphere_block.tooltip": "Block ids used for the sphere shells; each sphere picks one deterministically from its grid position. On this screen you can edit, reorder or remove the existing entries, but new entries must be added to the config file by hand. Only affects newly generated worlds.",
   "biosphereworlds.configuration.sphere_block.button": "Edit",
 
   "biosphereworlds.configuration.only_upper_hemisphere": "Upper hemisphere only",
-  "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Generate only the upper half of each sphere. Only affects newly generated worlds.",
+  "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Generate only the upper half of each sphere. Only affects newly generated worlds. Disabled in Solar Systems, which uses complete spheres.",
 
   "biosphereworlds.configuration.close_open_top": "Close open tops",
-  "biosphereworlds.configuration.close_open_top.tooltip": "Close spheres that pass the build limit with a flat cap at the highest placeable Y (319), using the sphere shell block. Removes the natural exit at the top. Only affects newly generated worlds.",
+  "biosphereworlds.configuration.close_open_top.tooltip": "Close spheres cut by build height with a flat shell cap at the top buildable Y. Also applies to new Solar worlds. Disabled means no flat cap; sphere radius is preserved in both cases.",
 
   "biosphereworlds.configuration.bedrock_mode": "Bedrock mode",
   "biosphereworlds.configuration.bedrock_mode.tooltip": "Bedrock at the world floor. floor: keep the bedrock_floor surface rule at the bottom of the world. none: no bedrock at the bottom, the floor is deepslate instead (the Create Diesel Generators pumpjack needs bedrock, so it will not work with this value). shell: floor plus a 3-block bedrock lining on the inside of the glass shell in the lower half of each sphere; with only_upper_hemisphere enabled it behaves exactly like floor. Only affects newly generated chunks.",
 
   "biosphereworlds.configuration.generate_bridge": "Generate bridges",
-  "biosphereworlds.configuration.generate_bridge.tooltip": "Generate bridges between adjacent spheres. Only affects newly generated worlds.",
+  "biosphereworlds.configuration.generate_bridge.tooltip": "Generate bridges between adjacent spheres. Only affects newly generated worlds. Always disabled in Solar Systems.",
 
   "biosphereworlds.configuration.bridge_block": "Bridge block",
-  "biosphereworlds.configuration.bridge_block.tooltip": "Block id used for the bridges (for example minecraft:oak_planks). Only affects newly generated worlds.",
+  "biosphereworlds.configuration.bridge_block.tooltip": "Block id used for the bridges (for example minecraft:oak_planks). Only affects newly generated worlds. Unused in Solar Systems: automatic bridges are disabled.",
 
   "biosphereworlds.configuration.bridge_radius": "Bridge radius",
-  "biosphereworlds.configuration.bridge_radius.tooltip": "Radial thickness of the bridge tube; larger values make thicker bridges. Only affects newly generated worlds.",
+  "biosphereworlds.configuration.bridge_radius.tooltip": "Radial thickness of the bridge tube; larger values make thicker bridges. Only affects newly generated worlds. Unused in Solar Systems: automatic bridges are disabled.",
 
   "biosphereworlds.configuration.restrict_structures_to_spheres": "Restrict structures to spheres",
   "biosphereworlds.configuration.restrict_structures_to_spheres.tooltip": "Keep structure starts inside the spheres instead of letting them generate in the void. Only affects newly generated worlds.",

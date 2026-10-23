@@ -10,9 +10,11 @@ bajar del mínimo de elevación configurado; si no cabe ni en el ecuador, se omi
 Se mantienen los chequeos de suelo, techo, límites de celda, ocho vecinas y otros
 satélites. No se recortan lunas ni se mueve o redimensiona la principal.
 
-No hay versión de colocación persistida: el arreglo afecta también a chunks nuevos
-de mundos existentes. No reconstruye chunks guardados; una luna entre chunks
-antiguos y nuevos puede quedar incompleta. Un mundo nuevo evita esa discontinuidad.
+En mundos clásicos antiguos sin receta guardada, el arreglo afecta también a
+chunks nuevos. Los mundos clásicos nuevos guardan sus ajustes de generación;
+Solar conserva su versión de layout (el ajuste se activa desde la versión 7).
+No se reconstruyen chunks guardados: una luna clásica entre chunks antiguos y
+nuevos puede quedar incompleta. Un mundo nuevo evita esa discontinuidad.
 Una celda estrecha o las colisiones todavía pueden impedir la colocación. Satélites
 apagados retornan antes de consultar la caché o calcular geometría; no cambia la
 puerta que excluye mundos vanilla ni el hash del radio. No se añade configuración.
@@ -22,6 +24,363 @@ radio 415, solicita una luna y ahora la coloca. Con spacing=500 se sigue omitien
 por falta de espacio horizontal. Las pruebas cubren semillas, tamaños, distancias,
 vecinos, límites completos, ceros sorteados, caché y concurrencia con radios grandes.
 Queda verificar en juego lunas, heightmaps, puentes y fronteras de chunks antiguos.
+
+## Correcciones de arquitectura — 22 de octubre de 2026
+
+- Acuíferos: el mixin consulta la marca de su propio `NoiseChunk` después de su
+  construcción; ya no existe un conjunto estático que retenga acuíferos/chunks.
+- Heightmaps clásicos: primado, actualización y lectura descendente consultan
+  satélites en coordenadas mundiales. El filtrado histórico del cascarón principal
+  se mantiene; un `LevelChunk` consulta el generador de su mundo, evitando depender
+  de un boolean que no se copia al promover o cargar desde disco.
+- El clásico activa el ajuste de techo de `7f08beb`/`5f48474`: conserva radio,
+  semilla, azimut y distancia radial de satélites grandes. Solar7 conserva su
+  ajuste, mientras Solar1–6 conserva la colocación histórica.
+- `SatelliteMaterials` comparte resolución y elección del material entre carver
+  clásico y pintor solar. Los bucles y el orden aritmético de distancias permanecen
+  en cada escritor; los oráculos de pruebas no usan la nueva clase.
+- Catálogo clásico: `TagsUpdatedEvent` solo invalida; la siguiente generación
+  clásica con satélites activos resuelve y valida antes de generar bloques. No hay
+  resolución en vanilla o con satélites apagados. Ambos presets exigen al menos
+  un candidato de peso positivo y no restauran minerales excluidos por fallback.
+- `SphereSnowFeature` conserva `SnowAndFreezeFeature` vanilla, con comprobación de
+  generador clásico/solar antes de cualquier lectura del mundo. El modificador de
+  `the_void` usa esta feature; no se sustituye ni intercepta la feature vanilla.
+- La fuente de biomas histórica conserva su codec e incluye `the_void` entre los
+  posibles. Sus búsquedas heredadas examinan cada candidato a través del wrapper,
+  en lugar de descartar solamente el primer resultado exterior.
+
+La tanda inicial mantuvo la autoridad global clásica. La fase P7 posterior añade
+persistencia exclusivamente a mundos clásicos nuevos, según la decisión del usuario.
+Los snapshots solares y sus versiones no cambian. El usuario validó visualmente la
+tanda inicial; siguen pendientes portales, multijugador y mods externos.
+
+## Persistencia clásica por mundo — P7
+
+`ClassicWorldSettings` contiene una receta inmutable de geometría, cascarón,
+hemisferio, tapa, bedrock, puentes, océano, restricciones de estructuras y minerales
+ya resueltos. `ClassicWorldData` la guarda en `data/biosphereworlds_classic.dat`, con
+`schema_version=1`. El orden, peso y densidad del catálogo se conservan al reabrir;
+los cambios posteriores de tags/TOML no alteran esa receta. El diagnóstico DEBUG
+queda fuera del guardado. No hay opciones nuevas ni migración automática.
+
+`MixinClassicWorldStorage` comprueba generador clásico y Overworld antes de leer
+datos o configuración. Usa el indicador vanilla `isInitialized`: si el mundo es
+nuevo y no hay receta, captura; si existe receta, carga y valida; si ya estaba
+inicializado y no hay receta, conserva la ruta global legacy. Un archivo existente
+ilegible, versión desconocida o bloque requerido ausente produce un error explícito.
+La deserialización semántica ocurre fuera del lector vanilla de SavedData, que
+captura excepciones y devuelve null; así no se confunde corrupción con ausencia.
+
+La vinculación ocurre después de crear `DimensionDataStorage` y antes de `ChunkMap`.
+Un evento `LevelEvent.Load` sería demasiado tardío: el motor ya habría creado
+`RandomState` y el estado de estructuras. `MixinClassicChunkMap` adapta una copia del
+router con `ClassicDensityFunction`; conserva el holder original, los codecs
+históricos y los registros compartidos. Los adaptadores runtime recorren sus hijos
+en `mapAll` y conservan la aritmética clásica, incluido el hash histórico.
+
+La misma referencia de receta/layout se propaga al generador, fuente de biomas,
+ProtoChunk y NoiseChunk. LevelChunk la obtiene de su generador al promoverse o
+recargarse. `MixinClassicChunkStorage` también restaura ProtoChunks deserializados
+antes de reconstruir sus heightmaps y continuar la generación. Carvers, heightmaps, acuíferos, restricción de estructuras y corrección
+de aparición consultan esa referencia; null mantiene las rutas legacy. No se usa
+un contexto global ni ThreadLocal para seleccionar el mundo. El ajuste al techo de
+satélites continúa en `SphereLayout`/`SatellitePlacement` sin cambios.
+
+El alcance es el Overworld del preset clásico. No se capturan vanilla, Solar,
+Nether o End. Ausencia del archivo en un mundo ya inicializado significa legacy:
+el archivo debe acompañar las copias de seguridad del mundo. El banco adicional
+verificó en dos procesos reales crear un mundo clásico, cerrar, editar TOML y
+reabrir: tanto chunks nuevos como antiguos conservan la receta guardada. La ruta
+legacy continúa cubierta por GameTests; un mundo anterior sin receta sigue el
+TOML como antes. Alcance y límites en [VERIFICACION-MOTOR-2026-10-22.md](VERIFICACION-MOTOR-2026-10-22.md).
+
+## Estrella guía Solar
+
+`SolarEvents.guide` comprueba primero `SolarChunkGenerator` y envía cada diez ticks
+el centro X/Z y radio del sistema de cada jugador mediante `SolarGuidePayload`,
+solo a conexiones con ese canal. No se transmite la semilla ni se replica el layout.
+`BiosphereWorldsClient` dibuja una estrella pixelada lavanda/violeta en `AFTER_SKY`,
+antes del terreno y del vidrio, sin escribir profundidad; apunta al centro en X/Z
+con elevación fija aproximada de 22 grados y un pulso de cinco segundos.
+`SolarLayout.guideOpacity` usa el radio horizontal existente: desvanece en los últimos
+64 bloques y devuelve cero en el límite y fuera. Cerca del centro desvanece en 16
+bloques para evitar una dirección indefinida. Los datos quedan ligados a la instancia
+del nivel, caducan tras 40 ticks sin actualizaciones y se limpian al desconectar.
+`SolarOrbits.solar_guide_enabled` en `config/biosphereworlds/SolarSystems.toml`
+vale `true` por defecto. Es una opción de ejecución de `SphereConfig.SolarOptions`,
+no se incluye en `SolarConfig.snapshot()` ni en el codec del mundo. En el servidor
+se comprueba después del tipo de generador y antes de consultar la geometría o
+crear/enviar paquetes. En el cliente se comprueba al recibir y antes de calcular
+opacidad, dirección, pulso o modificar el estado de renderizado; apagada descarta
+los datos. Desactivarla solo en el cliente no impide que el servidor envíe paquetes.
+Si se desactiva en un servidor dedicado, la última guía recibida caduca en hasta
+40 ticks de juego (unos dos segundos a 20 TPS). No cambia generación ni geometría;
+funciona con layouts guardados 1–7.
+
+Prueba manual pendiente: día/noche, vidrio y paredes opacas, entrada/salida del
+radio, cambio de sistema, teletransporte, dimensiones, reconexión y servidor dedicado;
+comprobar también gráficos rápidos, detallados y fabulosos. `SolarGuideTest` verifica
+el desvanecimiento y los límites, incluido el vacío entre sistemas.
+Verificar además el interruptor en cliente y servidor, su reactivación y mundos
+existentes. El cableado de configuración, red y renderizado requiere prueba en juego.
+
+## Correcciones de auditoría Solar — C1–C4
+
+`SolarChunkGenerator.createState` conserva la resolución compartida de minerales,
+pero valida una sola vez que haya un candidato de peso positivo antes de publicar
+el mundo enlazado. `Mineral` ya prohíbe pesos negativos; esta condición también
+rechaza la lista vacía. No se filtran ni reordenan candidatos válidos. Satélites
+apagados siguen evitando resolución, diagnósticos y validación del catálogo.
+El enlace registra candidatos/exclusiones/entradas ignoradas y avisa de estas últimas.
+
+Solar conserva los ajustes serializados del mundo: editar el TOML solo afecta a
+mundos nuevos. El catálogo resuelto pertenece al generador enlazado y `/reload`
+no lo reemplaza. Al reabrir se resuelven los ids/tags guardados con los datos actuales;
+cambiar mods/tags puede alterar minerales en chunks nuevos. El catálogo clásico
+mantiene su evento y comportamiento anteriores; solo se aclararon los comentarios
+de configuración compartidos.
+
+`SolarEvents.spawnPosition` conserva la elección del primer planeta templado del
+sistema (0,0) y su consulta de altura. La corrección de login y respawn se comparte
+con Biospheres en `PlayerSpawnHandler`: solo se activa si el bloque en los pies es
+material de cascarón, busca soporte sólido completo con dos bloques de aire y
+conserva la posición si no encuentra destino. Solar consulta su geometría por
+mundo y sus materiales guardados; también reconoce las lunas. No existe rechazo
+exclusivo de Solar por falta de espacio, ni se crean plataformas o agrandan radios.
+Un radio positivo no garantiza superficie habitable; radio 1 no tiene terreno interior.
+
+Los mundos nuevos usan layout 7; los layouts guardados 1–6 conservan sus rutas históricas.
+Las pruebas y aceptación integral pendiente se registran en `PROGRESS.md`.
+
+## Corrección del forro central de bedrock
+
+`SolarTerrain.bedrockLiner` limita únicamente el sol a Y=63 mediante
+`CENTRAL_BEDROCK_MAX_Y`, coincidiendo con el nivel del mar de la plantilla actual.
+Su centro geométrico sigue en Y=127 para alojar el Stronghold: no es la cota de
+terreno y ya no eleva el forro. Se conservan el grosor radial y el límite relativo
+al centro de cada planeta orbital. Con la opción apagada retorna false antes de
+calcular la cota. No se añade una opción ni una revisión de layout para este bugfix.
+
+El escritor, la protección de bloques de WorldGenRegion y el filtro de heightmaps
+ya delegaban en la misma regla; no se añaden ramas paralelas. El cambio actúa en
+chunks nuevos y no borra murallas guardadas. Biospheres clásico y guardianes no
+se modifican. Las pruebas puras comparan con el predicado literal anterior: solo
+pueden desaparecer posiciones elegibles del sol por encima de Y=63. El GameTest
+comprueba Y=63/64/80/127, generación de bedrock, conservación de piedra superior
+y heightmaps. La comparación del escritor usa reglas de terreno compartidas;
+no constituye por sí sola una referencia independiente de esta política nueva.
+
+
+## Adaptación vertical de lunas (layout 7)
+
+Solo las nuevas instantáneas Solar usan layout 7. `SolarLayout.moons` activa la
+adaptación de `SatellitePlacement`: si el candidato supera Y=319, baja su centro
+hasta que quepa entero y recalcula el desplazamiento horizontal manteniendo la
+distancia al planeta. Conserva radio, hueco sorteado, azimut, seed y cantidad
+solicitada. Puede bajar del mínimo de elevación configurado; si no cabe ni en el
+ecuador del planeta, se omite. Se mantienen los chequeos de suelo, techo,
+colisiones, márgenes y envolvente del sistema. No se recortan lunas ni se mueve
+o redimensiona el planeta. El hash que sortea cero lunas sigue produciendo cero.
+
+El codec acepta 1–7 y conserva el valor por defecto 1 para snapshots sin versión.
+Los layouts 1–6 y Biospheres clásico usan la ruta anterior exacta. No se migran
+mundos existentes ni se añade configuración. La regresión de la semilla
+`-7284467477822061774` verifica P4 de radio 484: cero lunas en layout 6, dos en 7.
+Las pruebas puras cubren límites, separación, determinismo y comparación con una
+copia literal de la colocación anterior. Queda verificar en juego el spawn,
+las lunas completas y los heightmaps, además de reabrir un mundo layout 6.
+
+## Revisión de órbitas y defensa central (layout 6)
+
+Cada planeta nuevo recibe una distancia orbital distinta; se conservan la fórmula
+angular anterior, los ids, la Y configurada y las bandas de temperatura. La
+separación radial usa el máximo radio configurado para garantizar el hueco mínimo
+incluso si dos planetas quedan alineados. El radio envolvente añade espacio para
+las lunas y alimenta el cálculo existente de separación entre sistemas.
+`requiredSingleOrbitSystemRadius` se usa solo para nuevas instantáneas; el cálculo
+histórico sigue disponible para layouts 1–5 y sus mundos mantienen la geometría.
+No cambia mod_version ni se añade una opción de configuración.
+
+SolarGuardians usa demora 160–240 ticks, hasta dos intentos por ciclo, ocho
+marcados en el entorno de 32 bloques del jugador y 24 alrededor del sol. El
+presupuesto del ciclo se reduce a la capacidad restante para no superar esos
+límites. Alcance de activación 224: incluye el centro, no solo la superficie.
+Los candidatos se colocan dentro de 16 bloques del jugador (12 para phantom),
+con dispersión lateral acotada para evitar que una pareja comparta la misma caja
+de colisión. Se conservan las comprobaciones de obstrucciones y la pausa en
+Pacífico/doMobSpawning=false. Solo hay phantom de noche.
+
+Las jaulas marcadas existentes adoptan una revisión NBT de política al activarse:
+se acorta su demora y se actualizan rango, cantidad y datos de spawn. No se mueve
+la jaula, no se reemplazan bloques y no se reconstruyen jaulas destruidas. La
+migración ocurre después de verificar mundo Solar, propietario y opción activada;
+los spawners ordinarios y la opción apagada no sufren esta migración. No se fuerzan
+chunks: las jaulas necesitan chunks activos. Los layouts 1–3 sin jaulas conservan
+su sistema histórico de intervalos.
+
+Las secciones históricas inferiores describen las revisiones anteriores; los
+valores de esta sección sustituyen las demoras, cantidades y alcances anteriores.
+
+
+## Solar Systems — configuración simplificada y órbitas (experimental)
+
+El preset se presenta como **Solar System - Issac Edition**; su identificador
+solar_systems no cambia. `SolarChunkGenerator` mantiene un circuito independiente.
+`SphereConfig` registra `config/biosphereworlds/BiosphereWorlds.toml` y
+`config/biosphereworlds/SolarSystems.toml`, con valores independientes.
+GeneralOptions y SolarOptions definen los controles una sola vez; SolarConfig los
+instancia con su propio builder. Las opciones generales mantienen las mismas
+etiquetas, comentarios y validadores. Solar no expone puentes, cuadrícula ni hemisferios.
+La migración copia archivos raíz sin borrarlos ni sobrescribir destinos. Si el
+archivo clásico contiene SolarOrbits, esos valores recientes inicializan Solar;
+si no, se considera el archivo Solar anterior. Se convierten SolarGeneral y la
+dirección térmica textual de los formatos experimentales.
+
+El codec conserva la instantánea completa. `layout_version` ausente se interpreta
+como 1, con los valores generales heredados; así los mundos Solar existentes mantienen
+su geometría y perfil anteriores. Los mundos nuevos guardan versión 6 y los ajustes
+generales de cascarón, altura, bedrock, océanos y satélites. **Hace falta un mundo Solar
+nuevo para ver el reparto y el centro corregidos.** No se migra un mundo guardado
+silenciosamente. Se requiere Generate Structures activado.
+
+`SolarLayout` v2 reparte exactamente la cantidad solicitada en hasta tres órbitas
+concéntricas. Cada órbita distribuye sectores angulares uniformes con variación pequeña.
+La separación se mide entre superficies y es un mínimo; las órbitas pueden dejar
+huecos mayores. El radio de la región se calcula internamente a partir de cantidad,
+tamaño, separación y espacio para satélites. Las consultas siguen acotadas por celdas
+y los sistemas se publican como instantáneas inmutables en una caché de 256 entradas.
+Las implementaciones v1, v2 y v3 conservan su comportamiento en las instantáneas guardadas.
+La versión 3 usa el radio y center_y compartidos sin limitar el radio planetario a 160
+ni recolocar el centro para que quepa. close_open_top controla la tapa de Y=319;
+la geometría publica una única prueba de cascarón/tapa para generador y heightmaps.
+
+La versión 5 usa el holder original biosphereworlds:biospheres como plantilla,
+sin editar biospheres.json. SolarDensityFunction adapta los marcadores existentes:
+MultipleSpheresDistanceFunction recibe los cuerpos solares y SphereEdgeOceanFunction
+reutiliza la matemática de SphereEdgeOcean (peso tridimensional smoothstep y
+transformación FLOOR/CLIMATE), sin reescribir bloques para el océano después del ruido.
+SphereEdgeOcean extrae funciones compartidas conservando el orden de operaciones;
+una copia literal anterior en JUnit comprueba igualdad bit a bit para el preset clásico.
+Solar obtiene su RandomState independiente con los mismos parámetros de ruido y semilla.
+El estado externo y el holder original quedan intactos. mapAll recorre los hijos.
+Los adaptadores solo existen en memoria: el codec del generador guarda la plantilla
+y la instantánea Solar. Se evita marcar como Biospheres un generador Solar incluso
+si usa ese holder. Todos los puntos de generación y columnas usan el estado propio.
+Solar v5 omite carvers adicionales vanilla: el preset clásico solo ejecuta los carvers
+de cascarón/puentes; sus cuevas vienen del router de ruido. Las versiones 1–4 conservan
+su circuito anterior por compatibilidad. Hace falta un mundo Solar nuevo; los chunks
+existentes no se regeneran. El sol mantiene su perfil extremo y la cota del Stronghold.
+
+El centro v2 es cálido o frío según la dirección seleccionada, sin otra opción de
+clima central. Usa Badlands o Ice Spikes si la fuente contiene ese bioma, y conserva
+el fallback climático si no lo contiene. La superficie cálida se cubre de magma y
+el agua superficial pasa a lava; la fría usa hielo compacto. El tratamiento ocurre
+después de superficie y antes de estructuras, solo en Y>=56. La construcción del
+Stronghold conserva su envolvente completa en Y<=48. El centro mantiene radio 180
+y altura 127 automáticamente. La banda orbital intermedia permanece templada.
+
+Los porcentajes climáticos y el radio del sistema no se exponen.
+`guardians_enabled` controla doce pedestales con jaulas distribuidos alrededor de
+toda la esfera central, incluidos los polos. SolarLayout conserva posiciones
+inmutables en una caché acotada; las calcula solo si se solicitan guardianes.
+Las posiciones usan los vértices de un icosaedro y rotaciones del conjunto completo
+para evitar cuerpos y lunas sin perder cobertura. Si no caben, falla explícitamente.
+SolarGuardians centraliza construcción, demoras y población: un mob por ciclo,
+400–800 ticks, alcance 136 bloques, máximo cuatro guardianes marcados a 96 bloques
+del jugador y 24 alrededor del sol. De día elige ghast/blaze; de noche también
+phantom. La marca se añade en FinalizeSpawnEvent, conservando la inicialización
+vanilla. PositionCheck coloca candidatos distantes a 32 bloques del jugador
+(12 para phantom) para entrar en su rango de combate y evitar despawn inmediato;
+después se conserva la comprobación de obstrucciones. Solo se ajustan candidatos
+antes de aparecer; no se teletransportan mobs que ya existen.
+MixinSolarSpawner delega esa política y no consulta entidades durante la demora.
+Al alcanzar un límite reintenta tras 20 ticks. Respeta Pacífico/doMobSpawning,
+no fuerza chunks y no reconstruye jaulas destruidas. Los layouts 1–4 mantienen sus
+reglas anteriores; chunks existentes no se modifican retroactivamente. La cobertura
+geométrica no certifica dificultad real, línea de visión ni chunks simulados.
+La versión 4 omite lunas de la biosfera central. Las instantáneas anteriores
+conservan lunas y spawn heredados; se requiere mundo nuevo para esta revisión. Los satélites reutilizan
+SatellitePlacement/SatelliteLayers/MineralCatalog con opciones generales persistidas,
+incluyendo menas admitidas/excluidas y pesos de mods. La selección por planeta del
+cascarón se aplica también a sus lunas y se excluye de los heightmaps.
+
+### Opciones propias — SolarOrbits
+
+| Opción | Predeterminado | Rango | Efecto |
+|---|---|---|---|
+| `planet_count` | `8` | 1–16 | Cantidad de planetas orbitales, sin contar la biosfera central del Stronghold ni los satélites mineros. Se reparten alrededor del centro en hasta tres franjas orbitales. |
+| `planet_gap` | `400` | 0–4000 blocks / bloques | Separación mínima de espacio vacío entre las superficies de las esferas, en bloques; no es una distancia entre centros. También separa el centro de la órbita interior. La geometría orbital puede dejar huecos mayores. |
+| `system_gap` | `1500` | 0–16000 blocks / bloques | Separación mínima de espacio vacío entre los límites exteriores de sistemas vecinos, en bloques. El tamaño del sistema se calcula automáticamente a partir de los tamaños y distancias planetarias. |
+| `climate_direction` | `0` | 0–1 (deslizador entero) | 0: centro de magma/lava, planetas interiores cálidos, intermedios templados y exteriores fríos. 1: centro de hielo compacto, interiores fríos, intermedios templados y exteriores cálidos. Con pocos planetas se conserva al menos uno templado. |
+| `guardians_enabled` | `true` | booleano | Genera doce jaulas de ghasts, phantoms y blazes que cubren el sol, con frecuencia y población acotadas. No modifica otros mobs. Se guarda al crear cada mundo Solar. |
+| `solar_guide_enabled` | `true` | booleano | Interruptor de ejecución, también para mundos existentes. Apagado en el servidor omite consultas de geometría y paquetes de la guía para todos; apagado localmente descarta datos y omite cálculos de orientación y dibujo. Tras apagarlo en el servidor, una guía ya recibida caduca en hasta 40 ticks. |
+
+### Ajustes generales independientes — Settings
+
+Reutilizan las definiciones del archivo clásico, pero sus valores se leen de SolarSystems.toml al crear cada mundo Solar.
+Los mundos Solar guardados conservan su instantánea. Puentes automáticos: **desactivados siempre**.
+La cuadrícula clásica y los hemisferios no se aplican a Solar. La tapa superior
+usa su propio close_open_top. Se validan min <= max en radios, tamaños, huecos y elevaciones.
+Solar usa los radios positivos de Settings sin un límite planetario adicional;
+la altura del mundo recorta las esferas grandes. Se acepta tamaño de satélite del 100 %, pero
+se omiten candidatos tan grandes como su planeta.
+
+| Opción | Predeterminado | Rango | Efecto |
+|---|---|---|---|
+| `min_radius` | `128` | entero 1..46340 | Radio mínimo de los planetas orbitales, en bloques. No puede superar el radio máximo. Pon ambos radios iguales para obtener tamaños fijos. |
+| `radius` | `128` | entero 1..46340 | Radio máximo de los planetas orbitales; límite técnico, no recomendación de tamaño. La biosfera del Stronghold conserva automáticamente el tamaño necesario para alojarlo completo. |
+| `center_y` | `62` | −64–319 | Altura Y exacta del centro de los planetas orbitales. La altura del mundo recorta las esferas que la superan. El centro del Stronghold permanece en Y=127. |
+| `sphere_block` | `minecraft:glass` | block IDs / ids de bloques | Ids de bloque para los cascarones. Cada esfera elige uno de forma determinista. Si la lista está vacía o el bloque no es válido, se usa vidrio. Los puentes automáticos están desactivados en Solar. |
+| `close_open_top` | `false` | booleano | Tapa las esferas cortadas por el límite de construcción con el bloque del cascarón en Y=319. Desactivado deja el corte abierto; no reduce el radio. |
+| `bedrock_mode` | `FLOOR` | FLOOR / NONE / SHELL | FLOOR conserva la bedrock vanilla del fondo del mundo donde llegue una esfera. NONE la sustituye por deepslate. SHELL añade un forro de bedrock de tres bloques por dentro de la mitad inferior del cascarón. |
+| `edge_ocean_enabled` | `false` | boolean / booleano | Baja e inunda la banda interior junto al cascarón de los planetas. La biosfera central conserva su perfil peligroso de magma o hielo. |
+| `edge_ocean_width` | `20` | 0–100 % | Ancho como porcentaje del radio de la esfera, con el perfil suave tridimensional original. Cero elimina la banda. Se usa únicamente con el océano de borde activado. |
+| `edge_ocean_depth` | `20` | 0–100 blocks / bloques | Profundidad del fondo oceánico bajo el nivel del mar, en bloques. Con nivel del mar 63 y profundidad 20, el fondo queda en Y=43. Se usa únicamente con el océano de borde activado. |
+| `satellites_enabled` | `true` | boolean / booleano | Genera lunas mineras elevadas alrededor de los planetas, sin puentes. Desactivarlo conserva las posiciones y los climas de los planetas. |
+| `satellites_max_count` | `3` | 0–64 | Límite por planeta. Puede haber menos si una luna no cabe sin colisiones o sin superar la altura de construcción. Cero desactiva los satélites. |
+| `satellites_min_size_percent` | `8` | 1–100 % | Radio mínimo del satélite como porcentaje del radio de su planeta. No puede superar el máximo. Toda luna aceptada es más pequeña que su planeta. |
+| `satellites_max_size_percent` | `12` | 1–100 % | Radio máximo del satélite como porcentaje del radio de su planeta. Los valores altos pueden dejar menos espacio para lunas dentro de la altura de construcción. |
+| `satellites_min_gap_percent` | `25` | 0–1000 % | Separación mínima entre superficies del satélite y su planeta, como porcentaje del radio del planeta. También se aplica el mínimo absoluto en bloques. |
+| `satellites_max_gap_percent` | `75` | 0–1000 % | Separación máxima sorteada respecto al planeta como porcentaje de su radio. Debe ser mayor o igual al porcentaje mínimo; el mínimo absoluto en bloques sigue teniendo prioridad. |
+| `satellites_min_gap_blocks` | `16` | 0–1024 blocks / bloques | Separación mínima absoluta entre un satélite y cualquier planeta u otra luna, en bloques. Se usa el mayor valor entre este mínimo y la separación porcentual sorteada. |
+| `satellites_min_elevation_degrees` | `30` | 0–90° | Ángulo mínimo preferido sobre el plano horizontal del planeta. No puede superar el máximo. Solar layout 7 puede bajarlo para alojar la luna completa bajo el techo. |
+| `satellites_max_elevation_degrees` | `55` | 0–90° | Ángulo máximo en grados; 90 queda directamente encima del planeta. Solar layout 7 adapta candidatos sobre el techo; se omiten los que sigan fuera de los límites verticales. |
+| `satellites_excluded_ores` | `classic exclusions / exclusiones clásicas` | IDs or #tags / ids o #tags | Ids de bloque o #tags que no se elegirán como mineral. Las exclusiones tienen prioridad sobre las inclusiones. Por defecto se excluyen escombros ancestrales, minerales del Nether y menas de deepslate. |
+| `satellites_included_ores` | `[]` | IDs or #tags / ids o #tags | Ids de minerales o #tags adicionales a c:ores_in_ground/stone. Solo se aceptan bloques sólidos utilizables, sin entidades de bloque. |
+| `satellites_mod_ore_weight` | `3` | 0–1000 | Peso de selección de las menas de otros mods; las vanilla conservan sus pesos. Cero excluye las menas de mods de la selección. |
+| `satellites_mod_ore_density_permille` | `20` | 0–1000 ‰ | Bloques de mena por cada 1000 bloques del núcleo para minerales de mods: 20 equivale a 2 %. Se elige un solo tipo de mineral por luna, protegido por piedra y magma. |
+
+La fortaleza central se selecciona mediante `#minecraft:eye_of_ender_located`;
+los reemplazos registrados tienen prioridad sobre `minecraft:stronghold`. Sus sets
+de colocación se sustituyen por un único set con SolarPlacement, compartido por
+generación, ojos y locate. Se conservan las piezas y procesadores del reemplazo;
+se trasladan bajo Y=48, incluidas las conexiones jigsaw, y se valida cada pieza
+completa contra el interior de la esfera y la altura del mundo. No se amplía el
+centro ni se recortan estructuras: un reemplazo demasiado grande falla con diagnóstico.
+Sin reemplazo se conserva la generación vanilla. Se mantienen los bloqueos de
+portales en WorldGenRegion y ProtoChunks marcados. `SolarEvents` conserva spawn y restauración de geometría al
+cargar chunks; para guardianes solo valida el mundo y enruta eventos a SolarGuardians.
+La política completa de portales naturales vive en
+`SolarPortalGuard.allowsNaturalPortal`: pieza autorizada activa en el hilo, posición
+interior de esa pieza y centro con margen de tres bloques. Vanilla autoriza solo
+su sala de portal; un reemplazo autoriza sus propias piezas del inicio central seleccionado. Los mixins de
+WorldGenRegion y ProtoChunk conservan sus filtros tempranos y delegan esa decisión.
+La geometría lunar para bloques y alturas vive en `SolarLayout.Moon`; su distancia
+conserva la fórmula anterior y permite reutilizar el valor para elegir capas.
+`SolarTerrain.STRONGHOLD_MAX_Y` (48) y `CENTRAL_HAZARD_MIN_Y` (56) documentan la
+reserva vertical; los márgenes de Stronghold y bedrock se mantienen separados.
+Estos cambios no modifican los codecs, las versiones guardadas ni añaden opciones.
+SolarChunkGenerator coordina las fases del motor y publica atómicamente un BoundWorld
+inmutable con semilla, geometría, ruido propio, escritor y Stronghold. SolarVolumePainter
+escribe cascarón, superficie central y lunas, y filtra heightmaps. Resuelve la paleta
+una sola vez; omite aire superior únicamente por encima de bloques existentes y
+cuerpos. Conserva el reinicio/primado de heightmaps en cada fase. SatelliteMineralCatalog
+resuelve ids/tags para ambos presets y comparte validación de peso positivo.
+Con satélites apagados no se resuelve ni valida un catálogo sin uso.
+No verificado: escrituras de mods que eviten esas rutas, C2ME, activación real del
+portal, ojos, locate en un mundo jugable y rendimiento prolongado. La conservación
+de la lógica clásica no sustituye una comparación de chunks contra su copia anterior.
 
 Guía de lectura para **Biosphere Worlds - Issac Edition**, fork de
 NeoBiosphere para Minecraft 1.21.1 y NeoForge 21.1.216. Las rutas de este
@@ -69,7 +428,7 @@ puede demostrar leyendo el código, se marca como **No verificado:**.
   ensamblado puro de candidatos: vanilla primero, mods ordenados por id,
   exclusiones y deduplicación.
 - `src/main/java/mx/issacinzunza/biosphereworlds/event/SatelliteMineralCatalog.java` —
-  catálogo `volatile` e inmutable reconstruido en `TagsUpdatedEvent`; descubre
+  catálogo `volatile` e inmutable invalidado en `TagsUpdatedEvent` y resuelto en el siguiente uso clásico activo; descubre
   menas de piedra por `#c:ores_in_ground/stone`, resuelve inclusión/exclusión y
   escribe un INFO por reconstrucción.
 - `src/main/java/mx/issacinzunza/biosphereworlds/density/MultipleSpheresDistanceFunction.java` —
@@ -104,9 +463,9 @@ puede demostrar leyendo el código, se marca como **No verificado:**.
 ### 1.3 Eventos
 
 - `src/main/java/mx/issacinzunza/biosphereworlds/event/PlayerSpawnHandler.java` —
-  escucha login y respawn. En un `ServerLevel` cuyo generator es el de
-  biosferas, busca una superficie sólida dentro de la esfera y teletransporta
-  al jugador si apareció sobre el cascarón.
+  escucha login y respawn. En un `ServerLevel` de Biospheres o Solar, comparte
+  la búsqueda de superficie sólida y recoloca al jugador si el bloque en sus
+  pies es material del cascarón. La lectura y el teletransporte usan el hilo del servidor.
 
 ### 1.4 Registros
 
@@ -438,14 +797,16 @@ desactivada.
 
 `PlayerSpawnHandler.onPlayerLoggedIn` y `onPlayerRespawn` solo actúan en un
 `ServerLevel` cuyo generator está marcado por
-`BiosphereWorldgen.isBiosphereGenerator`. Lanzan un hilo que llama a
-`teleportIntoSphere`.
+`BiosphereWorldgen.isBiosphereGenerator` o es `SolarChunkGenerator`. Programan
+`teleportIntoSphere` en el hilo del servidor; vanilla retorna antes de consultar geometría.
 
-Si la posición actual es un bloque de cascarón (`SphereUtil.isSphereBlock`),
+Si la posición actual es material del cascarón (`SphereUtil.isSphereBlock` en
+clásico; materiales de los cuerpos del sistema guardado en Solar),
 `findValidPosition` primero busca hacia abajo una superficie sólida con dos
 bloques de aire encima. Si no la encuentra, explora un disco de radio
-`getSphereRadiusAt(x, z)` y busca allí. Finalmente programa en el hilo del
-servidor un `teleportTo` al espacio sobre esa superficie.
+de la esfera clásica, planeta o luna correspondiente y busca allí de arriba abajo.
+Finalmente ejecuta `teleportTo` al primer bloque de aire sobre el soporte, centrado
+en X/Z y sin añadir un bloque extra a Y. Si no encuentra destino, no teletransporta.
 
 El `spawn_target` de `biospheres.json` pertenece a la selección de posiciones
 de spawn del `NoiseGeneratorSettings`; el teletransporte de seguridad anterior
@@ -610,17 +971,17 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 
 | Opción TOML | Tipo Java | Valor por defecto | Dónde se lee | Efecto |
 |---|---|---:|---|---|
-| `radius` | `ConfigValue<Number>` | `128` | `SphereCarver.getSphereRadius` | Radio máximo de las esferas y límite usado cuando `min_radius == radius`. |
-| `min_radius` | `ConfigValue<Number>` | `128` | `SphereCarver.getSphereRadius` | Radio mínimo; si es menor que `radius`, el hash de la celda elige un radio entre ambos. |
+| `radius` | `ConfigValue<Number>` | `128` | `SphereLayout.radiusAt` | Radio máximo entero 1..46340 y límite usado cuando `min_radius == radius`. |
+| `min_radius` | `ConfigValue<Number>` | `128` | `SphereLayout.radiusAt` | Radio mínimo entero 1..radius; si es menor que `radius`, el hash de la celda elige un radio entre ambos. |
 | `spacing` | `ConfigValue<Number>` | `500` | `SphereCarver`, `MultipleSpheresDistanceFunction`, `SphereBridgeCarver`, `MixinNoiseBasedAquifer`, utilidades | Distancia entre centros en X/Z y tamaño de la cuadrícula. |
 | `center_y` | `ConfigValue<Number>` | `62` | carvers, density function, estructuras, aquifer, heightmap y spawn handler | Altura Y del centro de cada esfera y referencia vertical de varias comprobaciones. |
-| `sphere_block` | `ConfigValue<List<? extends String>>` | `["minecraft:glass"]` | `SphereCarver.getSphereBlockState`, `SphereUtil`, `PlayerSpawnHandler`, `MixinHeightmap` | Lista de ids de bloques posibles para el cascarón; la celda selecciona uno determinísticamente. Se valida contra `BuiltInRegistries.ITEM`, aunque luego se usa como bloque. |
+| `sphere_block` | `ConfigValue<List<? extends String>>` | `["minecraft:glass"]` | `SphereCarver.getSphereBlockState`, `SphereUtil`, `PlayerSpawnHandler`, `MixinHeightmap` | Lista de ids de bloques posibles para el cascarón; la celda selecciona uno determinísticamente. Se valida contra `BuiltInRegistries.BLOCK` con sintaxis segura. |
 | `only_upper_hemisphere` | `ConfigValue<Boolean>` | `false` | `SphereCarver.carve` | Activa el modo de hemisferio superior y sus reglas especiales de reemplazo bajo Y 55. |
 | `close_open_top` | `BooleanValue` | `false` | `SphereCarver.carve` | Cierra con una tapa plana en el Y colocable más alto (319) las esferas cortadas por el límite de construcción, usando el bloque del cascarón. Solo afecta a mundos nuevos. |
 | `bedrock_mode` | `EnumValue<BedrockMode>` | `floor` | `SphereCarver.carve` | Bedrock del suelo del mundo. `floor`: se mantiene la regla `bedrock_floor` de la surface_rule en el fondo (Y −64..−60, solo donde hay piedra). `none`: sin bedrock en el fondo; el carver sustituye esa bedrock por deepslate, así que el suelo se puede minar (el pumpjack de Create Diesel Generators necesita bedrock y no funcionará). `shell`: lo de `floor` más un forro de bedrock de 3 bloques por dentro del cascarón de vidrio en la mitad inferior (`y <= center_y`), que sustituye cualquier bloque salvo el cascarón. Con `only_upper_hemisphere` activo, `shell` se comporta exactamente como `floor`. Solo afecta a chunks nuevos. |
 | `generate_bridge` | `ConfigValue<Boolean>` | `true` | `SphereBridgeCarver.carve` | Activa o desactiva la colocación de puentes entre centros vecinos. |
 | `bridge_block` | `ConfigValue<String>` | `"minecraft:oak_planks"` | `SphereBridgeCarver.carve` | Id del bloque usado por los puentes. |
-| `bridge_radius` | `ConfigValue<Number>` | `1` | `SphereBridgeCarver.carveBridge` | Grosor radial del tubo de puente. |
+| `bridge_radius` | `ConfigValue<Number>` | `1` | `SphereBridgeCarver.carveBridge` | Grosor radial entero 0..46340; cero conserva el puente vacío. |
 | `restrict_structures_to_spheres` | `ConfigValue<Boolean>` | `true` | `MixinChunkGeneratorStructures.restrictStructureToSphere` | Activa la cancelación de inicios de estructura fuera de las esferas. |
 | `structure_edge_margin` | `IntValue` | `16` (rango `0..128`) | `MixinChunkGeneratorStructures.restrictStructureToSphere` | Margen adicional hacia dentro del radio para el punto inicial de una estructura. |
 | `debug_biome_lookups` | `BooleanValue` | `false` | `MixinMultiNoiseBiomeSource`, `MixinChunkGeneratorBiomeSource` | Escribe rutas DEBUG para consultas de bioma fuera de las esferas y para marcar el source. |
@@ -642,11 +1003,14 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 | `satellites_mod_ore_density_permille` | `IntValue` | `20` (rango `0..1000`) | `SatelliteMineralCatalog.rebuild` | Bloques de mineral por 1000 del núcleo para minerales de mods. |
 
 La validación de `sphere_block` y `bridge_block` está en
-`SphereConfig.validateItemName(Object)`: exige un `String` y que el
-`ResourceLocation` exista en el registro de **items**. **No verificado:** el
-código no comprueba explícitamente el registro de bloques durante la carga;
-un id que sea item pero no un bloque podría producir un estado de bloque no
-válido al leerlo desde `BuiltInRegistries.BLOCK`.
+`SphereConfig.validateBlockName(Object)`: exige un `String`, comprueba la sintaxis
+con `ResourceLocation.tryParse` y consulta el registro de bloques. Un ítem sin
+bloque o un identificador mal formado se rechaza. Se conserva la lista vacía
+intencional. Los radios configurados son enteros `1..46340`, `spacing` es positivo
+y `bridge_radius` admite `0..46340`; el límite evita desbordar los cuadrados `int`,
+no garantiza rendimiento adecuado para radios enormes. NeoForge corrige valores
+individuales inválidos conforme al esquema. Una pareja `min_radius > radius`
+produce error antes de la generación clásica o del snapshot solar nuevo.
 
 Las parejas `min`/`max` de los satélites se validan en el constructor de
 `SphereLayout.Params`: cada valor se recorta a su rango y, si el mínimo supera al
@@ -905,7 +1269,7 @@ durante worldgen.
   borde: agua no deseada, alturas erróneas o cascarones contados como suelo
   indican una incompatibilidad.
 - **Concurrencia y memoria.** `BiosphereWorldgen.BIOSPHERE_AQUIFERS` es un set
-  concurrente global y el spawn crea un `Thread` nuevo por evento. La
+  concurrente global; el spawn consulta bloques y teletransporta en el hilo del servidor. La
   interacción con cambios de scheduler, generación paralela o mods como C2ME
   necesita una prueba específica; no se debe asumir seguridad solo porque el
   código compile.
@@ -921,3 +1285,50 @@ y finalmente comprobar un mundo nuevo dentro y fuera de una esfera. No se
 debe inferir compatibilidad de una compilación exitosa: los problemas de
 worldgen pueden aparecer solo al generar un chunk, al consultar biomas o al
 crear una estructura.
+
+### Fuentes de Minecraft consultadas para las jaulas
+
+Caché NeoForm `sourcesAndCompiledWithNeoForge_d1701b2d84878ca1ab690eb7c5e8e0275ec75727_output.jar`:
+BaseSpawner.java:57–60 (activación), 112–164 (reglas/colisiones), 203–260 (NBT);
+SpawnerBlockEntity.java:40–61 y 91–92; SpawnData.java:19–25 y 60–82.
+EventHooks.java:258–263 confirma el tratamiento de reglas personalizadas;
+ChunkAccess.java:129 permite publicar el block entity durante worldgen.
+
+### Fuentes para la reutilización del terreno Solar v5
+
+Solar expone directamente el `MultiNoiseBiomeSource` al generador para que
+TerraBlender inicialice regiones, biomas y reglas de superficie. `SolarBiomeSource`
+conserva el estado Solar y el codec anterior; `MixinMultiNoiseBiomeSource` recibe
+esa referencia por instancia, devuelve vacío o el bioma central cuando corresponde
+y adapta la temperatura del sampler antes de la consulta posicional de TerraBlender.
+Con clima desactivado devuelve el mismo sampler. Las instantáneas de samplers son
+inmutables y se publican mediante una referencia volatile; el clon superficial de
+TerraBlender conserva el estado Solar. Las fuentes vanilla no reciben esa marca.
+La serialización del generador sigue guardando la fuente interna y los ajustes Solar.
+
+Referencia TerraBlender 1.21.1: `LevelUtils.shouldApplyToBiomeSource` (líneas 60–63)
+exige MultiNoise; `MixinMultiNoiseBiomeSource.getNoiseBiome` (43–47) selecciona
+regiones con coordenadas, y `MixinNoiseBasedChunkGenerator.modifyBiomeSource`
+(15–22) clona la fuente por chunk. Fuentes oficiales:
+[LevelUtils](https://github.com/Glitchfiend/TerraBlender/blob/1.21.1/Common/src/main/java/terrablender/util/LevelUtils.java),
+[biomas](https://github.com/Glitchfiend/TerraBlender/blob/1.21.1/Common/src/main/java/terrablender/mixin/MixinMultiNoiseBiomeSource.java),
+[clonado](https://github.com/Glitchfiend/TerraBlender/blob/1.21.1/Common/src/main/java/terrablender/mixin/MixinNoiseBasedChunkGenerator.java).
+La firma de `Climate.Sampler` quedó validada mediante compilación y GameTest;
+no se consultó la caché de fuentes Minecraft para este cambio. La prueba
+`solarExposesMultiNoiseAndPreservesClimateRouting` comprueba la fuente visible,
+el vacío, el bioma central, los valores climáticos anteriores y el no-op con
+clima apagado. La generación de BOP y sus superficies requiere validación
+en juego con TerraBlender y BOP instalados.
+
+En la misma caché NeoForm citada arriba: RandomState.java:18, 31–42 y 101–125;
+NoiseGeneratorSettings.java:19–30; NoiseChunk.java:138–159; NoiseBasedChunkGenerator.java:84–98.
+SolarRandomStateAccess expone únicamente el catálogo de parámetros para construir
+un estado nuevo; no cambia ningún campo del estado original.
+
+### Fuentes para alcance de combate y eventos de guardianes
+
+En la caché NeoForm citada: Ghast.java:187–188 y 270–271 (disparo a menos de 64),
+Blaze.java:54 y 254 (seguimiento 48), Phantom.java:235–246 (escaneo horizontal 16),
+BaseSpawner.java:160–171 y EventHooks.java:258–263 (posición y finalización).
+La limpieza de listeners temporales de GameTest usa `IEventBus.unregister`,
+según la [API de NeoForged Bus](https://github.com/neoforged/Bus/blob/main/src/main/java/net/neoforged/bus/api/IEventBus.java).

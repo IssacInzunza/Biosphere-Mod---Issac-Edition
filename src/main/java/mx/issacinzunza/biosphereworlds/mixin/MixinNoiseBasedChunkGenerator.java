@@ -35,6 +35,23 @@ import java.util.Objects;
 
 @Mixin(NoiseBasedChunkGenerator.class)
 public abstract class MixinNoiseBasedChunkGenerator implements BiosphereGeneratorAccess {
+    @org.spongepowered.asm.mixin.Unique
+    private volatile mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound biosphereworlds$classicWorld;
+
+    @Override public mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound biosphereworlds$classicWorld() {
+        return biosphereworlds$classicWorld;
+    }
+    @Override public void biosphereworlds$setClassicWorld(mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound world) {
+        if (biosphereworlds$classicWorld != null && biosphereworlds$classicWorld != world) {
+            throw new IllegalStateException("Classic generator shared between different worlds");
+        }
+        // getBiomeSource tambien puede registrar diagnostico: debe ver ya la receta guardada.
+        biosphereworlds$classicWorld = world;
+        var source = ((NoiseBasedChunkGenerator) (Object) this).getBiomeSource();
+        if (source instanceof mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Access access) {
+            access.biosphereworlds$setClassicWorld(world);
+        }
+    }
     private static final ResourceKey<NoiseGeneratorSettings> BIOSPHERE_SETTINGS = ResourceKey.create(Registries.NOISE_SETTINGS, mx.issacinzunza.biosphereworlds.BiosphereWorlds.prefix("biospheres"));
 
     @Inject(method = "<init>", at = @org.spongepowered.asm.mixin.injection.At("TAIL"))
@@ -46,6 +63,7 @@ public abstract class MixinNoiseBasedChunkGenerator implements BiosphereGenerato
 
     @Override
     public boolean biosphereworlds$isBiosphereGenerator() {
+        if ((Object) this instanceof mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkGenerator) return false;
         return settings.unwrapKey().map(BIOSPHERE_SETTINGS::equals).orElse(false);
     }
 
@@ -54,10 +72,10 @@ public abstract class MixinNoiseBasedChunkGenerator implements BiosphereGenerato
                                          RandomState random, org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<NoiseChunk> cir) {
         if (biosphereworlds$isBiosphereGenerator()) {
             BiosphereWorldgen.markNoiseChunk(cir.getReturnValue());
-            if (cir.getReturnValue().aquifer() instanceof Aquifer.NoiseBasedAquifer aquifer) {
-                BiosphereWorldgen.markAquifer(aquifer);
-            }
+            ((mx.issacinzunza.biosphereworlds.worldgen.BiosphereNoiseChunkAccess) cir.getReturnValue())
+                    .biosphereworlds$setClassicWorld(biosphereworlds$classicWorld);
             ((BiosphereChunkAccess) chunk).biosphereworlds$setBiosphere(true);
+            ((BiosphereChunkAccess) chunk).biosphereworlds$setClassicWorld(biosphereworlds$classicWorld);
         }
     }
 
@@ -66,6 +84,12 @@ public abstract class MixinNoiseBasedChunkGenerator implements BiosphereGenerato
                                           ChunkAccess chunk, CallbackInfoReturnable<java.util.concurrent.CompletableFuture<ChunkAccess>> cir) {
         if (biosphereworlds$isBiosphereGenerator()) {
             BiosphereWorldgen.markBiomeSource(((NoiseBasedChunkGenerator)(Object)this).getBiomeSource());
+            // Validar antes de generar bloques, y sin resolver un catalogo desactivado.
+            ((BiosphereChunkAccess) chunk).biosphereworlds$setClassicWorld(biosphereworlds$classicWorld);
+            var layout = BiosphereWorldgen.classicLayout(this);
+            if (biosphereworlds$classicWorld == null && layout.params().satellitesEnabled() && layout.params().satellitesMaxCount() > 0) {
+                mx.issacinzunza.biosphereworlds.event.SatelliteMineralCatalog.candidates();
+            }
         }
     }
 
