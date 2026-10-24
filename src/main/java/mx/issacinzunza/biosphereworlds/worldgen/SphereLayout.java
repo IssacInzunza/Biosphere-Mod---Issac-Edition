@@ -37,6 +37,24 @@ public final class SphereLayout {
     /** Grosor del cascaron, en bloques. Valor historico de {@code SphereCarver}. */
     public static final double SHELL_THICKNESS = 2.0;
 
+    /**
+     * Seleccion vertical del cascaron; el ecuador pertenece a la mitad superior.
+     * No comprueba pertenencia a la esfera ni decide la contencion de agua.
+     */
+    public static boolean shellHemisphereEnabled(int y, double centerY, boolean upperEnabled, boolean lowerEnabled) {
+        return y >= centerY ? upperEnabled : lowerEnabled;
+    }
+
+    /**
+     * Banda interior del forro, con los limites radiales del carver clasico.
+     * Recibe medidas precalculadas y su techo propio; no depende del vidrio.
+     */
+    public static boolean bedrockLinerContains(boolean enabled, int y, double ceilingY, double distanceSq,
+                                               double shellInnerRadiusSq, double linerInnerRadiusSq) {
+        return enabled && y <= ceilingY
+                && distanceSq >= linerInnerRadiusSq && distanceSq < shellInnerRadiusSq;
+    }
+
     /** Tamano de la cache por celda: {@code 1 << CACHE_BITS} entradas. */
     private static final int CACHE_BITS = 12;
     private static final int CACHE_SIZE = 1 << CACHE_BITS;
