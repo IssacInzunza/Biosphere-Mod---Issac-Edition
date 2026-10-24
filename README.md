@@ -116,8 +116,8 @@ planet terrain, since the hot/cold central body deliberately uses a fixed biome.
 
 These options reuse the Biospheres definitions with independent values in SolarSystems.toml.
 The table describes their Solar behavior; existing Solar worlds retain saved values.
-Automatic bridges are **always disabled**. Classic grid spacing and hemispheres do
-not apply. Solar uses its own `close_open_top` to cap planets cut by world height.
+Automatic bridges are **always disabled**. Classic grid spacing and the legacy hemisphere mode do
+not apply. Both shell switches work in Solar. Solar uses its own `close_open_top` to cap planets cut by world height.
 General minimum/maximum pairs are validated together.
 Solar uses the positive radii from Settings without an additional planet radius cap.
 Orbital centers use the configured Y; world height clips oversized planets. Satellite sizes of 100% are accepted as input, but candidates
@@ -129,6 +129,8 @@ as large as their parent are omitted.
 | `radius` | `128` | integer 1..46340 | Largest orbital sphere radius, in blocks. Technical upper limit, not a recommended gameplay size. The central Stronghold sphere keeps its required safe size automatically. |
 | `center_y` | `62` | −64–319 | Exact orbital center Y. Oversized spheres are clipped at world height. The Stronghold center remains Y=127. |
 | `sphere_block` | `minecraft:glass` | block IDs / ids de bloques | Block ids used for the sphere shells; each sphere selects one deterministically. Empty, missing or unusable choices fall back to glass. Automatic bridges are disabled in Solar. |
+| `upper_shell_enabled` | `true` | boolean | Upper main shell, including the equator. Disabled leaves dry terrain exposed; glass seals water reaching the edge. Satellites remain complete. |
+| `lower_shell_enabled` | `true` | boolean | Lower main shell. Disabled leaves dry terrain exposed; glass seals water reaching the edge. Bedrock SHELL remains independent, even with both halves disabled. |
 | `close_open_top` | `false` | boolean | Close planets cut by the build limit with a flat shell cap at Y=319. Disabled leaves the opening. Does not shrink the configured radius. |
 | `bedrock_mode` | `FLOOR` | FLOOR / NONE / SHELL | FLOOR preserves vanilla world-floor bedrock only where a sphere reaches it. NONE replaces it with deepslate. SHELL adds a three-block bedrock lining inside the lower shell. |
 | `edge_ocean_enabled` | `false` | boolean / booleano | Lowers and floods the interior band next to orbital shells. The dangerous central sphere keeps its magma or ice profile. |
@@ -221,6 +223,8 @@ min_radius = 128
 spacing = 500
 center_y = 62
 sphere_block = ["minecraft:glass"]
+upper_shell_enabled = true
+lower_shell_enabled = true
 only_upper_hemisphere = false
 close_open_top = false
 bedrock_mode = "floor"
@@ -258,9 +262,11 @@ satellites_mod_ore_density_permille = 20
 - `spacing`: Positive integer distance between sphere center points on the grid.
 - `center_y`: Y level of sphere centers.
 - `sphere_block`: List of block IDs used for sphere shells. Each sphere randomly picks one type from the list, deterministically based on its grid position. For example `["minecraft:glass", "minecraft:stone", "minecraft:obsidian"]`.
-- `only_upper_hemisphere`: Generate only upper hemispheres when enabled.
+- `upper_shell_enabled` / `lower_shell_enabled`: Independently generate the main shell at/above or below each sphere's center, in both generators. Both default to `true`, preserving previous generation. When a half is disabled, dry terrain stays intact and `minecraft:glass` seals existing water and later water flow at that shell, including player-placed water. Bedrock SHELL works with either or both halves disabled. Satellites remain complete. Values are saved per new world; old saved recipes default both switches to `true`. Classic worlds without a saved recipe retain their legacy TOML behavior.
+- `only_upper_hemisphere`: Legacy Classic mode, preserving its smaller radius and special replacement rules. Ignored when either new shell switch is disabled; unavailable in Solar.
+
 - `close_open_top`: Close spheres that pass the build limit with a flat cap at the highest placeable Y (319), using each sphere's shell block. Use it when `center_y + radius` is greater than 321, which is when the shell leaves an open hole at the top; below that value the shell already covers the whole disk and the option changes nothing. Default `false` keeps the natural opening.
-- `bedrock_mode`: Bedrock at the world floor. `floor` (default) keeps the `bedrock_floor` surface rule at the bottom of the world (Y -64 to -60, noisy, only where there is stone). `none` leaves no bedrock at the bottom: the carver turns that bedrock into deepslate, so the world floor can be mined through (the Create Diesel Generators pumpjack needs bedrock, so it will not work with this value). `shell` is `floor` plus a 3-block bedrock lining on the inside of the glass shell in the lower half of each sphere (`y <= center_y`), which replaces any block except the shell itself and gives an accessible bedrock layer to build on. With `only_upper_hemisphere` enabled, `shell` behaves exactly like `floor` (there is no lower half to line). Only affects newly generated chunks.
+- `bedrock_mode`: Bedrock at the world floor. `floor` (default) keeps the `bedrock_floor` surface rule at the bottom of the world (Y -64 to -60, noisy, only where there is stone). `none` leaves no bedrock at the bottom: the carver turns that bedrock into deepslate, so the world floor can be mined through (the Create Diesel Generators pumpjack needs bedrock, so it will not work with this value). `shell` is `floor` plus a 3-block inner bedrock lining in the lower half of each sphere (`y <= center_y`), independently of the new shell switches. The legacy `only_upper_hemisphere` mode retains its old `floor` behavior when both new switches are enabled. Saved world recipes retain their values.
 - `generate_bridge`: Enable or disable bridges between adjacent spheres.
 - `bridge_block`: Block used for bridges.
 - `bridge_radius`: Bridge radius, integer `0..46340` (larger values make thicker bridges; zero preserves the empty bridge behavior).
@@ -301,6 +307,11 @@ Each satellite picks one mineral for its whole core, deterministically from its 
 **Small cores have high variance.** A default-size satellite usually holds a few dozen to a few hundred ore blocks, but a small or unlucky one can end up with very little or even no mineral of its chosen type. That is intentional: the ore is a per-block hash, not a guaranteed payout.
 
 Classic satellites that exceed Y319 are lowered while preserving size, placement seed, azimuth and radial distance to their parent. This can relax the minimum elevation and recovers moons around large spheres when sufficient horizontal space exists. Full-volume, cell and collision checks still apply; a narrow cell or an oversized moon can still prevent placement. Solar applies this adjustment only to layout7; layouts1–6 retain their saved behavior.
+
+To check the open-shell mode, create a new world in each preset with the desired switches disabled.
+Check rivers and seas from below and across chunk borders, then reopen the world.
+With both switches disabled, `bedrock_mode="shell"` must still create its inner liner.
+Visual inspection and a separate run with C2ME are still needed; the automated fluid tests cover water already at the edge and water entering it sideways or downward.
 
 ### Tuning Notes
 

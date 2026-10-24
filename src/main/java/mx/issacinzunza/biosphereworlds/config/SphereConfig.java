@@ -17,6 +17,8 @@ public class SphereConfig {
     public static final ModConfigSpec.ConfigValue<Number> CENTER_Y;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> SPHERE_BLOCK;
     public static final ModConfigSpec.ConfigValue<Boolean> ONLY_UPPER_HEMISPHERE;
+    public static final ModConfigSpec.BooleanValue UPPER_SHELL_ENABLED;
+    public static final ModConfigSpec.BooleanValue LOWER_SHELL_ENABLED;
     public static final ModConfigSpec.BooleanValue CLOSE_OPEN_TOP;
     public static final ModConfigSpec.EnumValue<BedrockMode> BEDROCK_MODE;
     public static final ModConfigSpec.ConfigValue<Boolean> GENERATE_BRIDGE;
@@ -52,6 +54,8 @@ public class SphereConfig {
         CENTER_Y = general.CENTER_Y;
         SPHERE_BLOCK = general.SPHERE_BLOCK;
         ONLY_UPPER_HEMISPHERE = BUILDER.comment("Generate only the upper hemisphere of the spheres").define("only_upper_hemisphere", false);
+        UPPER_SHELL_ENABLED = general.UPPER_SHELL_ENABLED;
+        LOWER_SHELL_ENABLED = general.LOWER_SHELL_ENABLED;
         CLOSE_OPEN_TOP = general.CLOSE_OPEN_TOP;
         BEDROCK_MODE = general.BEDROCK_MODE;
         GENERATE_BRIDGE = BUILDER.comment("Generate bridges between spheres").define("generate_bridge", true);
@@ -87,6 +91,8 @@ public class SphereConfig {
         public final ModConfigSpec.ConfigValue<Number> MIN_RADIUS;
         public final ModConfigSpec.ConfigValue<Number> CENTER_Y;
         public final ModConfigSpec.ConfigValue<java.util.List<? extends String>> SPHERE_BLOCK;
+        public final ModConfigSpec.BooleanValue UPPER_SHELL_ENABLED;
+        public final ModConfigSpec.BooleanValue LOWER_SHELL_ENABLED;
         public final ModConfigSpec.BooleanValue CLOSE_OPEN_TOP;
         public final ModConfigSpec.EnumValue<BedrockMode> BEDROCK_MODE;
         public final ModConfigSpec.BooleanValue EDGE_OCEAN_ENABLED;
@@ -113,8 +119,10 @@ public class SphereConfig {
             CENTER_Y = builder.comment("Center Y level for sphere generation (integer)").define("center_y", 62,
                     value -> isIntegerInRange(value, Integer.MIN_VALUE, Integer.MAX_VALUE));
             SPHERE_BLOCK = builder.comment("Blocks used for the spheres, randomly assigned per sphere").defineListAllowEmpty("sphere_block", java.util.List.of("minecraft:glass"), SphereConfig::validateBlockName);
+            UPPER_SHELL_ENABLED = builder.comment("Generate the upper main shell, including the equator. Disabled halves retain glass where water reaches the shell. New worlds only; overrides the legacy hemisphere mode.").define("upper_shell_enabled", true);
+            LOWER_SHELL_ENABLED = builder.comment("Generate the lower main shell. Disabled halves retain glass where water reaches the shell. Does not disable the bedrock liner. New worlds only; overrides the legacy hemisphere mode.").define("lower_shell_enabled", true);
             CLOSE_OPEN_TOP = builder.comment("Close spheres cut by the build limit with a flat cap at the top buildable Y, using the sphere shell block").define("close_open_top", false);
-            BEDROCK_MODE = builder.comment("Bedrock at the world floor. floor: keep the bedrock_floor surface rule at the bottom of the world. none: no bedrock at the bottom, the floor is deepslate instead (the Create Diesel Generators pumpjack needs bedrock, so it will not work with this value). shell: floor plus a bedrock lining of 3 blocks on the inside of the glass shell in the lower half of each sphere. With only_upper_hemisphere enabled, shell behaves exactly like floor.").defineEnum("bedrock_mode", BedrockMode.FLOOR);
+            BEDROCK_MODE = builder.comment("Bedrock at the world floor. floor: keep world-floor bedrock. none: replace it with deepslate (pumpjacks requiring bedrock cannot use it). shell: floor plus a 3-block inner bedrock liner, independently of the new shell switches. The legacy hemisphere mode retains its old floor behavior when both switches are enabled.").defineEnum("bedrock_mode", BedrockMode.FLOOR);
             EDGE_OCEAN_ENABLED = builder.comment("Flood the band next to the sphere shell with ocean: the terrain is clamped down to a flat floor so water reaches the glass").define("edge_ocean_enabled", false);
             EDGE_OCEAN_WIDTH = builder.comment("Width of the ocean band, as a percentage of the sphere radius").defineInRange("edge_ocean_width", 20, 0, 100);
             EDGE_OCEAN_DEPTH = builder.comment("Depth of the ocean floor below sea level (63), in blocks").defineInRange("edge_ocean_depth", 20, 0, 100);

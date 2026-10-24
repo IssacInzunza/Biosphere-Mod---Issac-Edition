@@ -310,4 +310,99 @@ public final class BiosphereWorldgenGameTests {
         return new ProtoChunk(new ChunkPos(pos), UpgradeData.EMPTY, level,
                 level.registryAccess().registryOrThrow(Registries.BIOME), null);
     }
+
+    @GameTest(template = "solar_empty", timeoutTicks = 1200)
+    public static void classicShellSwitchesPreserveLiteralDefaultsAndIndependentBedrock(GameTestHelper helper) {
+        var configured = helper.getLevel().registryAccess().registryOrThrow(Registries.CONFIGURED_CARVER)
+                .getHolderOrThrow(mx.issacinzunza.biosphereworlds.registry.ModCarvers.BIOSPHERE_CARVER_KEY).value();
+        for (boolean upper : new boolean[]{false, true}) for (boolean lower : new boolean[]{false, true}) {
+            for (boolean legacy : new boolean[]{false, true}) {
+                var recipe = new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings(
+                        new SphereLayout.Params(500, 62, 8, 8), java.util.List.of("minecraft:blue_stained_glass"),
+                        mx.issacinzunza.biosphereworlds.config.SphereConfig.BedrockMode.SHELL, legacy, false,
+                        new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bridges(false, 1, "minecraft:oak_planks"),
+                        new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Ocean(false, 20, 20),
+                        new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Structures(true, 16), java.util.List.of(), upper, lower);
+                for (int cx : new int[]{-1, 0}) for (int cz : new int[]{-1, 0}) {
+                    var proto = chunk(helper, new BlockPos(cx * 16, 0, cz * 16));
+                    ((BiosphereChunkAccess) proto).biosphereworlds$setBiosphere(true);
+                    ((BiosphereChunkAccess) proto).biosphereworlds$setClassicWorld(new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound(recipe));
+                    for (int x = cx * 16; x < cx * 16 + 16; x++) for (int z = cz * 16; z < cz * 16 + 16; z++) {
+                        for (int y = 52; y <= 72; y++) proto.setBlockState(new BlockPos(x, y, z), shellFixtureState(x, y, z), false);
+                    }
+                    // Este carver no consulta contexto, acuifero ni biomas; la llamada recorre su escritor real.
+                    configured.carve(null, proto, pos -> null, net.minecraft.util.RandomSource.create(1), null,
+                            proto.getPos(), proto.getOrCreateCarvingMask(net.minecraft.world.level.levelgen.GenerationStep.Carving.AIR));
+                    for (int x = cx * 16; x < cx * 16 + 16; x++) for (int z = cz * 16; z < cz * 16 + 16; z++) {
+                        for (int y = 52; y <= 72; y++) {
+                            var original = shellFixtureState(x, y, z);
+                            var expected = original;
+                            boolean oldMode = upper && lower && legacy;
+                            int radius = oldMode ? 7 : 8;
+                            double dy = y - 62;
+                            double distanceSq = (double) x * x + (double) z * z + dy * dy;
+                            double innerRadiusSq = (radius - 2.0) * (radius - 2.0);
+                            double linerInnerRadius = radius - 2.0 - 3;
+                            if (linerInnerRadius < 0.0) linerInnerRadius = 0.0;
+                            // Copia literal de las condiciones y reemplazos anteriores para ambas mitades activas.
+                            if (distanceSq <= radius * radius && distanceSq >= innerRadiusSq) {
+                                if (upper && lower) {
+                                    if (!oldMode || original.is(net.minecraft.tags.BlockTags.AIR) || original.is(Blocks.WATER)) {
+                                        if (!(oldMode && y < 55 && !original.is(Blocks.WATER))) expected = Blocks.BLUE_STAINED_GLASS.defaultBlockState();
+                                    }
+                                } else if ((y >= 62 ? upper : lower)) expected = Blocks.BLUE_STAINED_GLASS.defaultBlockState();
+                                else if (original.is(Blocks.WATER)) expected = Blocks.GLASS.defaultBlockState();
+                            } else if (!oldMode && dy <= 0.0 && distanceSq >= linerInnerRadius * linerInnerRadius && distanceSq < innerRadiusSq) {
+                                expected = Blocks.BEDROCK.defaultBlockState();
+                            }
+                            helper.assertTrue(proto.getBlockState(new BlockPos(x, y, z)).equals(expected),
+                                    "Classic shell mismatch at " + x + "," + y + "," + z + " flags=" + upper + "," + lower + " legacy=" + legacy);
+                        }
+                    }
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    private static net.minecraft.world.level.block.state.BlockState shellFixtureState(int x, int y, int z) {
+        return switch (Math.floorMod(x + y + z, 3)) {
+            case 0 -> Blocks.STONE.defaultBlockState();
+            case 1 -> Blocks.WATER.defaultBlockState();
+            default -> Blocks.AIR.defaultBlockState();
+        };
+    }
+
+    @GameTest(template = "solar_empty")
+    public static void openClassicHeightmapsIgnoreBarriersAndLinerButKeepDryTerrain(GameTestHelper helper) {
+        var recipe = new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings(
+                new SphereLayout.Params(500, 62, 8, 8), java.util.List.of("minecraft:blue_stained_glass"),
+                mx.issacinzunza.biosphereworlds.config.SphereConfig.BedrockMode.SHELL, false, false,
+                new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bridges(false, 1, "minecraft:oak_planks"),
+                new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Ocean(false, 20, 20),
+                new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Structures(true, 16), java.util.List.of(), false, false);
+        for (var material : new net.minecraft.world.level.block.Block[]{Blocks.GLASS, Blocks.BEDROCK, Blocks.STONE}) {
+            var pos = material == Blocks.BEDROCK ? new BlockPos(4, 61, 0) : new BlockPos(-6, 62, 0);
+            var proto = chunk(helper, pos);
+            ((BiosphereChunkAccess) proto).biosphereworlds$setBiosphere(true);
+            ((BiosphereChunkAccess) proto).biosphereworlds$setClassicWorld(new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound(recipe));
+            proto.setBlockState(new BlockPos(pos.getX(), 0, pos.getZ()), Blocks.STONE.defaultBlockState(), false);
+            proto.setBlockState(pos, material.defaultBlockState(), false);
+            var types = java.util.EnumSet.of(Heightmap.Types.WORLD_SURFACE_WG, Heightmap.Types.OCEAN_FLOOR_WG);
+            Heightmap.primeHeightmaps(proto, types);
+            for (var type : types) {
+                var map = proto.getOrCreateHeightmapUnprimed(type);
+                int x = pos.getX() & 15, z = pos.getZ() & 15;
+                int expected = material == Blocks.STONE ? pos.getY() + 1 : 1;
+                helper.assertTrue(map.getFirstAvailable(x, z) == expected, "Open Classic heightmap counted containment or lost dry terrain");
+                var top = pos.above(30);
+                proto.setBlockState(top, Blocks.STONE.defaultBlockState(), false);
+                map.update(x, top.getY(), z, Blocks.STONE.defaultBlockState());
+                proto.setBlockState(top, Blocks.AIR.defaultBlockState(), false);
+                map.update(x, top.getY(), z, Blocks.AIR.defaultBlockState());
+                helper.assertTrue(map.getFirstAvailable(x, z) == expected, "Downward heightmap scan counted containment or lost dry terrain");
+            }
+        }
+        helper.succeed();
+    }
 }

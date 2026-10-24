@@ -15,6 +15,7 @@ import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.valueproviders.FloatProvider;
 import net.minecraft.world.level.ChunkPos;
@@ -70,12 +71,15 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
         var world = BiosphereWorldgen.classicWorld(chunk);
         SphereLayout layout = BiosphereWorldgen.classicLayout(chunk);
         boolean closeOpenTop = world == null ? SphereConfig.CLOSE_OPEN_TOP.get() : world.settings().closeOpenTop();
-        boolean onlyUpper = world == null ? SphereConfig.ONLY_UPPER_HEMISPHERE.get() : world.settings().onlyUpperHemisphere();
+        boolean upper = world == null ? SphereConfig.UPPER_SHELL_ENABLED.get() : world.settings().upperShellEnabled();
+        boolean lower = world == null ? SphereConfig.LOWER_SHELL_ENABLED.get() : world.settings().lowerShellEnabled();
+        boolean onlyUpper = upper && lower
+                && (world == null ? SphereConfig.ONLY_UPPER_HEMISPHERE.get() : world.settings().onlyUpperHemisphere());
         int topCapY = chunk.getMaxBuildHeight() - 1;
 
         // bedrock_mode. Con floor no se activa ninguna rama nueva. El forro solo
-        // existe con hemisphere completo: con only_upper_hemisphere no hay mitad
-        // inferior que forrar y shell se comporta exactamente como floor.
+        // conserva su compatibilidad con el modo antiguo. Los controles nuevos
+        // no desactivan el forro ni cambian el radio de la esfera.
         BedrockMode bedrockMode = world == null ? SphereConfig.BEDROCK_MODE.get() : world.settings().bedrockMode();
         boolean bedrockLiner = bedrockMode == BedrockMode.SHELL && !onlyUpper;
         BlockState bedrockState = bedrockLiner ? Blocks.BEDROCK.defaultBlockState() : null;
@@ -152,23 +156,25 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                             // misma condicion rellena ademas el disco completo en
                             // el Y colocable mas alto, cerrando el hueco que deja
                             // una esfera cortada por el limite de construccion.
-                            if (distanceSq <= outerRadiusSq
-                                    && (distanceSq >= innerRadiusSq || (closeOpenTop && y == topCapY))) {
+                            if (SphereLayout.shellBoundary(distanceSq, innerRadiusSq, outerRadiusSq, closeOpenTop && y == topCapY)) {
+                                BlockState shellState = blockState;
+                                if (!SphereLayout.shellHemisphereEnabled(y, centerY, upper, lower)) {
+                                    if (!SphereLayout.preserveShellForWater(true,
+                                            chunk.getFluidState(new BlockPos(x, y, z)).is(FluidTags.WATER), true, y, centerY, upper, lower)) continue;
+                                    shellState = Blocks.GLASS.defaultBlockState();
+                                }
                                 if(!onlyUpper || canReplaceBlock(config, chunk.getBlockState(new BlockPos(x, y, z)))) {
                                     if(onlyUpper && (y < 55 && !chunk.getBlockState(new BlockPos(x, y, z)).is(Blocks.WATER)))
                                         continue;
                                     BlockPos pos = new BlockPos(x, y, z);
-                                    chunk.setBlockState(pos, blockState, false);
+                                    chunk.setBlockState(pos, shellState, false);
                                     generated = true;
                                 }
                             }
                             // Forro de bedrock del modo shell: mitad inferior
                             // (y <= centerY) y estrictamente por dentro del
                             // cascaron, que nunca se toca.
-                            else if (bedrockLiner
-                                    && dy <= 0.0
-                                    && distanceSq >= linerInnerRadiusSq
-                                    && distanceSq < innerRadiusSq) {
+                            else if (SphereLayout.bedrockLinerContains(bedrockLiner, y, centerY, distanceSq, innerRadiusSq, linerInnerRadiusSq)) {
                                 chunk.setBlockState(new BlockPos(x, y, z), bedrockState, false);
                                 generated = true;
                             }

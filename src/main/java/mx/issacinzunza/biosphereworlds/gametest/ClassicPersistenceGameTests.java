@@ -13,6 +13,9 @@ import mx.issacinzunza.biosphereworlds.density.SphereEdgeOcean;
 import mx.issacinzunza.biosphereworlds.density.SphereEdgeOceanFunction;
 import mx.issacinzunza.biosphereworlds.registry.ModCarvers;
 import mx.issacinzunza.biosphereworlds.worldgen.*;
+import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkGenerator;
+import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarLayout;
+import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarSettings;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -30,9 +33,12 @@ import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
@@ -235,15 +241,116 @@ public final class ClassicPersistenceGameTests {
             finally { storage.close(); }
         }
     }
-    private static Fixture open(GameTestHelper helper, Path root, String name, boolean fresh, boolean classic) throws Exception {
-        var server = helper.getLevel().getServer();
+
+    @GameTest(template = "solar_empty")
+    public static void shellSwitchesRoundTripAndOldRecipesKeepCompleteShells(GameTestHelper helper) {
+        var classic = ClassicWorldSettings.capture();
+        var defaults = SolarSettings.General.defaults();
+        for (boolean upper : new boolean[]{false, true}) for (boolean lower : new boolean[]{false, true}) {
+            var recipe = new ClassicWorldSettings(classic.geometry(), classic.shellBlocks(), classic.bedrockMode(),
+                    classic.onlyUpperHemisphere(), classic.closeOpenTop(), classic.bridges(), classic.ocean(),
+                    classic.structures(), classic.minerals(), upper, lower);
+            var tag = (CompoundTag) ClassicWorldSettings.CODEC.encodeStart(NbtOps.INSTANCE, recipe).getOrThrow();
+            helper.assertTrue(ClassicWorldSettings.CODEC.parse(NbtOps.INSTANCE, tag).getOrThrow().equals(recipe), "Classic shell switches changed when saved");
+            tag.remove("upper_shell_enabled");
+            tag.remove("lower_shell_enabled");
+            var old = ClassicWorldSettings.CODEC.parse(NbtOps.INSTANCE, tag).getOrThrow();
+            helper.assertTrue(old.upperShellEnabled() && old.lowerShellEnabled(), "Old Classic recipes must keep their previous shell");
+            var general = new SolarSettings.General(defaults.centerY(), defaults.shellBlocks(), defaults.bedrockMode(),
+                    defaults.satellites(), false, upper, lower);
+            var solar = (CompoundTag) SolarSettings.General.CODEC.encodeStart(NbtOps.INSTANCE, general).getOrThrow();
+            helper.assertTrue(SolarSettings.General.CODEC.parse(NbtOps.INSTANCE, solar).getOrThrow().equals(general), "Solar shell switches changed when saved");
+            solar.remove("upper_shell_enabled");
+            solar.remove("lower_shell_enabled");
+            var oldSolar = SolarSettings.General.CODEC.parse(NbtOps.INSTANCE, solar).getOrThrow();
+            helper.assertTrue(oldSolar.upperShellEnabled() && oldSolar.lowerShellEnabled(), "Old Solar recipes must keep complete shells");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "solar_empty", timeoutTicks = 1200)
+    public static void realWaterTicksSealOpenShellsInBothGenerators(GameTestHelper helper) throws Exception {
+        var root = Files.createDirectories(Path.of("shell-fluid-" + UUID.randomUUID()));
         var registry = helper.getLevel().registryAccess();
-        var storage = LevelStorageSource.createDefault(root).createAccess(name);
+        var noise = registry.registryOrThrow(Registries.NOISE_SETTINGS)
+                .getHolderOrThrow(ResourceKey.create(Registries.NOISE_SETTINGS, BiosphereWorlds.prefix("biospheres")));
+        var parameters = registry.registryOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
+                .getHolderOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD);
+        for (boolean solar : new boolean[]{false, true}) {
+            NoiseBasedChunkGenerator generator;
+            if (solar) {
+                var defaults = SolarSettings.defaults();
+                var general = new SolarSettings.General(62, List.of("minecraft:glass"), SphereConfig.BedrockMode.FLOOR,
+                        defaults.general().satellites(), false, false, false);
+                var settings = new SolarSettings(new SolarLayout.Params(512, 1500, 1, 8, 8, 180, 32, 32,
+                        false, 30, 40, 30, 0, 30, 55, 16), false, SolarLayout.Climate.TEMPERATE,
+                        defaults.guardians(), defaults.environment(), general, 7);
+                generator = new SolarChunkGenerator(MultiNoiseBiomeSource.createFromPreset(parameters),
+                        registry.registryOrThrow(Registries.BIOME).getHolderOrThrow(Biomes.THE_VOID), noise, settings);
+            } else {
+                generator = new NoiseBasedChunkGenerator(MultiNoiseBiomeSource.createFromPreset(parameters), noise);
+                var recipe = new ClassicWorldSettings(new SphereLayout.Params(500, 62, 8, 8), List.of("minecraft:glass"),
+                        SphereConfig.BedrockMode.FLOOR, false, false, new ClassicWorldSettings.Bridges(false, 1, "minecraft:oak_planks"),
+                        new ClassicWorldSettings.Ocean(false, 20, 20), new ClassicWorldSettings.Structures(true, 16), List.of(), false, false);
+                ((ClassicWorldSettings.Access) generator).biosphereworlds$setClassicWorld(new ClassicWorldSettings.Bound(recipe));
+            }
+            try (var fixture = open(helper, root, solar ? "solar" : "classic", false, generator)) {
+                var level = fixture.level();
+                var body = solar ? ((SolarChunkGenerator) generator).layout().systemAtCell(0, 0).bodies().get(1) : null;
+                int centerX = body == null ? 0 : (int) Math.ceil(body.x());
+                int centerZ = body == null ? 0 : (int) Math.ceil(body.z());
+                int centerY = body == null ? 62 : (int) body.y();
+                for (boolean downward : new boolean[]{false, true}) {
+                    BlockPos edge = null;
+                    for (int offset = 1; offset <= 10; offset++) {
+                        var candidate = new BlockPos(centerX + (downward ? 0 : offset), centerY - (downward ? offset : 0), centerZ);
+                        boolean boundary = solar ? ((SolarChunkGenerator) generator).layout().shellBoundary(body, candidate.getX(), candidate.getY(), candidate.getZ())
+                                : BiosphereWorldgen.classicLayout(generator).mainShellBandAt(candidate.getX(), candidate.getY(), candidate.getZ(), false, 319, false) != null;
+                        if (boundary) { edge = candidate; break; }
+                    }
+                    helper.assertTrue(edge != null, "Fixture must reach the actual main shell");
+                    var source = downward ? edge.above() : edge.west();
+                    for (int dx = -2; dx <= 2; dx++) for (int dy = -2; dy <= 2; dy++) for (int dz = -2; dz <= 2; dz++) {
+                        level.setBlock(source.offset(dx, dy, dz), Blocks.AIR.defaultBlockState(), 2);
+                    }
+                    if (!downward) for (var wall : List.of(source.below(), source.west(), source.north(), source.south(), edge.below())) {
+                        level.setBlock(wall, Blocks.STONE.defaultBlockState(), 2);
+                    }
+                    level.setBlock(source, Blocks.WATER.defaultBlockState(), 2);
+                    tickWater(level, source);
+                    helper.assertTrue(level.getBlockState(edge).is(Blocks.GLASS), "Real water tick escaped the " + (downward ? "bottom" : "side") + " of " + (solar ? "Solar" : "Classic"));
+                    helper.assertTrue(level.getFluidState(source).is(net.minecraft.tags.FluidTags.WATER), "Containment removed interior source water");
+                    level.setBlock(edge, Blocks.WATER.defaultBlockState(), 2);
+                    tickWater(level, edge);
+                    helper.assertTrue(level.getBlockState(edge).is(Blocks.GLASS), "Water already at the shell must seal its source");
+                }
+            }
+        }
+        var vanillaPos = helper.absolutePos(new BlockPos(1, 3, 1));
+        var before = helper.getLevel().getBlockState(vanillaPos);
+        helper.assertTrue(!BiosphereWorldgen.preserveWaterShell(helper.getLevel(), vanillaPos,
+                Blocks.WATER.defaultBlockState().getFluidState()), "Vanilla must bypass the fluid adapter");
+        helper.assertTrue(helper.getLevel().getBlockState(vanillaPos).equals(before), "Vanilla block changed");
+        helper.succeed();
+    }
+
+    private static void tickWater(ServerLevel level, BlockPos pos) {
+        var state = level.getFluidState(pos);
+        ((FlowingFluid) state.getType()).tick(level, pos, state);
+    }
+
+    private static Fixture open(GameTestHelper helper, Path root, String name, boolean fresh, boolean classic) throws Exception {
+        var registry = helper.getLevel().registryAccess();
         var settings = registry.registryOrThrow(Registries.NOISE_SETTINGS).getHolderOrThrow(classic
                 ? ResourceKey.create(Registries.NOISE_SETTINGS, BiosphereWorlds.prefix("biospheres")) : NoiseGeneratorSettings.OVERWORLD);
         var parameters = registry.registryOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
                 .getHolderOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD);
         var generator = new NoiseBasedChunkGenerator(MultiNoiseBiomeSource.createFromPreset(parameters), settings);
+        return open(helper, root, name, fresh, generator);
+    }
+    private static Fixture open(GameTestHelper helper, Path root, String name, boolean fresh, NoiseBasedChunkGenerator generator) throws Exception {
+        var server = helper.getLevel().getServer();
+        var storage = LevelStorageSource.createDefault(root).createAccess(name);
         var data = server.getWorldData().overworldData();
         boolean initialized = data.isInitialized();
         try {

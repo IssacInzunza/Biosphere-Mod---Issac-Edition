@@ -68,6 +68,33 @@ public final class SphereLayout {
                 && !shellHemisphereEnabled(y, centerY, upperEnabled, lowerEnabled);
     }
 
+    /** Condicion radial literal del cascaron clasico, incluida su tapa opcional. */
+    public static boolean shellBoundary(double distanceSq, double innerRadiusSq, double outerRadiusSq, boolean cap) {
+        return distanceSq <= outerRadiusSq && (distanceSq >= innerRadiusSq || cap);
+    }
+
+    /**
+     * Busca el cascaron o forro principal con las mismas celdas del carver del chunk.
+     * Solo para los controles nuevos (radio completo); no consulta satelites.
+     */
+    public Sphere mainShellBandAt(int x, int y, int z, boolean closeOpenTop, int topY, boolean liner) {
+        for (int gx = firstCellIndex(x & ~15); gx <= lastCellIndex((x & ~15) + 15); gx++) {
+            for (int gz = firstCellIndex(z & ~15); gz <= lastCellIndex((z & ~15) + 15); gz++) {
+                Sphere sphere = sphereAtCell(gx, gz);
+                double dx = x - sphere.centerX(), dy = y - (int) sphere.centerY(), dz = z - sphere.centerZ();
+                double distanceSq = dx * dx + dz * dz + dy * dy;
+                double inner = sphere.radius() - SHELL_THICKNESS;
+                double innerSq = inner * inner;
+                double linerInner = Math.max(0.0, inner - 3);
+                if (liner ? bedrockLinerContains(true, y, sphere.centerY(), distanceSq, innerSq, linerInner * linerInner)
+                        : shellBoundary(distanceSq, innerSq, sphere.radius() * sphere.radius(), closeOpenTop && y == topY)) {
+                    return sphere;
+                }
+            }
+        }
+        return null;
+    }
+
     /** Tamano de la cache por celda: {@code 1 << CACHE_BITS} entradas. */
     private static final int CACHE_BITS = 12;
     private static final int CACHE_SIZE = 1 << CACHE_BITS;

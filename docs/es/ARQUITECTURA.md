@@ -319,7 +319,7 @@ cascarón se aplica también a sus lunas y se excluye de los heightmaps.
 
 Reutilizan las definiciones del archivo clásico, pero sus valores se leen de SolarSystems.toml al crear cada mundo Solar.
 Los mundos Solar guardados conservan su instantánea. Puentes automáticos: **desactivados siempre**.
-La cuadrícula clásica y los hemisferios no se aplican a Solar. La tapa superior
+La cuadrícula clásica y el modo de hemisferio antiguo no se aplican a Solar. Los dos controles nuevos del cascarón sí se aplican. La tapa superior
 usa su propio close_open_top. Se validan min <= max en radios, tamaños, huecos y elevaciones.
 Solar usa los radios positivos de Settings sin un límite planetario adicional;
 la altura del mundo recorta las esferas grandes. Se acepta tamaño de satélite del 100 %, pero
@@ -331,6 +331,8 @@ se omiten candidatos tan grandes como su planeta.
 | `radius` | `128` | entero 1..46340 | Radio máximo de los planetas orbitales; límite técnico, no recomendación de tamaño. La biosfera del Stronghold conserva automáticamente el tamaño necesario para alojarlo completo. |
 | `center_y` | `62` | −64–319 | Altura Y exacta del centro de los planetas orbitales. La altura del mundo recorta las esferas que la superan. El centro del Stronghold permanece en Y=127. |
 | `sphere_block` | `minecraft:glass` | block IDs / ids de bloques | Ids de bloque para los cascarones. Cada esfera elige uno de forma determinista. Si la lista está vacía o el bloque no es válido, se usa vidrio. Los puentes automáticos están desactivados en Solar. |
+| `upper_shell_enabled` | `true` | booleano | Cascarón principal desde el centro hacia arriba, incluido el ecuador. Desactivado conserva el terreno seco y sella con vidrio el agua que alcanza el borde. No afecta a satélites. |
+| `lower_shell_enabled` | `true` | booleano | Cascarón principal por debajo del centro. Desactivado conserva el terreno seco y sella con vidrio el agua que alcanza el borde. El forro SHELL sigue disponible, incluso con ambas mitades desactivadas. |
 | `close_open_top` | `false` | booleano | Tapa las esferas cortadas por el límite de construcción con el bloque del cascarón en Y=319. Desactivado deja el corte abierto; no reduce el radio. |
 | `bedrock_mode` | `FLOOR` | FLOOR / NONE / SHELL | FLOOR conserva la bedrock vanilla del fondo del mundo donde llegue una esfera. NONE la sustituye por deepslate. SHELL añade un forro de bedrock de tres bloques por dentro de la mitad inferior del cascarón. |
 | `edge_ocean_enabled` | `false` | boolean / booleano | Baja e inunda la banda interior junto al cascarón de los planetas. La biosfera central conserva su perfil peligroso de magma o hielo. |
@@ -683,15 +685,34 @@ con un grosor fijo de cascarón de `2.0`, y coloca el estado elegido por
 `probability` del JSON es parte del `CarverConfiguration`, pero el camino
 especial del mixin controla qué carvers se ejecutan.
 
-Si `only_upper_hemisphere` está activo, `SphereCarver.carve` reduce el radio en
+Si `only_upper_hemisphere` está activo y ambos controles nuevos siguen activados, `SphereCarver.carve` reduce el radio en
 uno y restringe el reemplazo: por debajo de Y 55 solo permite agua y exige que
 el bloque sea reemplazable según `canReplaceBlock`.
+
+`upper_shell_enabled` y `lower_shell_enabled` controlan solo el cascarón principal,
+sin recortar terreno ni cambiar hashes, radios o satélites. El ecuador pertenece a
+la mitad superior. Desactivar cualquiera da prioridad a estos controles sobre el
+modo antiguo. `SphereLayout.shellBoundary` conserva el predicado radial clásico;
+`mainShellBandAt` recorre las mismas celdas del chunk para el flujo y los heightmaps.
+Solar conserva su propio límite radial inclusivo/exclusivo en `SolarLayout.shellBoundary`.
+
+En una mitad abierta, los escritores conservan `minecraft:glass` donde ya hay agua.
+`MixinFlowingFluid` intercepta `tick` para agua situada en el borde y `spreadTo`
+para agua que intenta entrar en él. `BiosphereWorldgen.preserveWaterShell` comprueba
+el generador antes de consultar opciones o geometría y solo escribe en el servidor.
+También se aplica a agua colocada por jugadores; no interviene en lava ni mundos vanilla.
+Con ambas mitades activadas, retorna antes de calcular geometría y conserva la ruta anterior.
+Los heightmaps ignoran las barreras y el forro, pero cuentan el terreno seco que queda expuesto.
+Las opciones se guardan en `ClassicWorldSettings` y `SolarSettings.General`; su ausencia
+en recetas antiguas significa `true`. Los mundos clásicos sin receta siguen leyendo TOML.
 
 Con `close_open_top` activo, la misma condición del bucle acepta además el disco
 completo (`distanceSq <= radius^2`) cuando `y == maxBuildHeight - 1`. En ese Y el
 cascarón ya cubre todo el disco si `center_y + radius <= 321`, así que la
 cláusula solo añade bloques cuando la esfera está realmente cortada, y usa el
-mismo radio efectivo y el mismo bloque que el cascarón. La opción se lee en
+mismo radio efectivo y el mismo bloque que el cascarón. La tapa respeta el control
+de la mitad correspondiente a ese Y; en una mitad desactivada solo queda vidrio
+si llega agua. La opción se lee en
 `carve` y no forma parte de la caché de `SphereLayout.current()`.
 
 Con `bedrock_mode` el carver también controla el bedrock del suelo. Las reglas
@@ -710,8 +731,9 @@ puede sustituir sin tocar el JSON:
 - `shell`: además, la rama `else if` del bucle rellena con bedrock las tres
   capas estrictamente por dentro del cascarón (`radius - 5 <= d < radius - 2`)
   en la mitad inferior (`y <= center_y`), sustituyendo cualquier bloque salvo el
-  cascarón. Con `only_upper_hemisphere` el forro no se genera y `shell` se
-  comporta como `floor`.
+  cascarón. El forro funciona aunque ambas mitades nuevas estén desactivadas.
+  Solo el modo antiguo `only_upper_hemisphere`, con ambas activadas, conserva
+  el comportamiento histórico `floor`.
 
 ### Paso 5: biome source y biomas
 
@@ -975,9 +997,11 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 | `spacing` | `ConfigValue<Number>` | `500` | `SphereCarver`, `MultipleSpheresDistanceFunction`, `SphereBridgeCarver`, `MixinNoiseBasedAquifer`, utilidades | Distancia entre centros en X/Z y tamaño de la cuadrícula. |
 | `center_y` | `ConfigValue<Number>` | `62` | carvers, density function, estructuras, aquifer, heightmap y spawn handler | Altura Y del centro de cada esfera y referencia vertical de varias comprobaciones. |
 | `sphere_block` | `ConfigValue<List<? extends String>>` | `["minecraft:glass"]` | `SphereCarver.getSphereBlockState`, `SphereUtil`, `PlayerSpawnHandler`, `MixinHeightmap` | Lista de ids de bloques posibles para el cascarón; la celda selecciona uno determinísticamente. Se valida contra `BuiltInRegistries.BLOCK` con sintaxis segura. |
-| `only_upper_hemisphere` | `ConfigValue<Boolean>` | `false` | `SphereCarver.carve` | Activa el modo de hemisferio superior y sus reglas especiales de reemplazo bajo Y 55. |
+| `only_upper_hemisphere` | `ConfigValue<Boolean>` | `false` | `SphereCarver.carve` | Modo clásico antiguo y sus reglas especiales de reemplazo bajo Y 55. Se ignora al desactivar cualquiera de las dos opciones nuevas del cascarón. |
+| `upper_shell_enabled` | `BooleanValue` | `true` | `SphereCarver.carve`, `SolarVolumePainter.paint`, `MixinFlowingFluid`, `MixinHeightmap` | Activa el cascarón desde el centro hacia arriba, incluido el ecuador. Desactivado deja zonas secas abiertas y conserva vidrio para contener agua. Se guarda por mundo; las recetas antiguas usan true. |
+| `lower_shell_enabled` | `BooleanValue` | `true` | `SphereCarver.carve`, `SolarVolumePainter.paint`, `MixinFlowingFluid`, `MixinHeightmap` | Activa el cascarón por debajo del centro. El forro SHELL es independiente. Se guarda por mundo; las recetas antiguas usan true. Los satélites permanecen completos. |
 | `close_open_top` | `BooleanValue` | `false` | `SphereCarver.carve` | Cierra con una tapa plana en el Y colocable más alto (319) las esferas cortadas por el límite de construcción, usando el bloque del cascarón. Solo afecta a mundos nuevos. |
-| `bedrock_mode` | `EnumValue<BedrockMode>` | `floor` | `SphereCarver.carve` | Bedrock del suelo del mundo. `floor`: se mantiene la regla `bedrock_floor` de la surface_rule en el fondo (Y −64..−60, solo donde hay piedra). `none`: sin bedrock en el fondo; el carver sustituye esa bedrock por deepslate, así que el suelo se puede minar (el pumpjack de Create Diesel Generators necesita bedrock y no funcionará). `shell`: lo de `floor` más un forro de bedrock de 3 bloques por dentro del cascarón de vidrio en la mitad inferior (`y <= center_y`), que sustituye cualquier bloque salvo el cascarón. Con `only_upper_hemisphere` activo, `shell` se comporta exactamente como `floor`. Solo afecta a chunks nuevos. |
+| `bedrock_mode` | `EnumValue<BedrockMode>` | `floor` | `SphereCarver.carve` | `floor` conserva la bedrock del fondo (Y −64..−60, donde hay piedra). `none` la sustituye por deepslate; el pumpjack de Create Diesel Generators necesita bedrock y no funcionará. `shell` añade un forro interior de tres bloques en la mitad inferior, independiente de las dos opciones nuevas. Solo el modo antiguo `only_upper_hemisphere`, con ambas activadas, conserva su comportamiento histórico `floor`. Los mundos con receta guardada conservan sus valores. |
 | `generate_bridge` | `ConfigValue<Boolean>` | `true` | `SphereBridgeCarver.carve` | Activa o desactiva la colocación de puentes entre centros vecinos. |
 | `bridge_block` | `ConfigValue<String>` | `"minecraft:oak_planks"` | `SphereBridgeCarver.carve` | Id del bloque usado por los puentes. |
 | `bridge_radius` | `ConfigValue<Number>` | `1` | `SphereBridgeCarver.carveBridge` | Grosor radial entero 0..46340; cero conserva el puente vacío. |

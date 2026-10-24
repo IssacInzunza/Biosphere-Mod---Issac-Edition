@@ -3,9 +3,11 @@ package mx.issacinzunza.biosphereworlds.worldgen.solar;
 import java.util.EnumSet;
 import java.util.List;
 import mx.issacinzunza.biosphereworlds.worldgen.SatelliteLayers;
+import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -98,7 +100,13 @@ public final class SolarVolumePainter {
                     pos.set(x, y, z);
                     BlockState replacement = null;
                     if (containing == null) replacement = Blocks.AIR.defaultBlockState();
-                    else if (shell && layout().shellBoundary(containing, x, y, z)) replacement = shellState(containing);
+                    else if (shell && layout().shellBoundary(containing, x, y, z)) {
+                        if (layout().shellEnabled(containing, y)) replacement = shellState(containing);
+                        else if (SphereLayout.preserveShellForWater(true, chunk.getFluidState(pos).is(FluidTags.WATER),
+                                true, y, containing.y(), solarSettings.general().upperShellEnabled(), solarSettings.general().lowerShellEnabled())) {
+                            replacement = Blocks.GLASS.defaultBlockState();
+                        }
+                    }
                     else if (shell && SolarTerrain.bedrockLiner(containing, x, y, z, solarSettings.environment().bedrockLiner())) {
                         replacement = Blocks.BEDROCK.defaultBlockState();
                     } else if (!shell) {
@@ -184,6 +192,7 @@ public final class SolarVolumePainter {
         if (body != null && state.is(Blocks.BEDROCK) && SolarTerrain.bedrockLiner(body, pos.getX(), pos.getY(), pos.getZ(), true)) {
             return Blocks.AIR.defaultBlockState();
         }
-        return body != null && geometry.shellBoundary(body, pos.getX(), pos.getY(), pos.getZ()) ? Blocks.AIR.defaultBlockState() : state;
+        return body != null && geometry.shellBoundary(body, pos.getX(), pos.getY(), pos.getZ())
+                && (geometry.shellEnabled(body, pos.getY()) || state.is(Blocks.GLASS)) ? Blocks.AIR.defaultBlockState() : state;
     }
 }

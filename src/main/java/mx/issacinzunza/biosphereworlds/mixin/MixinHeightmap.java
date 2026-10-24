@@ -68,7 +68,25 @@ public class MixinHeightmap {
         }
         // La correccion de satelites no cambia el filtrado historico del cascaron principal.
         var world = BiosphereWorldgen.classicWorld(chunk);
-        if (filterClassicShell && (world == null ? SphereUtil.isSphereBlock(original) : world.isShell(original))
+        boolean upper = world == null ? SphereConfig.UPPER_SHELL_ENABLED.get() : world.settings().upperShellEnabled();
+        boolean lower = world == null ? SphereConfig.LOWER_SHELL_ENABLED.get() : world.settings().lowerShellEnabled();
+        if (!upper || !lower) {
+            var layout = BiosphereWorldgen.classicLayout(chunk);
+            int blockX = chunk.getPos().getMinBlockX() + (x & 15);
+            int blockZ = chunk.getPos().getMinBlockZ() + (z & 15);
+            boolean cap = world == null ? SphereConfig.CLOSE_OPEN_TOP.get() : world.settings().closeOpenTop();
+            var sphere = layout.mainShellBandAt(blockX, y, blockZ, cap, chunk.getMaxBuildHeight() - 1, false);
+            if (sphere != null && (original.is(Blocks.GLASS)
+                    || (SphereLayout.shellHemisphereEnabled(y, sphere.centerY(), upper, lower)
+                    && (world == null ? SphereUtil.isSphereBlock(original) : world.isShell(original))))) {
+                return Blocks.AIR.defaultBlockState();
+            }
+            if (original.is(Blocks.BEDROCK)
+                    && (world == null ? SphereConfig.BEDROCK_MODE.get() : world.settings().bedrockMode()) == SphereConfig.BedrockMode.SHELL
+                    && layout.mainShellBandAt(blockX, y, blockZ, false, 0, true) != null) {
+                return Blocks.AIR.defaultBlockState();
+            }
+        } else if (filterClassicShell && (world == null ? SphereUtil.isSphereBlock(original) : world.isShell(original))
                 && y > (world == null ? SphereConfig.CENTER_Y.get().intValue() : world.settings().geometry().centerY())) {
             return Blocks.AIR.defaultBlockState();
         }

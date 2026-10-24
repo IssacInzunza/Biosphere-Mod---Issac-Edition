@@ -18,6 +18,7 @@
     "accessor.SolarStructureStateInvoker",
     "accessor.SolarRandomStateAccess",
     "MixinHeightmap",
+    "MixinFlowingFluid",
     "MixinChunkAccess",
     "MixinChunkGeneratorBiomeSource",
     "MixinNoiseChunk",

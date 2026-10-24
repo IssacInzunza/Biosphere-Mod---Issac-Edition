@@ -54,8 +54,14 @@ public final class SolarLayout {
      * @param minGapPercent minimum moon gap as a percentage of its parent's radius
      * @param maxGapPercent maximum moon gap as a percentage of its parent's radius
      * @param closeOpenTop whether spheres crossing the build ceiling receive a cap
+     * @param upperShellEnabled whether the upper main shell is generated
+     * @param lowerShellEnabled whether the lower main shell is generated
      */
-    public record PlacementOptions(int centerY, int minSize, int maxSize, int minGapPercent, int maxGapPercent, boolean closeOpenTop) {
+    public record PlacementOptions(int centerY, int minSize, int maxSize, int minGapPercent, int maxGapPercent,
+                                   boolean closeOpenTop, boolean upperShellEnabled, boolean lowerShellEnabled) {
+        public PlacementOptions(int centerY, int minSize, int maxSize, int minGapPercent, int maxGapPercent, boolean closeOpenTop) {
+            this(centerY, minSize, maxSize, minGapPercent, maxGapPercent, closeOpenTop, true, true);
+        }
         public PlacementOptions(int centerY, int minSize, int maxSize, int minGapPercent, int maxGapPercent) {
             this(centerY, minSize, maxSize, minGapPercent, maxGapPercent, false);
         }
@@ -186,6 +192,11 @@ public final class SolarLayout {
     public boolean shellBoundary(Body body, int x, int y, int z) {
         return body.contains(x, y, z, 0) && (!body.contains(x, y, z, 2)
                 || (version >= 3 && options.closeOpenTop && y == MAX_Y && body.y + body.radius > MAX_Y));
+    }
+
+    /** Saved shell selection, shared by painting, fluid containment and heightmaps. */
+    public boolean shellEnabled(Body body, int y) {
+        return SphereLayout.shellHemisphereEnabled(y, body.y, options.upperShellEnabled, options.lowerShellEnabled);
     }
 
     public Params params() { return params; }

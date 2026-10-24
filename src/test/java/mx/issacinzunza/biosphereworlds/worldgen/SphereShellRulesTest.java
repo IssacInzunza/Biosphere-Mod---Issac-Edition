@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Reglas nuevas sin cableado al motor; las pruebas anteriores conservan la ruta legacy. */
+/** Reglas puras; el cableado con el motor se verifica en GameTests. */
 class SphereShellRulesTest {
     @Test
     void fourHemisphereCombinationsPartitionTheShell() {
@@ -47,7 +47,10 @@ class SphereShellRulesTest {
                     double horizontalDistSq = (double) radius * radius * sample / 32.0;
                     boolean legacy = literalShell(radius, horizontalDistSq, y, center, cap);
                     before.set(index, legacy);
-                    after.set(index++, legacy && SphereLayout.shellHemisphereEnabled(y, center, true, true));
+                    double dy = y - center;
+                    double inner = radius - SphereLayout.SHELL_THICKNESS;
+                    after.set(index++, SphereLayout.shellBoundary(horizontalDistSq + dy * dy, inner * inner,
+                            radius * radius, cap && y == 319) && SphereLayout.shellHemisphereEnabled(y, center, true, true));
                 }
                 assertArrayEquals(before.toLongArray(), after.toLongArray(), "La seleccion completa debe ser un no-op exacto");
             }
@@ -98,6 +101,33 @@ class SphereShellRulesTest {
         // El sol Solar tiene centro elevado, pero su forro puede conservar un techo inferior.
         assertTrue(SphereLayout.bedrockLinerContains(true, 63, 63, 17, 36, 9));
         assertFalse(SphereLayout.bedrockLinerContains(true, 64, 63, 17, 36, 9));
+    }
+
+    @Test
+    void runtimeBandLookupMatchesLiteralCarverCellsAcrossChunkSeams() {
+        for (int center : new int[]{62, 319, 400}) {
+            var layout = new SphereLayout(new SphereLayout.Params(16, center, 4, 12));
+            for (int x = -33; x <= 33; x++) for (int z : new int[]{-17, -16, -1, 0, 15, 16}) {
+                for (int y : new int[]{center - 11, center - 5, center, center + 5, 319}) {
+                    for (boolean cap : new boolean[]{false, true}) for (boolean liner : new boolean[]{false, true}) {
+                        SphereLayout.Sphere expected = null;
+                        int minX = Math.floorDiv(x, 16) * 16, minZ = Math.floorDiv(z, 16) * 16;
+                        for (int gx = (int) Math.floor(minX / 16.0); gx <= (int) Math.ceil((minX + 15) / 16.0) && expected == null; gx++) {
+                            for (int gz = (int) Math.floor(minZ / 16.0); gz <= (int) Math.ceil((minZ + 15) / 16.0); gz++) {
+                                var sphere = layout.sphereAtCell(gx, gz);
+                                double dx = x - sphere.centerX(), dz = z - sphere.centerZ();
+                                if (liner ? literalLiner(sphere.radius(), dx * dx + dz * dz, y, center)
+                                        : literalShell(sphere.radius(), dx * dx + dz * dz, y, center, cap)) {
+                                    expected = sphere;
+                                    break;
+                                }
+                            }
+                        }
+                        assertEquals(expected, layout.mainShellBandAt(x, y, z, cap, 319, liner));
+                    }
+                }
+            }
+        }
     }
 
     /** Copia literal de la condicion actual de SphereCarver.carve, sin Minecraft. */

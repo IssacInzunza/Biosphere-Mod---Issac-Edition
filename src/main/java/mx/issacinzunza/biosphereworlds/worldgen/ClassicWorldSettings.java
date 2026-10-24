@@ -12,7 +12,14 @@ import net.minecraft.world.level.block.state.BlockState;
 /** Receta clasica persistida; no consulta TOML una vez vinculada al mundo. */
 public record ClassicWorldSettings(SphereLayout.Params geometry, List<String> shellBlocks,
         SphereConfig.BedrockMode bedrockMode, boolean onlyUpperHemisphere, boolean closeOpenTop,
-        Bridges bridges, Ocean ocean, Structures structures, List<SatelliteLayers.Mineral> minerals) {
+        Bridges bridges, Ocean ocean, Structures structures, List<SatelliteLayers.Mineral> minerals,
+        boolean upperShellEnabled, boolean lowerShellEnabled) {
+    public ClassicWorldSettings(SphereLayout.Params geometry, List<String> shellBlocks,
+            SphereConfig.BedrockMode bedrockMode, boolean onlyUpperHemisphere, boolean closeOpenTop,
+            Bridges bridges, Ocean ocean, Structures structures, List<SatelliteLayers.Mineral> minerals) {
+        this(geometry, shellBlocks, bedrockMode, onlyUpperHemisphere, closeOpenTop,
+                bridges, ocean, structures, minerals, true, true);
+    }
     public record Bridges(boolean enabled, int radius, String block) {
         public static final Codec<Bridges> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.BOOL.fieldOf("enabled").forGetter(Bridges::enabled),
@@ -59,7 +66,9 @@ public record ClassicWorldSettings(SphereLayout.Params geometry, List<String> sh
             Bridges.CODEC.fieldOf("bridges").forGetter(ClassicWorldSettings::bridges),
             Ocean.CODEC.fieldOf("ocean").forGetter(ClassicWorldSettings::ocean),
             Structures.CODEC.fieldOf("structures").forGetter(ClassicWorldSettings::structures),
-            MINERAL_CODEC.listOf().fieldOf("minerals").forGetter(ClassicWorldSettings::minerals)
+            MINERAL_CODEC.listOf().fieldOf("minerals").forGetter(ClassicWorldSettings::minerals),
+            Codec.BOOL.optionalFieldOf("upper_shell_enabled", true).forGetter(ClassicWorldSettings::upperShellEnabled),
+            Codec.BOOL.optionalFieldOf("lower_shell_enabled", true).forGetter(ClassicWorldSettings::lowerShellEnabled)
     ).apply(i, ClassicWorldSettings::new));
 
     public ClassicWorldSettings {
@@ -97,7 +106,8 @@ public record ClassicWorldSettings(SphereLayout.Params geometry, List<String> sh
                 SphereConfig.BEDROCK_MODE.get(), SphereConfig.ONLY_UPPER_HEMISPHERE.get(), SphereConfig.CLOSE_OPEN_TOP.get(),
                 new Bridges(SphereConfig.GENERATE_BRIDGE.get(), SphereConfig.BRIDGE_RADIUS.get().intValue(), SphereConfig.BRIDGE_BLOCK.get()),
                 new Ocean(SphereConfig.EDGE_OCEAN_ENABLED.get(), SphereConfig.EDGE_OCEAN_WIDTH.get(), SphereConfig.EDGE_OCEAN_DEPTH.get()),
-                new Structures(SphereConfig.RESTRICT_STRUCTURES_TO_SPHERES.get(), SphereConfig.STRUCTURE_EDGE_MARGIN.get()), minerals);
+                new Structures(SphereConfig.RESTRICT_STRUCTURES_TO_SPHERES.get(), SphereConfig.STRUCTURE_EDGE_MARGIN.get()), minerals,
+                SphereConfig.UPPER_SHELL_ENABLED.get(), SphereConfig.LOWER_SHELL_ENABLED.get());
     }
 
     /** Un bloque desaparecido invalida la receta; nunca se sustituye silenciosamente. */

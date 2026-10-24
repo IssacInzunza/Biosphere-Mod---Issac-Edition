@@ -9,7 +9,7 @@
   "biosphereworlds.configuration.solar_guardians_enabled": "Jaulas de guardianes del centro",
   "biosphereworlds.configuration.solar_guardians_enabled.tooltip": "Doce jaulas defienden el sol, incluido su interior. Alcance: 224 bloques. Hasta dos guardianes por ciclo, cada 8–12 segundos. Límites: ocho guardianes marcados a 32 bloques del jugador y 24 por sol. Ghasts y blazes aparecen a menos de 16 bloques; phantoms a menos de 12 y solo de noche. Las jaulas existentes se actualizan al activarse. Pacífico y aparición de mobs desactivada las pausan. Las jaulas destruidas no se reconstruyen.",
   "biosphereworlds.configuration.SolarOrbits": "Sistema solar",
-  "biosphereworlds.configuration.SolarOrbits.tooltip": "Planetas, distancias, temperatura numérica, jaulas de guardianes y estrella guía. Los ajustes generales tienen valores independientes en SolarSystems.toml. Puentes automáticos, cuadrícula clásica y hemisferios desactivados. El sol no tiene lunas. La generación se configura para mundos nuevos; la estrella guía también para mundos existentes.",
+  "biosphereworlds.configuration.SolarOrbits.tooltip": "Planetas, distancias, temperatura numérica, jaulas de guardianes y estrella guía. Los ajustes generales tienen valores independientes en SolarSystems.toml. Puentes automáticos, cuadrícula clásica y modo de hemisferio antiguo desactivados. El sol no tiene lunas. La generación se configura para mundos nuevos; la estrella guía también para mundos existentes.",
   "biosphereworlds.configuration.solar_planet_count": "Planetas por sistema solar",
   "biosphereworlds.configuration.solar_planet_count.tooltip": "Cantidad exacta de planetas, sin contar la biosfera central del Stronghold ni los satélites. Cada planeta tiene una órbita distinta. Se conserva su Y configurada y la colocación angular existente. Solo para mundos Solar nuevos; los guardados conservan su geometría.",
   "biosphereworlds.configuration.solar_planet_gap": "Distancia mínima entre planetas",
@@ -43,14 +43,19 @@
   "biosphereworlds.configuration.sphere_block.tooltip": "Ids de bloque usados para los cascarones; cada esfera elige uno de forma determinista según su posición en la cuadrícula. En esta pantalla puedes editar, reordenar o eliminar las entradas existentes, pero las entradas nuevas hay que añadirlas a mano en el archivo de configuración. Solo afecta a mundos nuevos.",
   "biosphereworlds.configuration.sphere_block.button": "Editar",
 
-  "biosphereworlds.configuration.only_upper_hemisphere": "Solo hemisferio superior",
-  "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Genera solo la mitad superior de cada esfera. Solo afecta a mundos nuevos. Desactivado en Solar Systems, que usa esferas completas.",
+  "biosphereworlds.configuration.upper_shell_enabled": "Cascarón superior",
+  "biosphereworlds.configuration.upper_shell_enabled.tooltip": "Genera el cascarón desde el centro de cada esfera hacia arriba. Al desactivarlo, las zonas secas quedan abiertas y se forma vidrio donde el agua alcanza el borde, incluso si la coloca un jugador. Para mundos nuevos clásicos y Solar; los satélites siguen completos.",
+  "biosphereworlds.configuration.lower_shell_enabled": "Cascarón inferior",
+  "biosphereworlds.configuration.lower_shell_enabled.tooltip": "Genera el cascarón por debajo del centro de cada esfera. Al desactivarlo, las zonas secas quedan abiertas y se forma vidrio donde el agua alcanza el borde. Bedrock SHELL funciona incluso con ambas mitades desactivadas. Para mundos nuevos clásicos y Solar.",
+
+  "biosphereworlds.configuration.only_upper_hemisphere": "Modo de hemisferio antiguo",
+  "biosphereworlds.configuration.only_upper_hemisphere.tooltip": "Conserva las reglas antiguas de reemplazo del clásico y su radio reducido. Se ignora al desactivar cualquiera de las dos opciones nuevas del cascarón. No disponible en Solar. Para mundos nuevos.",
 
   "biosphereworlds.configuration.close_open_top": "Cerrar tapas superiores",
   "biosphereworlds.configuration.close_open_top.tooltip": "Tapa con el bloque del cascarón las esferas cortadas por el límite de construcción, en la última altura construible. También se aplica a mundos Solar nuevos. Desactivado deja el corte abierto; en ambos casos se conserva el radio configurado.",
 
   "biosphereworlds.configuration.bedrock_mode": "Modo de bedrock",
-  "biosphereworlds.configuration.bedrock_mode.tooltip": "Bedrock en el suelo del mundo. floor: se mantiene la regla bedrock_floor de la surface_rule en el fondo del mundo. none: sin bedrock en el fondo, el suelo pasa a ser deepslate (el pumpjack de Create Diesel Generators necesita bedrock, así que no funcionará con este valor). shell: lo de floor más un forro de bedrock de 3 bloques por dentro del cascarón de vidrio en la mitad inferior de cada esfera; con only_upper_hemisphere activo se comporta exactamente como floor. Solo afecta a chunks nuevos.",
+  "biosphereworlds.configuration.bedrock_mode.tooltip": "floor: conserva la bedrock del fondo. none: la sustituye por deepslate (los pumpjacks que necesitan bedrock no funcionan). shell: añade un forro interior de bedrock de 3 bloques, incluso con ambas opciones nuevas del cascarón desactivadas. El modo de hemisferio antiguo conserva su comportamiento floor cuando ambas están activadas. Solo mundos nuevos.",
 
   "biosphereworlds.configuration.generate_bridge": "Generar puentes",
   "biosphereworlds.configuration.generate_bridge.tooltip": "Genera puentes entre esferas adyacentes. Solo afecta a mundos nuevos. Siempre desactivado en Solar Systems.",

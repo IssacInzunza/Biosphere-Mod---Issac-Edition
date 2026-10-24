@@ -66,8 +66,14 @@ public record SolarSettings(SolarLayout.Params geometry, boolean climateEnabled,
      * @param bedrockMode shared bedrock policy, with independent Solar values
      * @param satellites satellite sizing and mineral choices
      * @param closeOpenTop whether spheres crossing the build ceiling receive a cap
+     * @param upperShellEnabled whether the upper shell, including the equator, is generated
+     * @param lowerShellEnabled whether the lower shell is generated, independently of bedrock
      */
-    public record General(int centerY, List<String> shellBlocks, SphereConfig.BedrockMode bedrockMode, Satellites satellites, boolean closeOpenTop) {
+    public record General(int centerY, List<String> shellBlocks, SphereConfig.BedrockMode bedrockMode, Satellites satellites,
+                          boolean closeOpenTop, boolean upperShellEnabled, boolean lowerShellEnabled) {
+        public General(int centerY, List<String> shellBlocks, SphereConfig.BedrockMode bedrockMode, Satellites satellites, boolean closeOpenTop) {
+            this(centerY, shellBlocks, bedrockMode, satellites, closeOpenTop, true, true);
+        }
         public General(int centerY, List<String> shellBlocks, SphereConfig.BedrockMode bedrockMode, Satellites satellites) {
             this(centerY, shellBlocks, bedrockMode, satellites, false);
         }
@@ -77,7 +83,7 @@ public record SolarSettings(SolarLayout.Params geometry, boolean climateEnabled,
         }
         public SolarLayout.PlacementOptions placement() {
             return new SolarLayout.PlacementOptions(centerY, satellites.minSize, satellites.maxSize,
-                    satellites.minGapPercent, satellites.maxGapPercent, closeOpenTop);
+                    satellites.minGapPercent, satellites.maxGapPercent, closeOpenTop, upperShellEnabled, lowerShellEnabled);
         }
         public static General legacy() {
             return new General(64, List.of("minecraft:glass"), SphereConfig.BedrockMode.FLOOR,
@@ -93,7 +99,9 @@ public record SolarSettings(SolarLayout.Params geometry, boolean climateEnabled,
                 Codec.STRING.listOf().fieldOf("shell_blocks").forGetter(General::shellBlocks),
                 Codec.STRING.xmap(SphereConfig.BedrockMode::valueOf, Enum::name).fieldOf("bedrock_mode").forGetter(General::bedrockMode),
                 Satellites.CODEC.fieldOf("satellites").forGetter(General::satellites),
-                Codec.BOOL.optionalFieldOf("close_open_top", false).forGetter(General::closeOpenTop)
+                Codec.BOOL.optionalFieldOf("close_open_top", false).forGetter(General::closeOpenTop),
+                Codec.BOOL.optionalFieldOf("upper_shell_enabled", true).forGetter(General::upperShellEnabled),
+                Codec.BOOL.optionalFieldOf("lower_shell_enabled", true).forGetter(General::lowerShellEnabled)
         ).apply(i, General::new));
     }
     public static final Codec<SolarLayout.Params> GEOMETRY_CODEC = RecordCodecBuilder.create(i -> i.group(

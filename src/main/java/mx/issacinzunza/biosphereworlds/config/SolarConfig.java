@@ -12,7 +12,7 @@ public final class SolarConfig {
     public static final ModConfigSpec SPEC;
     static {
         var builder = new ModConfigSpec.Builder();
-        builder.comment("Independent Solar settings. Automatic bridges, classic grid spacing and hemispheres are disabled. Existing worlds retain their worldgen snapshot; the guide-star toggle is a runtime setting.").push("Settings");
+        builder.comment("Independent Solar settings. Automatic bridges, classic grid spacing and the legacy hemisphere mode are disabled. Existing worlds retain their worldgen snapshot; the guide-star toggle is a runtime setting.").push("Settings");
         GENERAL = new SphereConfig.GeneralOptions(builder);
         builder.pop();
         builder.push("SolarOrbits");
@@ -28,7 +28,8 @@ public final class SolarConfig {
         boolean cold = OPTIONS.SOLAR_CLIMATE_DIRECTION.get() == 1;
         var general = new SolarSettings.General(GENERAL.CENTER_Y.get().intValue(), List.copyOf(GENERAL.SPHERE_BLOCK.get()), GENERAL.BEDROCK_MODE.get(),
                 new SolarSettings.Satellites(GENERAL.SATELLITES_MIN_SIZE_PERCENT.get(), GENERAL.SATELLITES_MAX_SIZE_PERCENT.get(), GENERAL.SATELLITES_MIN_GAP_PERCENT.get(),
-                        GENERAL.SATELLITES_MAX_GAP_PERCENT.get(), List.copyOf(GENERAL.SATELLITES_INCLUDED_ORES.get()), List.copyOf(GENERAL.SATELLITES_EXCLUDED_ORES.get()), GENERAL.SATELLITES_MOD_ORE_WEIGHT.get(), GENERAL.SATELLITES_MOD_ORE_DENSITY_PERMILLE.get()), GENERAL.CLOSE_OPEN_TOP.get());
+                        GENERAL.SATELLITES_MAX_GAP_PERCENT.get(), List.copyOf(GENERAL.SATELLITES_INCLUDED_ORES.get()), List.copyOf(GENERAL.SATELLITES_EXCLUDED_ORES.get()), GENERAL.SATELLITES_MOD_ORE_WEIGHT.get(), GENERAL.SATELLITES_MOD_ORE_DENSITY_PERMILLE.get()), GENERAL.CLOSE_OPEN_TOP.get(),
+                GENERAL.UPPER_SHELL_ENABLED.get(), GENERAL.LOWER_SHELL_ENABLED.get());
         int region = SolarLayout.requiredSingleOrbitSystemRadius(OPTIONS.SOLAR_PLANET_COUNT.get(), GENERAL.RADIUS.get().intValue(), 180, OPTIONS.SOLAR_PLANET_GAP.get(),
                 GENERAL.SATELLITES_MAX_GAP_PERCENT.get(), GENERAL.SATELLITES_MAX_SIZE_PERCENT.get(), GENERAL.SATELLITES_MIN_GAP_BLOCKS.get());
         var defaults = SolarSettings.defaults().guardians();

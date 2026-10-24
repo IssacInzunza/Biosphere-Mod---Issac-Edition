@@ -705,12 +705,60 @@ public final class SolarWorldgenGameTests {
                 && settings.geometry().maxRadius() == SolarConfig.GENERAL.RADIUS.get().intValue(), "Solar must read independent Solar radii");
         helper.assertTrue(general.satellites().excluded().equals(SolarConfig.GENERAL.SATELLITES_EXCLUDED_ORES.get()), "Solar must read independent Solar ore exclusions");
         helper.assertTrue(general.closeOpenTop() == SolarConfig.GENERAL.CLOSE_OPEN_TOP.get(), "Solar must read the independent Solar top cap");
+        helper.assertTrue(general.upperShellEnabled() == SolarConfig.GENERAL.UPPER_SHELL_ENABLED.get()
+                && general.lowerShellEnabled() == SolarConfig.GENERAL.LOWER_SHELL_ENABLED.get()
+                && SolarConfig.GENERAL.UPPER_SHELL_ENABLED != SphereConfig.UPPER_SHELL_ENABLED,
+                "Solar must capture its independent shell switches");
         boolean cold = SolarConfig.OPTIONS.SOLAR_CLIMATE_DIRECTION.get() == 1;
         helper.assertTrue(settings.geometry().coldInside() == cold
                 && settings.centralClimate() == (cold ? SolarLayout.Climate.COLD : SolarLayout.Climate.HOT), "Numeric temperature must control both center and orbital direction");
         helper.assertTrue(settings.guardians().enabled() == SolarConfig.OPTIONS.SOLAR_GUARDIANS_ENABLED.get(), "Solar must read the central guardian switch");
         var environment = new SolarSettings.Environment(true, 100, 100, false);
         helper.assertTrue(environment.edgeOceanDepth() == 100, "Solar must accept the independent Solar ocean depth range");
+        helper.succeed();
+    }
+
+    @GameTest(template = "solar_empty", timeoutTicks = 1200)
+    public static void optionalSolarShellsKeepWaterTerrainAndIndependentLiner(GameTestHelper helper) {
+        var defaults = SolarSettings.defaults();
+        var geometry = new SolarLayout.Params(512, 1500, 1, 8, 8, 180, 32, 32, false, 30, 40, 30, 0, 30, 55, 16);
+        for (boolean upper : new boolean[]{false, true}) for (boolean lower : new boolean[]{false, true}) {
+            for (boolean liner : new boolean[]{false, true}) {
+                var general = new SolarSettings.General(62, java.util.List.of("minecraft:blue_stained_glass"),
+                        liner ? SphereConfig.BedrockMode.SHELL : SphereConfig.BedrockMode.FLOOR,
+                        defaults.general().satellites(), false, upper, lower);
+                var settings = new SolarSettings(geometry, true, SolarLayout.Climate.TEMPERATE, defaults.guardians(),
+                        new SolarSettings.Environment(false, 20, 20, liner), general, 7);
+                var layout = new SolarLayout(81723, geometry, 7, general.placement());
+                var body = layout.systemAtCell(0, 0).bodies().get(1);
+                var painter = new SolarVolumePainter(layout, settings, java.util.List.of(), 63);
+                for (int dy : new int[]{-1, 1}) for (boolean wet : new boolean[]{false, true}) {
+                    var pos = wet ? BlockPos.containing(body.x(), body.y() + dy, body.z() + 7)
+                            : BlockPos.containing(body.x() + 7, body.y() + dy, body.z());
+                    helper.assertTrue(layout.shellBoundary(body, pos.getX(), pos.getY(), pos.getZ()), "Fixture must touch the main shell");
+                    var chunk = new ProtoChunk(new ChunkPos(pos), UpgradeData.EMPTY, helper.getLevel(),
+                            helper.getLevel().registryAccess().registryOrThrow(Registries.BIOME), null);
+                    ((SolarChunkAccess) chunk).biosphereworlds$solarLayout(layout);
+                    chunk.setBlockState(pos, (wet ? Blocks.WATER : Blocks.STONE).defaultBlockState(), false);
+                    painter.paint(chunk, SolarVolumePainter.Pass.SHELL);
+                    boolean enabled = dy < 0 ? lower : upper;
+                    var expected = enabled ? Blocks.BLUE_STAINED_GLASS : wet ? Blocks.GLASS : Blocks.STONE;
+                    helper.assertTrue(chunk.getBlockState(pos).is(expected), "Solar shell or water barrier mismatch");
+                    helper.assertTrue(SolarChunkGenerator.heightmapState(chunk, pos, chunk.getBlockState(pos))
+                            .is(enabled || wet ? Blocks.AIR : Blocks.STONE), "Dry open-shell terrain must remain visible to heightmaps");
+                    painter.paint(chunk, SolarVolumePainter.Pass.SHELL);
+                    helper.assertTrue(chunk.getBlockState(pos).is(expected), "The decoration pass erased a barrier or dry terrain");
+                }
+                var pos = BlockPos.containing(body.x() + 4, body.y() - 1, body.z());
+                helper.assertTrue(SolarTerrain.bedrockLiner(body, pos.getX(), pos.getY(), pos.getZ(), true), "Fixture must touch the inner liner");
+                var chunk = new ProtoChunk(new ChunkPos(pos), UpgradeData.EMPTY, helper.getLevel(),
+                        helper.getLevel().registryAccess().registryOrThrow(Registries.BIOME), null);
+                ((SolarChunkAccess) chunk).biosphereworlds$solarLayout(layout);
+                chunk.setBlockState(pos, Blocks.STONE.defaultBlockState(), false);
+                painter.paint(chunk, SolarVolumePainter.Pass.SHELL);
+                helper.assertTrue(chunk.getBlockState(pos).is(liner ? Blocks.BEDROCK : Blocks.STONE), "Bedrock must be independent of both shell switches");
+            }
+        }
         helper.succeed();
     }
 
