@@ -1,6 +1,6 @@
 # Biosphere Worlds - Issac Edition
 
-## Solar System - Issac Edition (experimental; acceptance testing pending)
+## Solar System - Issac Edition
 
 Select **Solar System - Issac Edition** for independent solar generation.
 Both configuration files live under **config/biosphereworlds/**:
@@ -12,7 +12,7 @@ Their values are independent. A shared definition in SphereConfig supplies the s
 labels, defaults and detailed descriptions without duplicating the option logic.
 Old root-level files are copied on first start, without deleting the originals or
 overwriting destinations. The latest unified settings take precedence over an older
-experimental Solar file when initializing the new Solar config.
+Solar file when initializing the new Solar config.
 Worldgen settings are saved with each world's generator. **Create a new Solar world to see
 the revised orbits and central surface.** Existing Solar snapshots retain their
 original layout (versions 1–6); new worlds use version 7. Editing the TOML does not
@@ -159,8 +159,7 @@ Natural End portal/frame writes through WorldGenRegion and marked ProtoChunks ar
 accepted only within an authorized central Stronghold piece placement (the portal
 room for vanilla, or the replacement's own pieces).
 Other mods that bypass those paths are not certified. Nether and End retain vanilla
-generation. Acceptance tests are still pending, including actual
-portal activation, eyes, locate, external mods and prolonged exploration.
+generation.
 
 Biosphere Worlds – Issac Edition is a fork of [NeoBiosphere](https://github.com/mlus-asuka/NeoBiosphere) by mlus, for NeoForge 1.21.1. Full credit to the original author for the concept and base code.
 
