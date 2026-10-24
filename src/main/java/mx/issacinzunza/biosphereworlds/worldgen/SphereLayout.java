@@ -55,6 +55,19 @@ public final class SphereLayout {
                 && distanceSq >= linerInnerRadiusSq && distanceSq < shellInnerRadiusSq;
     }
 
+    /**
+     * Conserva el cascaron desactivado donde hay agua o llega un paso de agua valido.
+     * El adaptador identifica primero el mundo y usa la geometria del cascaron
+     * principal; esta regla no lee bloques, vecinos ni caches. Para agua que ya
+     * esta en el borde, tambien se evalua el origen antes de dejarla salir.
+     */
+    public static boolean preserveShellForWater(boolean biosphereWorld, boolean waterPresentOrEntering,
+                                                 boolean mainShellBoundary, int y, double centerY,
+                                                 boolean upperEnabled, boolean lowerEnabled) {
+        return biosphereWorld && waterPresentOrEntering && mainShellBoundary
+                && !shellHemisphereEnabled(y, centerY, upperEnabled, lowerEnabled);
+    }
+
     /** Tamano de la cache por celda: {@code 1 << CACHE_BITS} entradas. */
     private static final int CACHE_BITS = 12;
     private static final int CACHE_SIZE = 1 << CACHE_BITS;
