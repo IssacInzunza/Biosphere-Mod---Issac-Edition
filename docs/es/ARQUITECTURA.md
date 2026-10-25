@@ -334,7 +334,7 @@ se omiten candidatos tan grandes como su planeta.
 | `upper_shell_enabled` | `true` | booleano | Cascarón principal desde el centro hacia arriba, incluido el ecuador. Desactivado conserva el terreno seco y sella con vidrio el agua que alcanza el borde. No afecta a satélites. |
 | `lower_shell_enabled` | `true` | booleano | Cascarón principal por debajo del centro. Desactivado conserva el terreno seco y sella con vidrio el agua que alcanza el borde. El forro SHELL sigue disponible, incluso con ambas mitades desactivadas. |
 | `close_open_top` | `false` | booleano | Tapa las esferas cortadas por el límite de construcción con el bloque del cascarón en Y=319. Desactivado deja el corte abierto; no reduce el radio. |
-| `bedrock_mode` | `FLOOR` | FLOOR / NONE / SHELL | FLOOR conserva la bedrock vanilla del fondo del mundo donde llegue una esfera. NONE la sustituye por deepslate. SHELL añade un forro de bedrock de tres bloques por dentro de la mitad inferior del cascarón. |
+| `bedrock_mode` | `FLOOR` | FLOOR / NONE / SHELL | FLOOR conserva la bedrock vanilla del fondo del mundo donde llegue una esfera. NONE la sustituye por deepslate. SHELL añade tres capas de bedrock: interiores con vidrio inferior activo, o expuestas en el borde exterior al desactivarlo. |
 | `edge_ocean_enabled` | `false` | boolean / booleano | Baja e inunda la banda interior junto al cascarón de los planetas. La biosfera central conserva su perfil peligroso de magma o hielo. |
 | `edge_ocean_width` | `20` | 0–100 % | Ancho como porcentaje del radio de la esfera, con el perfil suave tridimensional original. Cero elimina la banda. Se usa únicamente con el océano de borde activado. |
 | `edge_ocean_depth` | `20` | 0–100 blocks / bloques | Profundidad del fondo oceánico bajo el nivel del mar, en bloques. Con nivel del mar 63 y profundidad 20, el fondo queda en Y=43. Se usa únicamente con el océano de borde activado. |
@@ -728,10 +728,14 @@ puede sustituir sin tocar el JSON:
 - `none`: `replaceBedrockFloor` barre las primeras capas del chunk
   (`min_y .. min_y + 5`) y cambia por deepslate solo los bloques que son
   bedrock; el aire y el agua no se tocan.
-- `shell`: además, la rama `else if` del bucle rellena con bedrock las tres
-  capas estrictamente por dentro del cascarón (`radius - 5 <= d < radius - 2`)
-  en la mitad inferior (`y <= center_y`), sustituyendo cualquier bloque salvo el
-  cascarón. El forro funciona aunque ambas mitades nuevas estén desactivadas.
+- `shell`: con vidrio inferior activo conserva las tres capas interiores
+  (`radius - 5 <= d < radius - 2` en clásico). Sin vidrio inferior, la banda
+  se desplaza a `radius - 3 < d <= radius`, sin dejar bedrock en la banda antigua.
+  El vidrio superior activo conserva su prioridad en el ecuador. La bedrock expuesta
+  también contiene el agua. `SphereLayout.exposedBedrockContains` comparte la regla
+  exterior entre ambos generadores; Solar conserva el techo del sol en Y=63.
+  Escritor, protección de WorldGenRegion y heightmaps usan la misma banda seleccionada.
+  Solo afecta a chunks nuevos; no reconstruye los ya guardados.
   Solo el modo antiguo `only_upper_hemisphere`, con ambas activadas, conserva
   el comportamiento histórico `floor`.
 
@@ -1001,7 +1005,7 @@ y se registran como `ModConfig.Type.COMMON` con el nombre
 | `upper_shell_enabled` | `BooleanValue` | `true` | `SphereCarver.carve`, `SolarVolumePainter.paint`, `MixinFlowingFluid`, `MixinHeightmap` | Activa el cascarón desde el centro hacia arriba, incluido el ecuador. Desactivado deja zonas secas abiertas y conserva vidrio para contener agua. Se guarda por mundo; las recetas antiguas usan true. |
 | `lower_shell_enabled` | `BooleanValue` | `true` | `SphereCarver.carve`, `SolarVolumePainter.paint`, `MixinFlowingFluid`, `MixinHeightmap` | Activa el cascarón por debajo del centro. El forro SHELL es independiente. Se guarda por mundo; las recetas antiguas usan true. Los satélites permanecen completos. |
 | `close_open_top` | `BooleanValue` | `false` | `SphereCarver.carve` | Cierra con una tapa plana en el Y colocable más alto (319) las esferas cortadas por el límite de construcción, usando el bloque del cascarón. Solo afecta a mundos nuevos. |
-| `bedrock_mode` | `EnumValue<BedrockMode>` | `floor` | `SphereCarver.carve` | `floor` conserva la bedrock del fondo (Y −64..−60, donde hay piedra). `none` la sustituye por deepslate; el pumpjack de Create Diesel Generators necesita bedrock y no funcionará. `shell` añade un forro interior de tres bloques en la mitad inferior, independiente de las dos opciones nuevas. Solo el modo antiguo `only_upper_hemisphere`, con ambas activadas, conserva su comportamiento histórico `floor`. Los mundos con receta guardada conservan sus valores. |
+| `bedrock_mode` | `EnumValue<BedrockMode>` | `floor` | `SphereCarver.carve` | `floor` conserva la bedrock del fondo (Y −64..−60, donde hay piedra). `none` la sustituye por deepslate; el pumpjack de Create Diesel Generators necesita bedrock y no funcionará. `shell` añade tres capas inferiores: interiores con vidrio inferior activo, expuestas en el borde exterior al desactivarlo. Solo el modo antiguo `only_upper_hemisphere`, con ambas activadas, conserva su comportamiento histórico `floor`. Los mundos con receta guardada conservan sus valores. |
 | `generate_bridge` | `ConfigValue<Boolean>` | `true` | `SphereBridgeCarver.carve` | Activa o desactiva la colocación de puentes entre centros vecinos. |
 | `bridge_block` | `ConfigValue<String>` | `"minecraft:oak_planks"` | `SphereBridgeCarver.carve` | Id del bloque usado por los puentes. |
 | `bridge_radius` | `ConfigValue<Number>` | `1` | `SphereBridgeCarver.carveBridge` | Grosor radial entero 0..46340; cero conserva el puente vacío. |

@@ -7,6 +7,22 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SolarTerrainTest {
+    @Test
+    void exposedLinerMovesToTheOuterSurfaceAndKeepsTheCentralCeiling() {
+        for (boolean central : new boolean[]{false, true}) for (int centerY : new int[]{62, 127, 300}) {
+            var body = new SolarLayout.Body(1, 0, centerY, 0, 180, central, SolarLayout.Climate.HOT);
+            for (int x = -181; x <= 181; x += 2) for (int y = -64; y <= 319; y++) {
+                double distanceSq = (double) x * x + (double) (y - centerY) * (y - centerY);
+                boolean expected = y <= (central ? Math.min(centerY, 63) : centerY)
+                        && distanceSq > 177.0 * 177.0 && distanceSq <= 180.0 * 180.0;
+                assertEquals(expected, SolarTerrain.bedrockLiner(body, x, y, 0, true, true));
+                assertEquals(SolarTerrain.bedrockLiner(body, x, y, 0, true),
+                        SolarTerrain.bedrockLiner(body, x, y, 0, true, false));
+                assertFalse(SolarTerrain.bedrockLiner(body, x, y, 0, false, true));
+            }
+        }
+    }
+
     /** Literal predicate before the central liner ceiling correction. */
     private static boolean previousLiner(SolarLayout.Body body, int x, int y, int z, boolean enabled) {
         return enabled && y <= body.y() && body.contains(x, y, z, 2) && !body.contains(x, y, z, 5);

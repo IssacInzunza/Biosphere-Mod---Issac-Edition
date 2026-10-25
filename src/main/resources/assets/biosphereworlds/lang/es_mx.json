@@ -55,7 +55,7 @@
   "biosphereworlds.configuration.close_open_top.tooltip": "Tapa con el bloque del cascarón las esferas cortadas por el límite de construcción, en la última altura construible. También se aplica a mundos Solar nuevos. Desactivado deja el corte abierto; en ambos casos se conserva el radio configurado.",
 
   "biosphereworlds.configuration.bedrock_mode": "Modo de bedrock",
-  "biosphereworlds.configuration.bedrock_mode.tooltip": "floor: conserva la bedrock del fondo. none: la sustituye por deepslate (los pumpjacks que necesitan bedrock no funcionan). shell: añade un forro interior de bedrock de 3 bloques, incluso con ambas opciones nuevas del cascarón desactivadas. El modo de hemisferio antiguo conserva su comportamiento floor cuando ambas están activadas. Solo mundos nuevos.",
+  "biosphereworlds.configuration.bedrock_mode.tooltip": "floor: conserva la bedrock del fondo. none: la sustituye por deepslate (los pumpjacks que necesitan bedrock no funcionan). shell: añade tres capas de bedrock por dentro del vidrio inferior; al desactivar ese cascarón, las mueve al borde exterior para dejarlas expuestas. El modo de hemisferio antiguo conserva su comportamiento floor cuando ambas mitades están activadas. Solo chunks nuevos.",
 
   "biosphereworlds.configuration.generate_bridge": "Generar puentes",
   "biosphereworlds.configuration.generate_bridge.tooltip": "Genera puentes entre esferas adyacentes. Solo afecta a mundos nuevos. Siempre desactivado en Solar Systems.",

@@ -130,6 +130,36 @@ class SphereShellRulesTest {
         }
     }
 
+    @Test
+    void exposedBedrockReachesTheSurfaceWithoutAddingInnerLayers() {
+        for (int radius : new int[]{1, 2, 3, 8, 128, 512}) {
+            int layers = 0;
+            for (int x = 0; x <= radius + 1; x++) {
+                boolean contains = SphereLayout.exposedBedrockContains(true, 62, 62, (double) x * x, radius);
+                if (contains) layers++;
+                assertFalse(SphereLayout.exposedBedrockContains(false, 62, 62, (double) x * x, radius));
+            }
+            assertEquals(Math.min(3, radius + 1), layers);
+            assertTrue(SphereLayout.exposedBedrockContains(true, 62, 62, (double) radius * radius, radius));
+            assertFalse(SphereLayout.exposedBedrockContains(true, 63, 62, (double) radius * radius, radius));
+            assertFalse(SphereLayout.exposedBedrockContains(true, 62, 62, (double) (radius + 1) * (radius + 1), radius));
+        }
+    }
+
+    @Test
+    void exposedBandLookupRespectsTheLowerSwitchAndTheUpperEquator() {
+        var layout = new SphereLayout(new SphereLayout.Params(500, 62, 8, 8));
+        for (boolean upper : new boolean[]{false, true}) for (boolean lower : new boolean[]{false, true}) {
+            for (int x = -9; x <= 9; x++) for (int y = 53; y <= 64; y++) {
+                double distanceSq = x * x + (y - 62) * (y - 62);
+                boolean exposed = !lower && !(y >= 62 ? upper : lower);
+                boolean expected = exposed ? y <= 62 && distanceSq > 25 && distanceSq <= 64
+                        : literalLiner(8, x * x, y, 62);
+                assertEquals(expected, layout.mainShellBandAt(x, y, 0, false, 319, true, upper, lower) != null);
+            }
+        }
+    }
+
     /** Copia literal de la condicion actual de SphereCarver.carve, sin Minecraft. */
     private static boolean literalShell(int radius, double horizontalDistSq, int y, int centerY, boolean closeOpenTop) {
         double dy = y - centerY;

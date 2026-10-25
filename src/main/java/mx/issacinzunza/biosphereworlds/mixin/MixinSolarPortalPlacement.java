@@ -24,7 +24,8 @@ public abstract class MixinSolarPortalPlacement {
         }
         if ((solar.layout().shellBoundary(containing, pos.getX(), pos.getY(), pos.getZ()) && !state.equals(solar.shellState(containing)))
                 || (mx.issacinzunza.biosphereworlds.worldgen.solar.SolarTerrain.bedrockLiner(containing,
-                pos.getX(), pos.getY(), pos.getZ(), solar.solarSettings().environment().bedrockLiner()) && !state.is(Blocks.BEDROCK))) {
+                pos.getX(), pos.getY(), pos.getZ(), solar.solarSettings().environment().bedrockLiner(),
+                solar.layout().bedrockExposed(containing, pos.getY())) && !state.is(Blocks.BEDROCK))) {
             cir.setReturnValue(false);
             return;
         }

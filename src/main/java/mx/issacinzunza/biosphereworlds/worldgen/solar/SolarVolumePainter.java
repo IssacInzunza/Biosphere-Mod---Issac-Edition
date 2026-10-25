@@ -99,7 +99,12 @@ public final class SolarVolumePainter {
                     }
                     pos.set(x, y, z);
                     BlockState replacement = null;
+                    boolean exposedLiner = shell && containing != null && solarSettings.environment().bedrockLiner()
+                            && layout().bedrockExposed(containing, y);
                     if (containing == null) replacement = Blocks.AIR.defaultBlockState();
+                    else if (exposedLiner && SolarTerrain.bedrockLiner(containing, x, y, z, true, true)) {
+                        replacement = Blocks.BEDROCK.defaultBlockState();
+                    }
                     else if (shell && layout().shellBoundary(containing, x, y, z)) {
                         if (layout().shellEnabled(containing, y)) replacement = shellState(containing);
                         else if (SphereLayout.preserveShellForWater(true, chunk.getFluidState(pos).is(FluidTags.WATER),
@@ -107,7 +112,7 @@ public final class SolarVolumePainter {
                             replacement = Blocks.GLASS.defaultBlockState();
                         }
                     }
-                    else if (shell && SolarTerrain.bedrockLiner(containing, x, y, z, solarSettings.environment().bedrockLiner())) {
+                    else if (shell && !exposedLiner && SolarTerrain.bedrockLiner(containing, x, y, z, solarSettings.environment().bedrockLiner())) {
                         replacement = Blocks.BEDROCK.defaultBlockState();
                     } else if (!shell) {
                         var environment = solarSettings.environment();
@@ -189,7 +194,8 @@ public final class SolarVolumePainter {
         }
         if (geometry.version() == 1 && !state.is(Blocks.GLASS) && !state.is(Blocks.BEDROCK)) return state;
         var body = geometry.bodyAt(pos.getX(), pos.getY(), pos.getZ(), 0);
-        if (body != null && state.is(Blocks.BEDROCK) && SolarTerrain.bedrockLiner(body, pos.getX(), pos.getY(), pos.getZ(), true)) {
+        if (body != null && state.is(Blocks.BEDROCK) && SolarTerrain.bedrockLiner(body, pos.getX(), pos.getY(), pos.getZ(), true,
+                geometry.bedrockExposed(body, pos.getY()))) {
             return Blocks.AIR.defaultBlockState();
         }
         return body != null && geometry.shellBoundary(body, pos.getX(), pos.getY(), pos.getZ())

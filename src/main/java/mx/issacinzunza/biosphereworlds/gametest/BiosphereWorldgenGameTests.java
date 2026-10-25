@@ -344,20 +344,30 @@ public final class BiosphereWorldgenGameTests {
                             double innerRadiusSq = (radius - 2.0) * (radius - 2.0);
                             double linerInnerRadius = radius - 2.0 - 3;
                             if (linerInnerRadius < 0.0) linerInnerRadius = 0.0;
+                            boolean exposed = !lower && !(y >= 62 ? upper : lower);
                             // Copia literal de las condiciones y reemplazos anteriores para ambas mitades activas.
-                            if (distanceSq <= radius * radius && distanceSq >= innerRadiusSq) {
+                            if (exposed && y <= 62 && distanceSq <= radius * radius && distanceSq > (radius - 3.0) * (radius - 3.0)) {
+                                expected = Blocks.BEDROCK.defaultBlockState();
+                            } else if (distanceSq <= radius * radius && distanceSq >= innerRadiusSq) {
                                 if (upper && lower) {
                                     if (!oldMode || original.is(net.minecraft.tags.BlockTags.AIR) || original.is(Blocks.WATER)) {
                                         if (!(oldMode && y < 55 && !original.is(Blocks.WATER))) expected = Blocks.BLUE_STAINED_GLASS.defaultBlockState();
                                     }
                                 } else if ((y >= 62 ? upper : lower)) expected = Blocks.BLUE_STAINED_GLASS.defaultBlockState();
                                 else if (original.is(Blocks.WATER)) expected = Blocks.GLASS.defaultBlockState();
-                            } else if (!oldMode && dy <= 0.0 && distanceSq >= linerInnerRadius * linerInnerRadius && distanceSq < innerRadiusSq) {
+                            } else if (!exposed && !oldMode && dy <= 0.0 && distanceSq >= linerInnerRadius * linerInnerRadius && distanceSq < innerRadiusSq) {
                                 expected = Blocks.BEDROCK.defaultBlockState();
                             }
                             helper.assertTrue(proto.getBlockState(new BlockPos(x, y, z)).equals(expected),
                                     "Classic shell mismatch at " + x + "," + y + "," + z + " flags=" + upper + "," + lower + " legacy=" + legacy);
                         }
+                    }
+                    if (!lower && cx == 0 && cz == 0) {
+                        for (int y = 54; y <= 56; y++) {
+                            helper.assertTrue(proto.getBlockState(new BlockPos(0, y, 0)).is(Blocks.BEDROCK), "Exposed Classic liner must reach the outer bottom in three layers");
+                        }
+                        helper.assertTrue(proto.getBlockState(new BlockPos(0, 53, 0)).isAir(), "No stone may cover the exposed Classic bottom");
+                        helper.assertTrue(proto.getBlockState(new BlockPos(0, 57, 0)).is(Blocks.STONE), "Moving the liner must not leave the old inner bedrock band behind");
                     }
                 }
             }
@@ -382,7 +392,7 @@ public final class BiosphereWorldgenGameTests {
                 new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Ocean(false, 20, 20),
                 new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Structures(true, 16), java.util.List.of(), false, false);
         for (var material : new net.minecraft.world.level.block.Block[]{Blocks.GLASS, Blocks.BEDROCK, Blocks.STONE}) {
-            var pos = material == Blocks.BEDROCK ? new BlockPos(4, 61, 0) : new BlockPos(-6, 62, 0);
+            var pos = material == Blocks.BEDROCK ? new BlockPos(-6, 61, 0) : new BlockPos(-6, 63, 0);
             var proto = chunk(helper, pos);
             ((BiosphereChunkAccess) proto).biosphereworlds$setBiosphere(true);
             ((BiosphereChunkAccess) proto).biosphereworlds$setClassicWorld(new mx.issacinzunza.biosphereworlds.worldgen.ClassicWorldSettings.Bound(recipe));

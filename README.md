@@ -65,7 +65,7 @@ for `climate_direction = 0`, or **packed ice** for `climate_direction = 1`. Its 
 Ice Spikes when those biomes exist in the wrapped source. The middle orbital band
 always stays temperate. With very few planets, at least one orbital planet is temperate.
 The central sphere keeps its required Stronghold size and Y=127 automatically.
-With Solar's `bedrock_mode = "SHELL"`, the sun's three-block inner liner ends at
+With Solar's `bedrock_mode = "SHELL"`, the sun's three-block liner ends at
 Y=63, rather than following its raised geometric center at Y=127. Orbital planet
 liners keep their center-relative ceiling. This affects newly generated chunks;
 previously saved walls are not removed automatically. Guardian behavior is unchanged.
@@ -132,7 +132,7 @@ as large as their parent are omitted.
 | `upper_shell_enabled` | `true` | boolean | Upper main shell, including the equator. Disabled leaves dry terrain exposed; glass seals water reaching the edge. Satellites remain complete. |
 | `lower_shell_enabled` | `true` | boolean | Lower main shell. Disabled leaves dry terrain exposed; glass seals water reaching the edge. Bedrock SHELL remains independent, even with both halves disabled. |
 | `close_open_top` | `false` | boolean | Close planets cut by the build limit with a flat shell cap at Y=319. Disabled leaves the opening. Does not shrink the configured radius. |
-| `bedrock_mode` | `FLOOR` | FLOOR / NONE / SHELL | FLOOR preserves vanilla world-floor bedrock only where a sphere reaches it. NONE replaces it with deepslate. SHELL adds a three-block bedrock lining inside the lower shell. |
+| `bedrock_mode` | `FLOOR` | FLOOR / NONE / SHELL | FLOOR preserves vanilla world-floor bedrock only where a sphere reaches it. NONE replaces it with deepslate. SHELL adds three bedrock layers inside the lower glass shell; disabling that shell moves them to the exposed outer surface. |
 | `edge_ocean_enabled` | `false` | boolean / booleano | Lowers and floods the interior band next to orbital shells. The dangerous central sphere keeps its magma or ice profile. |
 | `edge_ocean_width` | `20` | 0–100 % | Band width as a percentage of the sphere radius, using the original smooth 3D profile. Zero disables the band. Used only when edge_ocean_enabled is enabled. |
 | `edge_ocean_depth` | `20` | 0–100 blocks / bloques | Ocean floor depth below sea level, in blocks. Sea level 63 and depth 20 give a floor at Y=43. Used only when the edge ocean is enabled. |
@@ -266,7 +266,7 @@ satellites_mod_ore_density_permille = 20
 - `only_upper_hemisphere`: Legacy Classic mode, preserving its smaller radius and special replacement rules. Ignored when either new shell switch is disabled; unavailable in Solar.
 
 - `close_open_top`: Close spheres that pass the build limit with a flat cap at the highest placeable Y (319), using each sphere's shell block. Use it when `center_y + radius` is greater than 321, which is when the shell leaves an open hole at the top; below that value the shell already covers the whole disk and the option changes nothing. Default `false` keeps the natural opening.
-- `bedrock_mode`: Bedrock at the world floor. `floor` (default) keeps the `bedrock_floor` surface rule at the bottom of the world (Y -64 to -60, noisy, only where there is stone). `none` leaves no bedrock at the bottom: the carver turns that bedrock into deepslate, so the world floor can be mined through (the Create Diesel Generators pumpjack needs bedrock, so it will not work with this value). `shell` is `floor` plus a 3-block inner bedrock lining in the lower half of each sphere (`y <= center_y`), independently of the new shell switches. The legacy `only_upper_hemisphere` mode retains its old `floor` behavior when both new switches are enabled. Saved world recipes retain their values.
+- `bedrock_mode`: Bedrock at the world floor. `floor` (default) keeps the `bedrock_floor` surface rule at the bottom of the world (Y -64 to -60, noisy, only where there is stone). `none` leaves no bedrock at the bottom: the carver turns that bedrock into deepslate, so the world floor can be mined through (the Create Diesel Generators pumpjack needs bedrock, so it will not work with this value). `shell` is `floor` plus three bedrock layers in the lower half of each sphere (`y <= center_y`). With lower glass enabled they line its inside; with lower glass disabled they move to the outer surface and remain exposed, without adding extra inner layers. The enabled upper glass keeps priority at the equator. The legacy `only_upper_hemisphere` mode retains its old `floor` behavior when both new switches are enabled. Saved world recipes retain their values; this placement correction applies only to newly generated chunks.
 - `generate_bridge`: Enable or disable bridges between adjacent spheres.
 - `bridge_block`: Block used for bridges.
 - `bridge_radius`: Bridge radius, integer `0..46340` (larger values make thicker bridges; zero preserves the empty bridge behavior).
@@ -310,7 +310,7 @@ Classic satellites that exceed Y319 are lowered while preserving size, placement
 
 To check the open-shell mode, create a new world in each preset with the desired switches disabled.
 Check rivers and seas from below and across chunk borders, then reopen the world.
-With both switches disabled, `bedrock_mode="shell"` must still create its inner liner.
+With the lower switch disabled, `bedrock_mode="shell"` must show three exposed bedrock layers, with air immediately outside and no old inner bedrock band left behind. Test newly generated chunks; saved chunks are not rebuilt.
 Visual inspection and a separate run with C2ME are still needed; the automated fluid tests cover water already at the edge and water entering it sideways or downward.
 
 ### Tuning Notes

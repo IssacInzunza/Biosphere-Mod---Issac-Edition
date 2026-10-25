@@ -742,21 +742,40 @@ public final class SolarWorldgenGameTests {
                     chunk.setBlockState(pos, (wet ? Blocks.WATER : Blocks.STONE).defaultBlockState(), false);
                     painter.paint(chunk, SolarVolumePainter.Pass.SHELL);
                     boolean enabled = dy < 0 ? lower : upper;
-                    var expected = enabled ? Blocks.BLUE_STAINED_GLASS : wet ? Blocks.GLASS : Blocks.STONE;
+                    var expected = liner && !lower && dy < 0 ? Blocks.BEDROCK
+                            : enabled ? Blocks.BLUE_STAINED_GLASS : wet ? Blocks.GLASS : Blocks.STONE;
                     helper.assertTrue(chunk.getBlockState(pos).is(expected), "Solar shell or water barrier mismatch");
                     helper.assertTrue(SolarChunkGenerator.heightmapState(chunk, pos, chunk.getBlockState(pos))
-                            .is(enabled || wet ? Blocks.AIR : Blocks.STONE), "Dry open-shell terrain must remain visible to heightmaps");
+                            .is(enabled || wet || expected == Blocks.BEDROCK ? Blocks.AIR : Blocks.STONE), "Dry open-shell terrain must remain visible to heightmaps");
                     painter.paint(chunk, SolarVolumePainter.Pass.SHELL);
                     helper.assertTrue(chunk.getBlockState(pos).is(expected), "The decoration pass erased a barrier or dry terrain");
                 }
-                var pos = BlockPos.containing(body.x() + 4, body.y() - 1, body.z());
-                helper.assertTrue(SolarTerrain.bedrockLiner(body, pos.getX(), pos.getY(), pos.getZ(), true), "Fixture must touch the inner liner");
+                var pos = BlockPos.containing(body.x() + (lower ? 4 : 6), body.y() - 1, body.z());
+                helper.assertTrue(SolarTerrain.bedrockLiner(body, pos.getX(), pos.getY(), pos.getZ(), true, !lower), "Fixture must touch the selected liner band");
                 var chunk = new ProtoChunk(new ChunkPos(pos), UpgradeData.EMPTY, helper.getLevel(),
                         helper.getLevel().registryAccess().registryOrThrow(Registries.BIOME), null);
                 ((SolarChunkAccess) chunk).biosphereworlds$solarLayout(layout);
                 chunk.setBlockState(pos, Blocks.STONE.defaultBlockState(), false);
                 painter.paint(chunk, SolarVolumePainter.Pass.SHELL);
                 helper.assertTrue(chunk.getBlockState(pos).is(liner ? Blocks.BEDROCK : Blocks.STONE), "Bedrock must be independent of both shell switches");
+                if (liner && !lower) {
+                    var bottom = BlockPos.containing(body.x(), body.y() - body.radius(), body.z());
+                    while (!body.contains(bottom.getX(), bottom.getY(), bottom.getZ(), 0)) bottom = bottom.above();
+                    var exposedChunk = new ProtoChunk(new ChunkPos(bottom), UpgradeData.EMPTY, helper.getLevel(),
+                            helper.getLevel().registryAccess().registryOrThrow(Registries.BIOME), null);
+                    ((SolarChunkAccess) exposedChunk).biosphereworlds$solarLayout(layout);
+                    exposedChunk.setBlockState(bottom, Blocks.STONE.defaultBlockState(), false);
+                    painter.paint(exposedChunk, SolarVolumePainter.Pass.SHELL);
+                    for (int layer = 0; layer < 3; layer++) {
+                        helper.assertTrue(exposedChunk.getBlockState(bottom.above(layer)).is(Blocks.BEDROCK), "Exposed Solar liner must reach the outer bottom in three layers");
+                    }
+                    helper.assertTrue(exposedChunk.getBlockState(bottom.below()).isAir(), "No stone may cover the exposed Solar bottom");
+                    helper.assertTrue(!exposedChunk.getBlockState(bottom.above(3)).is(Blocks.BEDROCK), "Moving the Solar liner must not leave extra inner bedrock behind");
+                    helper.assertTrue(SolarChunkGenerator.heightmapState(exposedChunk, bottom,
+                            exposedChunk.getBlockState(bottom)).isAir(), "Heightmaps must ignore the exposed Solar liner");
+                    painter.paint(exposedChunk, SolarVolumePainter.Pass.SHELL);
+                    helper.assertTrue(exposedChunk.getBlockState(bottom).is(Blocks.BEDROCK), "The second shell pass must preserve exposed bedrock");
+                }
             }
         }
         helper.succeed();

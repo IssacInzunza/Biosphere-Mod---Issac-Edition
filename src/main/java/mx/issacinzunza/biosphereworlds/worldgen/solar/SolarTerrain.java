@@ -1,5 +1,7 @@
 package mx.issacinzunza.biosphereworlds.worldgen.solar;
 
+import mx.issacinzunza.biosphereworlds.worldgen.SphereLayout;
+
 /** Pure Solar terrain rules and vertical reservations, expressed in global block coordinates. */
 public final class SolarTerrain {
     /** Inclusive upper Y reserved for the complete central Stronghold. */
@@ -73,8 +75,17 @@ public final class SolarTerrain {
      * @return whether the block belongs to the lower inner bedrock band
      */
     public static boolean bedrockLiner(SolarLayout.Body body, int x, int y, int z, boolean enabled) {
+        return bedrockLiner(body, x, y, z, enabled, false);
+    }
+
+    /** Con la mitad inferior abierta, mueve la banda a la superficie exterior y conserva su techo. */
+    public static boolean bedrockLiner(SolarLayout.Body body, int x, int y, int z, boolean enabled, boolean exposed) {
         if (!enabled) return false;
         double ceiling = body.central() ? Math.min(body.y(), CENTRAL_BEDROCK_MAX_Y) : body.y();
+        if (exposed) {
+            double dx = x - body.x(), dy = y - body.y(), dz = z - body.z();
+            return SphereLayout.exposedBedrockContains(true, y, ceiling, dx * dx + dy * dy + dz * dz, body.radius());
+        }
         return y <= ceiling && body.contains(x, y, z, 2) && !body.contains(x, y, z, BEDROCK_INNER_MARGIN);
     }
 }

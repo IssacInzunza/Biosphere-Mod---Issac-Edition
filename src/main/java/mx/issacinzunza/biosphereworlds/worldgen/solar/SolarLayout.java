@@ -199,6 +199,10 @@ public final class SolarLayout {
         return SphereLayout.shellHemisphereEnabled(y, body.y, options.upperShellEnabled, options.lowerShellEnabled);
     }
 
+    public boolean bedrockExposed(Body body, int y) {
+        return !options.lowerShellEnabled && !shellEnabled(body, y);
+    }
+
     public Params params() { return params; }
     public int version() { return version; }
 

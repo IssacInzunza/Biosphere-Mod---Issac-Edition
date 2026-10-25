@@ -36,6 +36,7 @@ public final class SphereLayout {
 
     /** Grosor del cascaron, en bloques. Valor historico de {@code SphereCarver}. */
     public static final double SHELL_THICKNESS = 2.0;
+    public static final int BEDROCK_LINER_THICKNESS = 3;
 
     /**
      * Seleccion vertical del cascaron; el ecuador pertenece a la mitad superior.
@@ -53,6 +54,13 @@ public final class SphereLayout {
                                                double shellInnerRadiusSq, double linerInnerRadiusSq) {
         return enabled && y <= ceilingY
                 && distanceSq >= linerInnerRadiusSq && distanceSq < shellInnerRadiusSq;
+    }
+
+    /** Tres capas contra el borde exterior cuando falta el vidrio de la mitad inferior. */
+    public static boolean exposedBedrockContains(boolean enabled, int y, double ceilingY, double distanceSq, int radius) {
+        if (!enabled || y > ceilingY) return false;
+        double inner = radius - BEDROCK_LINER_THICKNESS;
+        return distanceSq <= radius * radius && (inner < 0.0 || distanceSq > inner * inner);
     }
 
     /**
@@ -78,6 +86,10 @@ public final class SphereLayout {
      * Solo para los controles nuevos (radio completo); no consulta satelites.
      */
     public Sphere mainShellBandAt(int x, int y, int z, boolean closeOpenTop, int topY, boolean liner) {
+        return mainShellBandAt(x, y, z, closeOpenTop, topY, liner, true, true);
+    }
+
+    public Sphere mainShellBandAt(int x, int y, int z, boolean closeOpenTop, int topY, boolean liner, boolean upper, boolean lower) {
         for (int gx = firstCellIndex(x & ~15); gx <= lastCellIndex((x & ~15) + 15); gx++) {
             for (int gz = firstCellIndex(z & ~15); gz <= lastCellIndex((z & ~15) + 15); gz++) {
                 Sphere sphere = sphereAtCell(gx, gz);
@@ -85,8 +97,10 @@ public final class SphereLayout {
                 double distanceSq = dx * dx + dz * dz + dy * dy;
                 double inner = sphere.radius() - SHELL_THICKNESS;
                 double innerSq = inner * inner;
-                double linerInner = Math.max(0.0, inner - 3);
-                if (liner ? bedrockLinerContains(true, y, sphere.centerY(), distanceSq, innerSq, linerInner * linerInner)
+                double linerInner = Math.max(0.0, inner - BEDROCK_LINER_THICKNESS);
+                boolean exposed = !lower && !shellHemisphereEnabled(y, sphere.centerY(), upper, lower);
+                if (liner ? (exposed ? exposedBedrockContains(true, y, sphere.centerY(), distanceSq, sphere.radius())
+                        : bedrockLinerContains(true, y, sphere.centerY(), distanceSq, innerSq, linerInner * linerInner))
                         : shellBoundary(distanceSq, innerSq, sphere.radius() * sphere.radius(), closeOpenTop && y == topY)) {
                     return sphere;
                 }

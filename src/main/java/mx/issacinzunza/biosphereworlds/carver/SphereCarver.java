@@ -40,7 +40,7 @@ import java.util.function.Function;
 public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
 
     /** Grosor del forro de bedrock del modo shell, en bloques. */
-    public static final int BEDROCK_LINER_THICKNESS = 3;
+    public static final int BEDROCK_LINER_THICKNESS = SphereLayout.BEDROCK_LINER_THICKNESS;
 
     /**
      * Capas sobre el minimo del mundo que barre el modo none. El JSON de
@@ -122,8 +122,8 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                 double innerRadiusSq = (radius - shellThickness) * (radius - shellThickness);
                 double outerRadiusSq = radius * radius;
 
-                // Forro (modo shell): las tres capas pegadas por dentro al
-                // cascaron. Fuera de shell no se calcula nada.
+                // Forro interior con vidrio; sin vidrio inferior la banda se
+                // desplaza al borde exterior, conservando sus tres capas.
                 double linerInnerRadiusSq = 0.0;
                 if (bedrockLiner) {
                     double linerInnerRadius = radius - shellThickness - BEDROCK_LINER_THICKNESS;
@@ -151,12 +151,17 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                         for (int y = minY; y <= maxY; y++) {
                             double dy = y - centerY;
                             double distanceSq = horizontalDistSq + dy * dy;
+                            boolean exposedLiner = bedrockLiner && !lower
+                                    && !SphereLayout.shellHemisphereEnabled(y, centerY, upper, lower);
 
                             // Cascaron historico. Con close_open_top activo la
                             // misma condicion rellena ademas el disco completo en
                             // el Y colocable mas alto, cerrando el hueco que deja
                             // una esfera cortada por el limite de construccion.
-                            if (SphereLayout.shellBoundary(distanceSq, innerRadiusSq, outerRadiusSq, closeOpenTop && y == topCapY)) {
+                            if (exposedLiner && SphereLayout.exposedBedrockContains(true, y, centerY, distanceSq, radius)) {
+                                chunk.setBlockState(new BlockPos(x, y, z), bedrockState, false);
+                                generated = true;
+                            } else if (SphereLayout.shellBoundary(distanceSq, innerRadiusSq, outerRadiusSq, closeOpenTop && y == topCapY)) {
                                 BlockState shellState = blockState;
                                 if (!SphereLayout.shellHemisphereEnabled(y, centerY, upper, lower)) {
                                     if (!SphereLayout.preserveShellForWater(true,
@@ -174,7 +179,7 @@ public class SphereCarver extends WorldCarver<SphereCarver.SphereCarverConfig> {
                             // Forro de bedrock del modo shell: mitad inferior
                             // (y <= centerY) y estrictamente por dentro del
                             // cascaron, que nunca se toca.
-                            else if (SphereLayout.bedrockLinerContains(bedrockLiner, y, centerY, distanceSq, innerRadiusSq, linerInnerRadiusSq)) {
+                            else if (!exposedLiner && SphereLayout.bedrockLinerContains(bedrockLiner, y, centerY, distanceSq, innerRadiusSq, linerInnerRadiusSq)) {
                                 chunk.setBlockState(new BlockPos(x, y, z), bedrockState, false);
                                 generated = true;
                             }

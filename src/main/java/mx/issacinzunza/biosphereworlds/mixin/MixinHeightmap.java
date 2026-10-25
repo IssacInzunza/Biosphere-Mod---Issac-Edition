@@ -83,7 +83,7 @@ public class MixinHeightmap {
             }
             if (original.is(Blocks.BEDROCK)
                     && (world == null ? SphereConfig.BEDROCK_MODE.get() : world.settings().bedrockMode()) == SphereConfig.BedrockMode.SHELL
-                    && layout.mainShellBandAt(blockX, y, blockZ, false, 0, true) != null) {
+                    && layout.mainShellBandAt(blockX, y, blockZ, false, 0, true, upper, lower) != null) {
                 return Blocks.AIR.defaultBlockState();
             }
         } else if (filterClassicShell && (world == null ? SphereUtil.isSphereBlock(original) : world.isShell(original))

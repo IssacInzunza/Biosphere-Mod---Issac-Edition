@@ -55,7 +55,7 @@
   "biosphereworlds.configuration.close_open_top.tooltip": "Close spheres cut by build height with a flat shell cap at the top buildable Y. Also applies to new Solar worlds. Disabled means no flat cap; sphere radius is preserved in both cases.",
 
   "biosphereworlds.configuration.bedrock_mode": "Bedrock mode",
-  "biosphereworlds.configuration.bedrock_mode.tooltip": "floor: keep world-floor bedrock. none: replace it with deepslate (pumpjacks requiring bedrock cannot use it). shell: floor plus a 3-block inner bedrock liner, even with both new shell switches disabled. The legacy hemisphere mode keeps its old floor behavior when both switches are enabled. New worlds only.",
+  "biosphereworlds.configuration.bedrock_mode.tooltip": "floor: keep world-floor bedrock. none: replace it with deepslate (pumpjacks requiring bedrock cannot use it). shell: add three bedrock layers inside the lower glass shell; disabling the lower shell moves those layers to the outer surface, leaving bedrock exposed. The legacy hemisphere mode keeps its old floor behavior when both switches are enabled. Newly generated chunks only.",
 
   "biosphereworlds.configuration.generate_bridge": "Generate bridges",
   "biosphereworlds.configuration.generate_bridge.tooltip": "Generate bridges between adjacent spheres. Only affects newly generated worlds. Always disabled in Solar Systems.",
