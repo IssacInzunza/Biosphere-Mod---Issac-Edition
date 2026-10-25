@@ -18,6 +18,16 @@ the revised orbits and central surface.** Existing Solar snapshots retain their
 original layout (versions 1–6); new worlds use version 7. Editing the TOML does not
 relocate saved planets or silently replace a saved world's settings.
 Generate Structures must be enabled.
+
+Use `/biospheres locate planets` as a player in a Solar world; operator permission
+is not required. It lists the current system's orbital planets, nearest first,
+with stable planet numbers, climate, center block coordinates and rounded 3D
+distance to each center. The sun and moons are excluded. Between systems, outside
+their horizontal radius, it reports that you are outside a solar system. It uses
+the world's saved layout without loading or generating chunks, including in
+existing Solar worlds. Reported centers are navigation references, not safe
+teleport destinations. Classic Biospheres and vanilla dimensions reject the command.
+
 Solar worlds also show a violet End-themed guide star toward the current system's
 center, slightly above the horizon. It pulses gently, fades over the last 64 blocks
 of the horizontal system radius, and disappears outside it. Opaque blocks hide it;

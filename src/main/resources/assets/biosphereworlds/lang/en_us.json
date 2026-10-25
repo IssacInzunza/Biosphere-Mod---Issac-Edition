@@ -1,4 +1,12 @@
 {
+  "commands.biosphereworlds.planets.solar_only": "This command is only available in Solar System worlds.",
+  "commands.biosphereworlds.planets.player_only": "Run this command as a player.",
+  "commands.biosphereworlds.planets.outside_system": "You are outside a solar system.",
+  "commands.biosphereworlds.planets.header": "Planets in your current system (%s), nearest first:",
+  "commands.biosphereworlds.planets.entry": "Planet %s (%s): [%s, %s, %s] — %s blocks to its center",
+  "commands.biosphereworlds.planets.climate.hot": "hot",
+  "commands.biosphereworlds.planets.climate.temperate": "temperate",
+  "commands.biosphereworlds.planets.climate.cold": "cold",
   "biosphereworlds.configuration.section.biosphereworlds.biosphereworlds.toml": "Biospheres settings",
   "biosphereworlds.configuration.section.biosphereworlds.biosphereworlds.toml.title": "Biospheres configuration",
   "biosphereworlds.configuration.section.biosphereworlds.solarsystems.toml": "Solar System settings",
