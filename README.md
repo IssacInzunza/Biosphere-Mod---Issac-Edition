@@ -22,7 +22,7 @@ Solar worlds also show a violet End-themed guide star toward the current system'
 center, slightly above the horizon. It pulses gently, fades over the last 64 blocks
 of the horizontal system radius, and disappears outside it. Opaque blocks hide it;
 glass remains transparent. This visual also applies to existing Solar worlds and
-receives only the current center/radius from the server, without changing worldgen.
+receives the current center/radius from the server, without changing worldgen.
 For navigation without this aid, set `SolarOrbits.solar_guide_enabled = false`
 in `config/biosphereworlds/SolarSystems.toml`. The default is `true`. This runtime
 toggle applies to existing worlds: disabled on the server, it skips guide geometry
@@ -30,6 +30,19 @@ queries and sends no guide packets; disabled on your client, it discards receive
 guide data and skips orientation calculations and drawing. A server may still send
 packets to a client that hides the star locally. After a server-side disable, an
 already received star expires within 40 game ticks (about two seconds at 20 TPS).
+Smaller planet guide stars point toward the other orbital planets in your current
+system: soft orange for warm climates, green for temperate, and light blue for cold.
+They use a fixed two-day calendar: each planet appears during either the first or
+second half of the dark night (ticks 13000–18000 or 18000–23000), on alternating
+days, with 200-tick fades at each end. The calendar follows world day time, including
+sleep and time commands. No signal points at the planet you are inside.
+Set `SolarOrbits.solar_planet_guides_enabled = false` in the same `SolarSystems.toml`
+to hide these independently of the central guide. It defaults to `true` and applies
+to existing Solar worlds. Disabled on the server, no planet-guide geometry is
+queried or packets sent; received data expires within 40 ticks. Disabled locally,
+planet-guide calculations and rendering stop immediately. These signals reuse the
+central guide's system-envelope fade and terrain occlusion, at a slightly higher
+sky elevation. Their optional network channel leaves the central guide unchanged.
 Initial spawn selects the first temperate planet in system (0,0) and uses its
 natural surface height. Solar and classic Biospheres share the same login/respawn
 correction: if the block at the player's feet is a shell material, search downward
@@ -111,6 +124,7 @@ planet terrain, since the hot/cold central body deliberately uses a fixed biome.
 | `climate_direction` | `0` | 0–1 (integer slider) | 0: magma/lava center, warm inner planets, temperate middle, cold exterior. 1: packed-ice center, cold inner planets, temperate middle, warm exterior. With very few planets, at least one stays temperate. |
 | `guardians_enabled` | `true` | boolean | Generate twelve ghast, phantom and blaze cages covering the sun, with bounded spawn rates and population. Other mobs are unaffected. Saved with each new Solar world. |
 | `solar_guide_enabled` | `true` | boolean | Runtime guide-star toggle, also for existing worlds. False on the server stops guide queries and packets for everyone; false locally discards guide data and stops orientation calculations/rendering for that client. A previously received guide expires within 40 ticks after server-side disable. |
+| `solar_planet_guides_enabled` | `true` | boolean | Independent runtime toggle for climate-colored orbital planet stars. Each is visible for half a night every two world days, with smooth fades. Server false skips planet-guide queries/packets; local false skips planet-guide calculations/rendering. Received data expires within 40 ticks. Applies to existing Solar worlds. |
 
 ### Familiar general options — Settings
 

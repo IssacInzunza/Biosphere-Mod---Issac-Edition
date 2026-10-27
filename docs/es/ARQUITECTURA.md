@@ -125,6 +125,43 @@ el desvanecimiento y los límites, incluido el vacío entre sistemas.
 Verificar además el interruptor en cliente y servidor, su reactivación y mundos
 existentes. El cableado de configuración, red y renderizado requiere prueba en juego.
 
+### Estrellas guía de los planetas
+
+`SolarOrbits.solar_planet_guides_enabled`, junto al interruptor central en
+`config/biosphereworlds/SolarSystems.toml`, vale `true` por defecto y es independiente.
+Se define en `SphereConfig.SolarOptions`; no forma parte de la receta guardada.
+Apagada recupera la ruta anterior de la estrella central: su evento, paquete y
+método de dibujo permanecen literales. No se cambia geometría ni generación.
+
+`SolarEvents.planetGuides` comprueba primero `SolarChunkGenerator`, luego la opción
+y el canal opcional, antes de consultar el sistema o preparar datos cada diez ticks.
+`SolarPlanetGuidePayload` reutiliza el codec central como envolvente y añade una
+lista inmutable de hasta 16 señales; no transmite semilla ni replica el layout.
+`SolarPlanetGuide.markers` usa los cuerpos existentes de `SolarLayout`, omite el
+central y el planeta que contiene al jugador. Los colores corresponden al clima
+guardado: naranja cálido, verde templado y azul claro frío.
+
+El índice orbital asigna uno de cuatro turnos estables. En un ciclo de 48000 ticks,
+los turnos ocupan 13000–18000, 18000–23000, 37000–42000 y 42000–47000.
+Cada señal aparece media noche cada dos días; la entrada y salida se suavizan en
+200 ticks. Se usa la hora del día del mundo: dormir y los comandos de hora cambian
+la fase, y varios jugadores comparten calendario. El cálculo es puro, sin estado
+mutable global ni cambios a hashes existentes.
+
+`BiosphereWorldsClient.renderPlanetGuides` tiene estado separado, ligado al nivel,
+con caducidad de 40 ticks y limpieza al desconectar. Comprueba la opción antes de
+calcular calendario, orientación o dibujar. Conserva la oclusión por terreno de la
+guía central, reutiliza su textura y usa señales menores a una elevación algo mayor.
+Apagada en el servidor no hay consultas ni paquetes planetarios; apagada localmente
+descarta los datos sin impedir que el servidor envíe. Funciona en mundos Solar
+existentes; los mundos clásicos y vanilla no reciben datos ni ejecutan estos cálculos.
+
+Verificación automática: calendario completo, transiciones, repetición, colores,
+selección del sistema y estabilidad de turnos al omitir el planeta actual.
+Pendiente en juego: oclusión con vidrio y paredes, lluvia, shaders, señales próximas,
+cambio de sistema/dimensión, reconexión, horario tras dormir y servidor dedicado.
+Probar los cuatro estados de los dos interruptores y que vanilla quede idéntico.
+
 ## Correcciones de auditoría Solar — C1–C4
 
 `SolarChunkGenerator.createState` conserva la resolución compartida de minerales,
@@ -314,6 +351,7 @@ cascarón se aplica también a sus lunas y se excluye de los heightmaps.
 | `climate_direction` | `0` | 0–1 (deslizador entero) | 0: centro de magma/lava, planetas interiores cálidos, intermedios templados y exteriores fríos. 1: centro de hielo compacto, interiores fríos, intermedios templados y exteriores cálidos. Con pocos planetas se conserva al menos uno templado. |
 | `guardians_enabled` | `true` | booleano | Genera doce jaulas de ghasts, phantoms y blazes que cubren el sol, con frecuencia y población acotadas. No modifica otros mobs. Se guarda al crear cada mundo Solar. |
 | `solar_guide_enabled` | `true` | booleano | Interruptor de ejecución, también para mundos existentes. Apagado en el servidor omite consultas de geometría y paquetes de la guía para todos; apagado localmente descarta datos y omite cálculos de orientación y dibujo. Tras apagarlo en el servidor, una guía ya recibida caduca en hasta 40 ticks. |
+| `solar_planet_guides_enabled` | `true` | booleano | Interruptor independiente para estrellas de planetas según su clima, junto al de la estrella central. Cada planeta aparece media noche cada dos días, con transiciones suaves. Apagado en servidor omite consultas/paquetes planetarios; apagado localmente omite sus cálculos/dibujo. Los datos caducan en hasta 40 ticks. También en mundos Solar existentes. |
 
 ### Ajustes generales independientes — Settings
 

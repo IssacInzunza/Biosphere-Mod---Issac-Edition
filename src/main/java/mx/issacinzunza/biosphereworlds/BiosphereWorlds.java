@@ -27,6 +27,11 @@ public class BiosphereWorlds {
                         mx.issacinzunza.biosphereworlds.event.SolarGuidePayload.TYPE,
                         mx.issacinzunza.biosphereworlds.event.SolarGuidePayload.STREAM_CODEC,
                         (payload, context) -> mx.issacinzunza.biosphereworlds.client.BiosphereWorldsClient.receiveGuide(payload)));
+        modEventBus.addListener((net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent event) ->
+                event.registrar("1").optional().playToClient(
+                        mx.issacinzunza.biosphereworlds.event.SolarPlanetGuidePayload.TYPE,
+                        mx.issacinzunza.biosphereworlds.event.SolarPlanetGuidePayload.STREAM_CODEC,
+                        (payload, context) -> mx.issacinzunza.biosphereworlds.client.BiosphereWorldsClient.receivePlanetGuides(payload)));
         mx.issacinzunza.biosphereworlds.worldgen.solar.SolarWorldgen.register(modEventBus);
         ModDensityFunctions.DENSITY_FUNCTIONS.register(modEventBus);
         ModCarvers.CARVERS.register(modEventBus);
