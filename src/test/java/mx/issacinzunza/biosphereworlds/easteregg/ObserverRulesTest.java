@@ -59,13 +59,17 @@ class ObserverRulesTest {
     }
 
     @Test void reactivePathsKeepTheirDistanceInsteadOfDivingAtTheWitness() {
-        for (var mode : java.util.List.of(ObserverRules.Mode.FLYBY, ObserverRules.Mode.ATTACK))
-            for (int count = 1; count <= 5; count++) for (int index = 0; index < count; index++)
+        for (boolean interior : new boolean[]{false, true})
+            for (var mode : java.util.List.of(ObserverRules.Mode.FLYBY, ObserverRules.Mode.ATTACK))
+            for (int count = 1; count <= (interior ? 3 : 5); count++) for (int index = 0; index < count; index++)
                 for (int age = 0; age < 800; age++) {
-                    var offset = ObserverRules.offset(mode, index, count, age, 800, 91);
+                    var offset = ObserverRules.offset(mode, index, count, age, 800, 91, interior);
                     double distance = Math.sqrt(offset.x() * offset.x() + offset.y() * offset.y() + offset.z() * offset.z());
-                    assertTrue(distance >= 80, mode + " approached the witness");
-                    assertTrue(distance * 0.45 >= 32, mode + " interior offset lost its separation");
+                    assertTrue(distance >= (interior ? 80 : 96), mode + " approached the witness");
+                    if (mode == ObserverRules.Mode.FLYBY && age <= 600) {
+                        assertTrue(offset.y() >= (interior ? 48 : 64) && offset.y() <= (interior ? 64 : 96), "Flyby lost its height");
+                        if (!interior) assertTrue(offset.x() >= 120 && offset.x() <= 160, "Exterior flyby lost its lateral separation");
+                    }
                 }
     }
 

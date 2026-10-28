@@ -122,7 +122,7 @@ public final class ObserverEntity extends Entity {
     }
 
     public Vec3 positionAt(int age) {
-        var offset = ObserverRules.offset(mode(), entityData.get(INDEX), entityData.get(COUNT), age, duration(), encounterSeed());
+        var offset = ObserverRules.offset(mode(), entityData.get(INDEX), entityData.get(COUNT), age, duration(), encounterSeed(), interior);
         if (hostile() && entityData.get(COUNT) > 1 && mode() != ObserverRules.Mode.FLYBY && mode() != ObserverRules.Mode.ATTACK) {
             double arc = entityData.get(INDEX) * Math.PI / Math.max(1, entityData.get(COUNT) - 1);
             offset = new ObserverRules.Offset(offset.x() * 0.75 + Math.cos(arc) * 6,
@@ -130,10 +130,8 @@ public final class ObserverEntity extends Entity {
         }
         if (hostile()) offset = new ObserverRules.Offset(offset.x() + Math.sin(age * 0.07) * 18,
                 offset.y() + Math.cos(age * 0.09) * 5, offset.z());
-        double scale = interior ? 0.45 : 1;
         double sin = Math.sin(heading), cos = Math.cos(heading);
-        return origin.add((offset.x() * cos - offset.z() * sin) * scale, offset.y() * scale,
-                (offset.x() * sin + offset.z() * cos) * scale);
+        return origin.add(offset.x() * cos - offset.z() * sin, offset.y(), offset.x() * sin + offset.z() * cos);
     }
 
     @Override public void tick() {

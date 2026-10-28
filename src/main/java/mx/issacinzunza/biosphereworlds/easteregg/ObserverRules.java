@@ -17,8 +17,8 @@ public final class ObserverRules {
     static final int INTERFERENCE_RADIUS = 64;
     static final int BLOCK_SCAN_BUDGET = 8192;
     static final int MAX_DRAIN_FE = 5000;
-    static final int EXTERIOR_CLEARANCE = 64;
-    static final int INTERIOR_CLEARANCE = 32;
+    static final int EXTERIOR_CLEARANCE = 96;
+    static final int INTERIOR_CLEARANCE = 80;
     static final int SHOT_RANGE = 224;
     static final int WARNING_TICKS = 40;
     static final int RETALIATION_CHARGE_TICKS = 60;
@@ -74,6 +74,10 @@ public final class ObserverRules {
     public record Offset(double x, double y, double z) { }
 
     public static Offset offset(Mode mode, int index, int count, double age, int duration, long seed) {
+        return offset(mode, index, count, age, duration, seed, false);
+    }
+
+    public static Offset offset(Mode mode, int index, int count, double age, int duration, long seed, boolean interior) {
         if (index < 0 || index >= count || count > MAX_LIGHTS || duration <= 0)
             throw new IllegalArgumentException("Invalid formation");
         if (mode == Mode.FORMATION) return offset(index, count, age, duration, seed);
@@ -90,8 +94,11 @@ public final class ObserverRules {
             }
             case GLASS -> new Offset(side + Math.sin(age * 0.012) * 4, bob - smooth(progress / 0.4) * 24 + retreat * 48, retreat * 45);
             // These offsets accompany a server-side moving focus; no vehicle classes are referenced.
-            case FLYBY -> new Offset(side + 112, bob + 48 + retreat * 24, 80 - smooth(progress / 0.55) * 120 - retreat * 65);
-            case ATTACK -> new Offset(side + 112 + Math.sin(age * 0.012) * 8, bob + 40 + retreat * 25, retreat * 60);
+            case FLYBY -> new Offset(side + (interior ? 96 : 140),
+                    bob + (interior ? 50 + Math.floorMod(seed, 13) : 66 + Math.floorMod(seed, 27)) + retreat * 24,
+                    (interior ? 32 : 80) - smooth(progress / 0.55) * (interior ? 64 : 120) - retreat * (interior ? 48 : 65));
+            case ATTACK -> new Offset(side + (interior ? 104 : 128) + Math.sin(age * 0.012) * 8,
+                    bob + 56 + retreat * 25, retreat * 60);
             default -> throw new IllegalArgumentException("Unknown mode");
         };
     }

@@ -40,6 +40,7 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.ExplosionDamageCalculator;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseFireBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.AABB;
@@ -336,17 +337,41 @@ public final class ObserverEvents {
         return true;
     }
 
-    private record Shot(Vec3 end, boolean reachesTarget) { }
+    private record Shot(Vec3 end, boolean reachesTarget, Entity struck) { }
 
-    /** Visual warning only: no burning blocks or contact damage before the charge completes. */
-    private static void chargeEffects(ServerLevel level, ObserverEntity light, Vec3 end) {
+    /** Real ignition follows the clipped impact, never a target behind its obstruction. */
+    private static void chargeEffects(ServerLevel level, ObserverEntity light, Shot shot) {
         if (!applies(level) || !EasterEggConfig.ENABLED.get()) return;
+        Vec3 end = shot.end();
+        if (shot.struck() != null && !shot.struck().fireImmune() && shot.struck().getRemainingFireTicks() < 40)
+            shot.struck().igniteForSeconds(8);
+        // Fire's placement/portal checks can inspect nearby blocks. Do not ask the
+        // engine to place it near an unloaded boundary, or search through a floor.
+        if (loadedAround(level, end, 32)) {
+            var impact = BlockPos.containing(end.subtract(end.subtract(light.position()).normalize().scale(0.1)));
+            for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++) for (int down = 0; down <= 4; down++) {
+                var pos = impact.offset(x, -down, z);
+                if (!level.isInWorldBounds(pos) || !level.getBlockState(pos).isAir()) break;
+                var fire = BaseFireBlock.getState(level, pos);
+                if (fire.canSurvive(level, pos)) {
+                    level.setBlockAndUpdate(pos, fire);
+                    break;
+                }
+            }
+        }
         for (var player : level.players()) if (player.distanceToSqr(end) <= 512 * 512) {
             level.sendParticles(player, ParticleTypes.FLAME, true, end.x, end.y, end.z, 12, 0.8, 0.8, 0.8, 0.04);
             level.sendParticles(player, ParticleTypes.LARGE_SMOKE, true, end.x, end.y, end.z, 3, 0.5, 0.5, 0.5, 0.02);
         }
         if (light.age() % 20 == 0)
             level.playSound(null, end.x, end.y, end.z, SoundEvents.FIRECHARGE_USE, SoundSource.HOSTILE, 2, 0.65f);
+    }
+
+    private static boolean loadedAround(ServerLevel level, Vec3 center, int radius) {
+        for (int x = ((int) Math.floor(center.x) - radius) >> 4; x <= ((int) Math.floor(center.x) + radius) >> 4; x++)
+            for (int z = ((int) Math.floor(center.z) - radius) >> 4; z <= ((int) Math.floor(center.z) + radius) >> 4; z++)
+                if (level.getChunkSource().getChunkNow(x, z) == null) return false;
+        return true;
     }
 
     private static boolean detonate(ServerLevel level, ObserverEntity light, Vec3 end) {
@@ -357,16 +382,15 @@ public final class ObserverEvents {
         if (!Double.isFinite(center.x) || !Double.isFinite(center.y) || !Double.isFinite(center.z)) return false;
         int radius = ObserverRules.BLAST_RADIUS;
         // Vanilla power 8 has a 16-block entity radius; its block rays are shorter.
-        // Check the surrounding margin before the engine reads blocks or traces exposure.
-        for (int x = ((int) Math.floor(center.x) - radius - 2) >> 4; x <= ((int) Math.floor(center.x) + radius + 2) >> 4; x++)
-            for (int z = ((int) Math.floor(center.z) - radius - 2) >> 4; z <= ((int) Math.floor(center.z) + radius + 2) >> 4; z++)
-                if (level.getChunkSource().getChunkNow(x, z) == null) return false;
+        // Burning debris can place fire near the edge; allow the vanilla fire/portal
+        // placement queries their own loaded margin as well as the explosion rays.
+        if (!loadedAround(level, center, radius + 24)) return false;
         level.explode(light, null, new ExplosionDamageCalculator() {
             @Override public boolean shouldBlockExplode(Explosion explosion, BlockGetter reader, BlockPos pos, BlockState state, float power) {
                 return pos.getCenter().distanceToSqr(center) <= radius * radius
                         && super.shouldBlockExplode(explosion, reader, pos, state, power);
             }
-        }, center, radius / 2.0f, false, Level.ExplosionInteraction.BLOCK);
+        }, center, radius / 2.0f, true, Level.ExplosionInteraction.BLOCK);
         return true;
     }
 
@@ -386,6 +410,7 @@ public final class ObserverEvents {
         Vec3 end = hit.getType() == HitResult.Type.MISS ? target : hit.getLocation();
         if (end.distanceToSqr(from) > (double) range * range + 4) return null;
         boolean reaches = hit.getType() == HitResult.Type.MISS;
+        Entity struck = reaches ? victim : null;
         for (var entity : level.getEntities(light, new AABB(from, end).inflate(1), e -> e != victim
                 && !(e instanceof ObserverEntity) && !(e instanceof Projectile)
                 && (e instanceof Player || !e.getPassengers().isEmpty() || e.getBoundingBox().getSize() > 4))) {
@@ -393,6 +418,7 @@ public final class ObserverEvents {
             if (obstruction.isPresent() && obstruction.get().distanceToSqr(from) < end.distanceToSqr(from)) {
                 end = obstruction.get();
                 reaches = false;
+                struck = entity;
             }
         }
         if (victim != null && victim.getRootVehicle() != victim) {
@@ -400,9 +426,10 @@ public final class ObserverEvents {
             if (obstruction.isPresent() && obstruction.get().distanceToSqr(from) < end.distanceToSqr(from)) {
                 end = obstruction.get();
                 reaches = false;
+                struck = victim.getRootVehicle();
             }
         }
-        return new Shot(end, reaches);
+        return new Shot(end, reaches, struck);
     }
 
     private static double shellTop(ServerLevel level, Vec3 player) {
@@ -433,8 +460,8 @@ public final class ObserverEvents {
         long seed = random.nextLong();
         for (int attempt = 0; attempt < 24; attempt++) {
             double bearing = random.nextDouble() * Math.PI * 2;
-            double distance = interior ? 48 + random.nextDouble() * 24 : 80 + random.nextDouble() * 80;
-            double height = interior ? player.getY() + 16 + random.nextDouble() * 12
+            double distance = interior ? 88 + random.nextDouble() * 32 : 80 + random.nextDouble() * 80;
+            double height = interior ? player.getEyeY() + 48 + random.nextDouble() * 16
                     : Math.max(player.getY() + 80 + random.nextDouble() * 80, shellTop(level, player.position()) + 48);
             var origin = new Vec3(player.getX() + Math.cos(bearing) * distance, height, player.getZ() + Math.sin(bearing) * distance);
             if ((mode == ObserverRules.Mode.FLYBY || mode == ObserverRules.Mode.ATTACK)
@@ -444,6 +471,11 @@ public final class ObserverEvents {
             for (int index = 0; index < count && fits; index++) {
                 var light = new ObserverEntity(ObserverEntity.TYPE.get(), level);
                 light.configure(origin, bearing + Math.PI / 2, seed, index, count, duration, player.getUUID(), mode, interior);
+                double elevation = light.getY() - player.getEyeY();
+                if (approachingWitness(level, light.position(), interior) != null || interior && (elevation < 48 || elevation > 64)) {
+                    fits = false;
+                    break;
+                }
                 // Reactive lights validate their starting space; subsequent swept checks follow the moving player.
                 if (mode == ObserverRules.Mode.GLASS || mode == ObserverRules.Mode.FLYBY || mode == ObserverRules.Mode.ATTACK)
                     fits = freeSpace(level, light.position(), interior) && clearOfWitnesses(level, light.position(), light.position(), interior);
@@ -671,7 +703,7 @@ public final class ObserverEvents {
                     if (shot == null) leader().clearBeam();
                     else {
                         leader().pulse(shot.end());
-                        if (leader().age() % 4 == 0) chargeEffects(level, leader(), shot.end());
+                        if (leader().age() % 4 == 0) chargeEffects(level, leader(), shot);
                     }
                 } else if (leader().age() >= fireAt) {
                     if (shot != null) {

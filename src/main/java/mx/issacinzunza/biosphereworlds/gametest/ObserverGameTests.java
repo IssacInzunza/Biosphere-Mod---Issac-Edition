@@ -379,7 +379,7 @@ public final class ObserverGameTests {
         try (var fixture = ClassicPersistenceGameTests.open(helper, java.nio.file.Path.of("observer-flyby-" + java.util.UUID.randomUUID()), "flyby", false, true)) {
             var level = fixture.level();
             EasterEggConfig.ENABLED.set(true);
-            for (int x = 6; x <= 9; x++) for (int z = -3; z <= 6; z++) level.getChunk(x, z);
+            for (int x = 8; x <= 11; x++) for (int z = -3; z <= 6; z++) level.getChunk(x, z);
             var player = new net.neoforged.neoforge.common.util.FakePlayer(level,
                     new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "observer-pilot"));
             player.setPos(8, 700, 8);
@@ -395,9 +395,10 @@ public final class ObserverGameTests {
                 var before = light.position();
                 light.tick();
                 helper.assertTrue(!light.isRemoved() && before.distanceTo(light.position()) <= 2.01, "Flyby jumped or disappeared");
-                helper.assertTrue(player.distanceToSqr(light) >= 80 * 80, "Flyby lost its stand-off distance");
+                helper.assertTrue(player.distanceToSqr(light) >= 96 * 96 && light.getY() - player.getEyeY() >= 64,
+                        "Flyby lost its stand-off distance or height");
             }
-            helper.assertTrue(light.getX() > 130 && player.distanceToSqr(light) < 180 * 180, "Light did not accompany its moving witness at a distance");
+            helper.assertTrue(light.getX() > 150 && player.distanceToSqr(light) < 210 * 210, "Light did not accompany its moving witness at a distance");
             helper.assertTrue(level.getChunkSource().getLoadedChunksCount() == loaded, "Flyby forced chunk loading");
             player.setPos(light.position().add(8, 0, 0));
             light.tick();
@@ -439,8 +440,12 @@ public final class ObserverGameTests {
     }
 
     private static void loadBlastChunks(net.minecraft.server.level.ServerLevel level, net.minecraft.world.phys.Vec3 center) {
-        for (int x = ((int) Math.floor(center.x) - 18) >> 4; x <= ((int) Math.floor(center.x) + 18) >> 4; x++)
-            for (int z = ((int) Math.floor(center.z) - 18) >> 4; z <= ((int) Math.floor(center.z) + 18) >> 4; z++) level.getChunk(x, z);
+        loadBlastChunks(level, center, 40);
+    }
+
+    private static void loadBlastChunks(net.minecraft.server.level.ServerLevel level, net.minecraft.world.phys.Vec3 center, int radius) {
+        for (int x = ((int) Math.floor(center.x) - radius) >> 4; x <= ((int) Math.floor(center.x) + radius) >> 4; x++)
+            for (int z = ((int) Math.floor(center.z) - radius) >> 4; z <= ((int) Math.floor(center.z) + radius) >> 4; z++) level.getChunk(x, z);
     }
 
     private static AutoCloseable includeInExplosionQueries(net.minecraft.server.level.ServerPlayer player) {
@@ -462,7 +467,7 @@ public final class ObserverGameTests {
         try (var fixture = ClassicPersistenceGameTests.open(helper, java.nio.file.Path.of("observer-retaliation-" + java.util.UUID.randomUUID()), "hostile", false, true)) {
             var level = fixture.level();
             EasterEggConfig.ENABLED.set(true);
-            for (int x = 0; x <= 11; x++) level.getChunk(x, 0);
+            for (int x = 0; x <= 15; x++) level.getChunk(x, 0);
             var witness = vulnerablePlayer(level, "observer-witness", 8, 230, 8);
             var aggressor = vulnerablePlayer(level, "observer-aggressor", 80, 230, 8);
             explosionQuery = includeInExplosionQueries(aggressor);
@@ -470,7 +475,7 @@ public final class ObserverGameTests {
             aggressor.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_ABSORPTION).setBaseValue(200);
             aggressor.setAbsorptionAmount(200);
             var light = new ObserverEntity(ObserverEntity.TYPE.get(), level);
-            light.configure(new net.minecraft.world.phys.Vec3(168, 270, 8), 0, 21, 0, 1, 400, witness.getUUID(),
+            light.configure(new net.minecraft.world.phys.Vec3(208, 270, 8), 0, 21, 0, 1, 400, witness.getUUID(),
                     mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.WATCH, false);
             level.addFreshEntity(light);
             Object encounter = encounter(witness.getUUID(), witness.blockPosition(), java.util.List.of(light));
@@ -531,12 +536,12 @@ public final class ObserverGameTests {
         try (var fixture = ClassicPersistenceGameTests.open(helper, java.nio.file.Path.of("observer-blast-" + java.util.UUID.randomUUID()), "blast", false, true)) {
             var level = fixture.level();
             EasterEggConfig.ENABLED.set(true);
-            for (int x = 0; x <= 11; x++) level.getChunk(x, 0);
+            for (int x = 0; x <= 15; x++) level.getChunk(x, 0);
             var player = vulnerablePlayer(level, "observer-blast", 80, 230, 8);
             explosionQuery = includeInExplosionQueries(player);
             loadBlastChunks(level, player.getEyePosition());
             var light = new ObserverEntity(ObserverEntity.TYPE.get(), level);
-            light.configure(new net.minecraft.world.phys.Vec3(168, 270, 8), 0, 31, 0, 1, 400, player.getUUID(),
+            light.configure(new net.minecraft.world.phys.Vec3(208, 270, 8), 0, 31, 0, 1, 400, player.getUUID(),
                     mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.WATCH, false);
             level.addFreshEntity(light);
             var glass = player.blockPosition().below();
@@ -561,8 +566,8 @@ public final class ObserverGameTests {
             for (int age = 0; age < 60; age++) {
                 setAge(light, age);
                 tickEncounter(encounter, level);
-                helper.assertTrue(player.getHealth() == 20 && level.getBlockState(glass).is(Blocks.GLASS)
-                        && light.beam(0).lengthSqr() > 0, "Charge damaged its target early or lost the beam");
+                helper.assertTrue(level.getBlockState(glass).is(Blocks.GLASS)
+                        && light.beam(0).lengthSqr() > 0, "Explosion destroyed terrain before charging completed or lost the beam");
             }
             setAge(light, 60);
             tickEncounter(encounter, level);
@@ -582,15 +587,63 @@ public final class ObserverGameTests {
     }
 
     @GameTest(template = "solar_empty", timeoutTicks = 1200)
+    public static void chargeBurnsItsTargetIgnitesGroundAndExplosionLeavesRealFire(GameTestHelper helper) throws Exception {
+        boolean enabled = EasterEggConfig.ENABLED.get();
+        AutoCloseable explosionQuery = null;
+        try (var fixture = ClassicPersistenceGameTests.open(helper, java.nio.file.Path.of("observer-fire-" + java.util.UUID.randomUUID()), "fire", false, true)) {
+            var level = fixture.level();
+            EasterEggConfig.ENABLED.set(true);
+            for (int x = 0; x <= 15; x++) level.getChunk(x, 0);
+            var player = vulnerablePlayer(level, "observer-fire", 80, 230, 8);
+            explosionQuery = includeInExplosionQueries(player);
+            loadBlastChunks(level, player.getEyePosition(), 40);
+            for (var pos : BlockPos.betweenClosed(player.blockPosition().offset(-8, -1, -8), player.blockPosition().offset(8, -1, 8)))
+                level.setBlock(pos, Blocks.OBSIDIAN.defaultBlockState(), 3);
+            var light = new ObserverEntity(ObserverEntity.TYPE.get(), level);
+            light.configure(new net.minecraft.world.phys.Vec3(208, 270, 8), 0, 33, 0, 1, 400, player.getUUID(),
+                    mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.WATCH, false);
+            level.addFreshEntity(light);
+            Object encounter = encounter(player.getUUID(), player.blockPosition(), java.util.List.of(light));
+            encounters(level).add(encounter);
+            light.hurt(level.damageSources().playerAttack(player), 1);
+            int loaded = level.getChunkSource().getLoadedChunksCount();
+            EasterEggConfig.ENABLED.set(false);
+            tickEncounter(encounter, level);
+            helper.assertTrue(player.getRemainingFireTicks() <= 0 && level.getBlockState(player.blockPosition()).isAir(),
+                    "Disabled observer ignited its target or terrain");
+            EasterEggConfig.ENABLED.set(true);
+            tickEncounter(encounter, level);
+            helper.assertTrue(player.getRemainingFireTicks() > 0 && level.getBlockState(player.blockPosition()).is(Blocks.FIRE),
+                    "Charge only emitted decorative flames instead of real ignition");
+            player.baseTick(); // Exercise vanilla periodic burning, not a test-only damage call.
+            helper.assertTrue(player.getHealth() < 20, "Ignition did not cause real burn damage");
+            setAge(light, 60);
+            tickEncounter(encounter, level);
+            boolean fireRemains = false;
+            for (var pos : BlockPos.betweenClosed(player.blockPosition().offset(-8, 0, -8), player.blockPosition().offset(8, 0, 8)))
+                fireRemains |= level.getBlockState(pos).is(Blocks.FIRE);
+            helper.assertTrue(fireRemains, "Explosion did not leave real fire on a surviving surface");
+            helper.assertTrue(level.getChunkSource().getLoadedChunksCount() == loaded, "Real fire forced extra chunks during the sequence");
+            light.discard();
+            level.players().remove(player);
+            encounters(level).clear();
+        } finally {
+            if (explosionQuery != null) explosionQuery.close();
+            EasterEggConfig.ENABLED.set(enabled);
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "solar_empty", timeoutTicks = 1200)
     public static void chargedRetaliationExplodesOnCoverInsteadOfThroughIt(GameTestHelper helper) throws Exception {
         boolean enabled = EasterEggConfig.ENABLED.get();
         try (var fixture = ClassicPersistenceGameTests.open(helper, java.nio.file.Path.of("observer-cover-" + java.util.UUID.randomUUID()), "cover", false, true)) {
             var level = fixture.level();
             EasterEggConfig.ENABLED.set(true);
-            for (int x = 0; x <= 11; x++) level.getChunk(x, 0);
+            for (int x = 0; x <= 15; x++) level.getChunk(x, 0);
             var player = vulnerablePlayer(level, "observer-cover", 80, 230, 8);
             var light = new ObserverEntity(ObserverEntity.TYPE.get(), level);
-            light.configure(new net.minecraft.world.phys.Vec3(168, 270, 8), 0, 32, 0, 1, 400, player.getUUID(),
+            light.configure(new net.minecraft.world.phys.Vec3(208, 270, 8), 0, 32, 0, 1, 400, player.getUUID(),
                     mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.WATCH, false);
             level.addFreshEntity(light);
             Object encounter = encounter(player.getUUID(), player.blockPosition(), java.util.List.of(light));
@@ -601,10 +654,14 @@ public final class ObserverGameTests {
                     "Warning beam did not initially aim at its aggressor");
             // Introduce cover after the warning starts, far enough from the player
             // that its destruction cannot reach them via the explosion radius.
-            var wall = new BlockPos(120, 248, 8);
+            var wall = new BlockPos(120, 244, 8);
             for (var pos : BlockPos.betweenClosed(wall.offset(0, -4, -2), wall.offset(0, 5, 2)))
                 level.setBlock(pos, Blocks.GLASS.defaultBlockState(), 3);
             loadBlastChunks(level, wall.getCenter());
+            player.clearFire();
+            setAge(light, 56);
+            tickEncounter(encounter, level);
+            helper.assertTrue(player.getRemainingFireTicks() == 0, "Charging beam ignited its target through cover");
             setAge(light, 59);
             tickEncounter(encounter, level);
             var endpoint = light.position().add(light.beam(0));
@@ -673,6 +730,50 @@ public final class ObserverGameTests {
     }
 
     @GameTest(template = "solar_empty", timeoutTicks = 1200)
+    public static void interiorFlybyKeepsItsHeightAndSkipsInsufficientHeadroom(GameTestHelper helper) throws Exception {
+        boolean enabled = EasterEggConfig.ENABLED.get();
+        try (var fixture = ClassicPersistenceGameTests.open(helper, java.nio.file.Path.of("observer-high-interior-" + java.util.UUID.randomUUID()), "height", false, true)) {
+            var level = fixture.level();
+            EasterEggConfig.ENABLED.set(true);
+            var layout = mx.issacinzunza.biosphereworlds.worldgen.BiosphereWorldgen.classicLayout(level.getChunkSource().getGenerator());
+            var sphere = layout.sphereContaining(8, 8);
+            var player = vulnerablePlayer(level, "observer-interior-height", sphere.centerX(), sphere.centerY() - 20, sphere.centerZ());
+            var preview = new ObserverEntity(ObserverEntity.TYPE.get(), level);
+            preview.configure(player.getEyePosition(), Math.PI / 2, 0, 0, 1, 400, player.getUUID(),
+                    mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.FLYBY, true);
+            var point = BlockPos.containing(preview.position());
+            for (int x = (point.getX() - 2) >> 4; x <= (point.getX() + 2) >> 4; x++)
+                for (int z = (point.getZ() - 2) >> 4; z <= (point.getZ() + 2) >> 4; z++) level.getChunk(x, z);
+            for (var pos : BlockPos.betweenClosed(point.offset(-1, -1, -1), point.offset(1, 1, 1)))
+                level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+            int loaded = level.getChunkSource().getLoadedChunksCount();
+            var spawn = ObserverEvents.class.getDeclaredMethod("spawn", net.minecraft.server.level.ServerPlayer.class,
+                    int.class, boolean.class, java.util.Random.class, mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.class, Boolean.class);
+            spawn.setAccessible(true);
+            var random = new java.util.Random(13) {
+                @Override public double nextDouble() { return 0; }
+                @Override public long nextLong() { return 0; }
+            };
+            helper.assertTrue((boolean) spawn.invoke(null, player, 1, false, random,
+                    mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.FLYBY, true), "Distant interior flyby could not spawn in sufficient space");
+            var lights = encounters(level).getFirst().getClass().getDeclaredField("lights");
+            lights.setAccessible(true);
+            var light = (ObserverEntity) ((java.util.List<?>) lights.get(encounters(level).getFirst())).getFirst();
+            double height = light.getY() - player.getEyeY();
+            helper.assertTrue(height >= 48 && height <= 64 && light.position().distanceTo(player.getEyePosition()) >= 80,
+                    "Interior spawn compressed its height or separation");
+            light.discard();
+            encounters(level).clear();
+            player.setPos(sphere.centerX(), sphere.centerY() + sphere.radius() - 20, sphere.centerZ());
+            helper.assertTrue(!(boolean) spawn.invoke(null, player, 1, false, random,
+                    mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.FLYBY, true), "Interior flyby moved closer instead of skipping insufficient headroom");
+            helper.assertTrue(level.getChunkSource().getLoadedChunksCount() == loaded, "Interior height checks forced chunk loading");
+            level.players().remove(player);
+        } finally { EasterEggConfig.ENABLED.set(enabled); }
+        helper.succeed();
+    }
+
+    @GameTest(template = "solar_empty", timeoutTicks = 1200)
     public static void clearanceProtectsSweptPathsAndGenericVehicleBounds(GameTestHelper helper) throws Exception {
         boolean enabled = EasterEggConfig.ENABLED.get();
         try (var fixture = ClassicPersistenceGameTests.open(helper, java.nio.file.Path.of("observer-clearance-" + java.util.UUID.randomUUID()), "vessel", false, true)) {
@@ -680,10 +781,12 @@ public final class ObserverGameTests {
             EasterEggConfig.ENABLED.set(true);
             var witness = vulnerablePlayer(level, "observer-clearance", 8, 700, 8);
             var eye = witness.getEyePosition();
-            helper.assertTrue(ObserverEvents.clearOfWitnesses(level, eye.add(64, 0, 0), eye.add(64, 0, 0), false), "Exact exterior boundary was rejected");
-            helper.assertTrue(!ObserverEvents.clearOfWitnesses(level, eye.add(63.99, 0, -2), eye.add(63.99, 0, 2), false),
+            helper.assertTrue(ObserverEvents.clearOfWitnesses(level, eye.add(96, 0, 0), eye.add(96, 0, 0), false), "Exact exterior boundary was rejected");
+            helper.assertTrue(!ObserverEvents.clearOfWitnesses(level, eye.add(95.99, 0, -2), eye.add(95.99, 0, 2), false),
                     "Swept path crossed the player's exclusion zone");
-            helper.assertTrue(!ObserverEvents.clearOfWitnesses(level, eye.add(31, 0, 0), eye.add(31, 0, 0), true), "Interior distance became a close flyby");
+            helper.assertTrue(ObserverEvents.clearOfWitnesses(level, eye.add(80, 0, 0), eye.add(80, 0, 0), true)
+                    && !ObserverEvents.clearOfWitnesses(level, eye.add(79.99, 0, 0), eye.add(79.99, 0, 0), true),
+                    "Interior distance became a close flyby");
             level.players().remove(witness);
             var vessel = new net.minecraft.world.entity.vehicle.Boat(net.minecraft.world.entity.EntityType.BOAT, level);
             vessel.setBoundingBox(new net.minecraft.world.phys.AABB(80, 690, -20, 220, 750, 30));

@@ -66,14 +66,18 @@ bloque, con longitud acotada, para no atravesar vidrio o paredes finas. Ante una
 obstrucción se detienen, esperan tres segundos y se retiran si hay espacio.
 `FLYBY` y `ATTACK` siguen la posición actual de su dueño con velocidad limitada;
 no teletransportan luces ni requieren que el transporte sea una entidad montable.
-Sus offsets son lejanos: el acompañamiento exterior se mantiene normalmente a
-80–160 bloques. `clearOfWitnesses` protege todos los jugadores, no solo al seguido:
-mínimo de 64 bloques fuera y 32 dentro, comprobado sobre el segmento. También
+Sus offsets son lejanos: el acompañamiento exterior queda en la banda de 120–160
+bloques laterales y 64–96 por encima, ganando altura al retirarse. El interior usa
+un perfil propio con 48–64 de altura, sin comprimir todos los offsets al 45 %.
+`clearOfWitnesses` protege todos los jugadores, no solo al seguido:
+mínimo de 96 bloques fuera y 80 dentro desde los ojos, comprobado sobre el segmento. También
 excluye cajas ampliadas de vehículos montados y entidades grandes. Ante aproximación
 se retiran y desvanecen; una intrusión inmediata hace desaparecer la luz. No se
 garantiza reconocer geometría virtual que un mod de naves no exponga como bloques,
-vehículo o entidad del motor. Las interiores ahora nacen a 48–72 bloques horizontales
-y 16–28 verticales cuando el espacio lo permite; pueden aplazarse en esferas pequeñas.
+vehículo o entidad del motor. Los orígenes estáticos interiores se sortean a 88–120
+bloques horizontales y 48–64 sobre los ojos; cada luz debe aparecer en esa banda
+de altura. El inicio también evita el margen anticipado de retirada (+16).
+Si el recorrido no cabe, se omite el intento en vez de acercarlo al jugador.
 
 El estado temporal es un attachment no serializado **por nivel**, manejado solo
 en el hilo del servidor, sin mapas estáticos de mundos ni participación en C2ME.
@@ -134,24 +138,33 @@ en `EntityTickEvent.Pre` y explosiones de proyectil notifican agresiones atribui
 No se atribuye daño desconocido a una persona cercana. La primera provocación
 activa 200 ticks de hostilidad, color cálido y desplazamiento lateral también en
 una luz solitaria. Mantiene el haz 60 ticks sobre el agresor original, con partículas
-de llama/humo y sonido en el impacto antes de una explosión real. Ataques posteriores
+de llama/humo, ignición real y sonido en el impacto antes de una explosión real. Ataques posteriores
 no reinician la respuesta. Si se va el
 agresor, no se dispara contra otro testigo. El seguimiento visual y el blanco de
 la represalia son estados separados.
 
 `detonate` verifica preajuste e interruptor antes de cualquier cálculo, y exige
-chunks ya cargados en el área de 16 bloques más un margen de dos. Usa potencia 8
+chunks ya cargados en el área de 16 bloques más un margen de 24 para las consultas
+de colocación de fuego/portal de los incendios en el borde. Usa potencia 8
 (`Explosion` duplica esa potencia para el radio de daño), `ExplosionInteraction.BLOCK`
 y resistencia vanilla, con límite adicional de 16 bloques para los centros de
 bloques destruidos. Conserva eventos de explosión y reglas de drops del motor.
 No limita daño ni protege entidades cercanas; puede matar y abrir el cascarón.
-No genera fuego persistente. El centro queda 0,25 bloques antes del impacto para
+Activa el fuego de la explosión. El centro queda 0,25 bloques antes del impacto para
 evitar la rama vanilla que omite entidades con vector de empuje exactamente cero.
 Fuentes Minecraft 1.21.1 consultadas en la caché autorizada:
 `sourcesAndCompiledWithNeoForge_42f2db420ab373c8c4bc64d3fb9c7f08c61dc5a2_output.jar`,
 `Level.java:681–703,752–800`, `Explosion.java:216–315` y
 `ExplosionDamageCalculator.java:11–34`; partículas distantes en
-`ServerLevel.java:1276–1304`. La carga usa partículas visuales, sin quemar terreno.
+`ServerLevel.java:1276–1304`. `Shot` conserva la entidad realmente alcanzada:
+`chargeEffects` la enciende con `Entity.igniteForSeconds(8)` al quedar menos de
+40 ticks de fuego. Una obstrucción sustituye al objetivo, sin quemarlo a través
+de ella. La combustión y resistencia al fuego siguen el motor (`Entity.java:457–471,539–550`).
+Además busca aire con soporte válido en 3×3 columnas, hasta cuatro bloques bajo
+el impacto, deteniéndose ante un bloque sólido. Usa `BaseFireBlock.getState` y
+`canSurvive`; no fuerza fuego flotante. Antes de colocarlo verifica un margen
+cargado de 32 bloques para las consultas de colocación/portal del fuego vanilla.
+La propagación posterior corresponde a las reglas vanilla de fuego.
 
 La contrabatería es genérica, sin nombres de mods en producción. `EntityJoinLevelEvent`
 registra origen de proyectiles nuevos solo con encuentros activos, máximo 512,

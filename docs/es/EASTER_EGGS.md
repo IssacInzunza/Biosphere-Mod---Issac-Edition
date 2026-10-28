@@ -17,8 +17,8 @@ sentir que algo desconocido habita y observa el vacío.
 **Estado:** revisión de presencia y comportamiento implementada; validación visual
 y compatibilidad con naves reales pendientes.
 
-Validación automática: compilación con Java 21, 120 pruebas JUnit y 47 GameTests
-de motor (32 de worldgen y 15 del observador, ejecutados por separado). Las comprobaciones de motor incluyen equivalencia exacta de señales
+Validación automática: compilación con Java 21, 120 pruebas JUnit y 49 GameTests
+de motor (32 de worldgen y 17 del observador, ejecutados por separado). Las comprobaciones de motor incluyen equivalencia exacta de señales
 vanilla y con el observador apagado en un nivel Biospheres clásico real.
 También se comprueban la frontera de 64 bloques en ambas direcciones, exclusión
 a 65 bloques, máquinas lejanas, ausencia de carga adicional y vuelo por encima
@@ -33,6 +33,19 @@ La revisión de represalia comprueba carga continua de 60 ticks, seguimiento del
 agresor móvil, movimiento hostil de una luz, daño mortal, vidrio destruido,
 resistencia de obsidiana, límite exterior, impacto sobre cobertura añadida durante
 la carga y cancelación en vanilla, con el interruptor apagado o sin chunks cargados.
+La revisión de fuego real comprueba ignición del objetivo, daño periódico de
+quemadura del motor, fuego colocado durante la carga e incendios tras explotar.
+Se comprueban los nuevos mínimos 96/80, altura del acompañamiento y cobertura
+añadida durante la carga que evita encender al objetivo detrás de ella.
+Una aparición interior real comprueba altura de 48–64, distancia mínima y rechazo
+cuando falta espacio bajo el cascarón, sin forzar chunks ni comprimir el perfil.
+La compilación y las 17 pruebas del observador terminan correctamente. En la
+regresión de worldgen, las 32 pruebas pasan en dos ejecuciones, pero ambas quedan
+atascadas después al cerrar mundos, en `ChunkMap.processUnloads` durante
+`MinecraftServer.stopServer`. Se finalizaron únicamente esos servidores de prueba;
+esa tarea Gradle no termina con éxito. Las pilas se conservaron en
+`run/observer-real-fire-distance-shutdown-20261027.log` y su variante `-retry`.
+No se cambió código de worldgen ni del motor para ocultar ese problema de cierre.
 Los FakePlayer de estas pruebas no crean tickets de jugador: un listener temporal
 los incluye en la lista de entidades de la explosión, y Minecraft calcula exposición,
 daño y muerte. No sustituye una prueba con jugadores conectados.
@@ -68,15 +81,23 @@ Criterios:
   de entidades y chunks del cliente/servidor. Esferas extremas pueden excederlo.
 - Se intenta una variante interior en el 15 % de sorteos compatibles cuando el
   jugador está dentro; exige aire, distancia del cascarón y un recorrido cargado.
+  El origen está a 88–120 bloques en horizontal y 48–64 por encima de los ojos;
+  cada luz debe aparecer en esa banda de altura. No se comprime la formación al
+  45 %. El acompañamiento y ataque usan perfiles interiores propios. Si no cabe
+  el recorrido a distancia suficiente, se omite el intento, sin acercar las luces.
   Es una probabilidad de intento, no una cuota: obstáculos pueden aplazarlo.
 - Curiosidad aérea: acompaña al jugador lateralmente y se aleja; detecta élitras,
   vuelo creativo o desplazamiento sostenido sobre aire durante dos segundos.
   No contiene nombres de mods de transporte. Aeronautics y Simple Planes requieren
   prueba manual: un transporte que no actualice coordenadas reales del jugador no
   se puede identificar con esta heurística. El encuentro no fuerza chunks.
-- Distancia mínima a cualquier jugador vivo no espectador: 64 bloques fuera y
-  32 dentro. El acompañamiento usa desplazamientos laterales/verticales lejanos,
-  normalmente 80–160 bloques en exteriores. Si alguien se aproxima, las luces
+- Distancia mínima a cualquier jugador vivo no espectador: 96 bloques fuera y
+  80 dentro, medida en 3D desde los ojos. El acompañamiento exterior queda dentro
+  de la banda de 120–160 bloques laterales y 64–96 por encima durante la observación;
+  la retirada final gana altura. En interiores mantiene 48–64 por encima durante
+  el acompañamiento, con un recorrido distinto y sin reducción uniforme. La
+  aparición evita también el margen de retirada anticipada de 16 bloques.
+  Si alguien se aproxima, las luces
   se retiran y desvanecen; si entra en el margen mínimo, desaparecen. Se comprueba
   el segmento completo, los vehículos montados y entidades grandes del motor.
   No garantiza reconocer geometría de naves que su mod mantenga fuera de esas
@@ -92,12 +113,19 @@ Criterios:
 - Represalia: una agresión atribuida activa diez segundos de hostilidad, color cálido,
   maniobras laterales incluso con una luz y pulsos eléctricos más frecuentes.
   Durante 60 ticks (tres segundos a 20 TPS) mantiene un haz grueso sobre el agresor,
-  con llamas y humo visuales en el impacto y sonido de carga. Después produce una
+  con quemaduras reales al alcanzar una entidad, fuego en superficies próximas
+  al impacto, llamas, humo y sonido de carga. Después produce una
   explosión real, destructiva y potencialmente mortal: potencia vanilla 8, radio
   de daño de 16 bloques y destrucción limitada además a 16 bloques desde el centro,
   respetando resistencias. No garantiza un cráter uniforme de 32 bloques.
   No protege la salud, construcciones, ganado, naves ni vidrio dentro de la explosión.
-  Las llamas de carga no incendian bloques. El haz recalcula obstáculos y sigue al
+  La carga prende a la entidad alcanzada durante ocho segundos, renovables si el
+  haz continúa alcanzándola. Las quemaduras usan las reglas normales del motor.
+  Busca una superficie válida hasta cuatro bloques bajo el impacto en una zona
+  de 3×3; no atraviesa bloques para colocar fuego ni lo coloca flotando. La
+  explosión también puede dejar incendios. La colocación de fuego exige un área
+  cargada de 32 bloques alrededor; su propagación posterior sigue las reglas de
+  fuego de Minecraft. El haz recalcula obstáculos y sigue al
   mismo agresor; la explosión ocurre donde termina. Se omite si el área necesaria
   no está cargada, sin forzar chunks. Un proyectil que pasa junto a una luz también
   cuenta como intento. Si el agresor sale, no se reasigna la represalia.
@@ -220,7 +248,9 @@ falla, seleccionar Java 21 para esa sesión, sin modificar archivos del proyecto
     agresor, apuntar tres segundos con haz cálido visible de frente y de lado,
     mostrar llamas/humo y después explotar, pudiendo matar y romper vidrio.
     Revisar aviso, sonido, maniobra de una luz solitaria, resistencia de bloques y
-    ausencia de incendios durante la carga. Sacar al agresor antes del
+    quemaduras reales e incendios durante la carga y después de explotar.
+    Repetir con agua, resistencia al fuego y `doFireTick = false`; la propagación
+    debe respetar las reglas del motor. Sacar al agresor antes del
     disparo y comprobar que no daña a otro testigo. Repetir ataques y comprobar
     que no prolongan indefinidamente el encuentro. La interferencia puede afectar
     controles programados de naves al perder mensajes de comunicaciones.
