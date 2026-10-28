@@ -5,14 +5,14 @@ import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarSettings;
 import java.util.List;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-/** Defaults for NEW Solar worlds, plus the runtime guide toggle (not part of the saved snapshot). */
+/** Defaults for NEW Solar worlds, plus runtime guide toggles (not part of the saved snapshot). */
 public final class SolarConfig {
     public static final SphereConfig.GeneralOptions GENERAL;
     public static final SphereConfig.SolarOptions OPTIONS;
     public static final ModConfigSpec SPEC;
     static {
         var builder = new ModConfigSpec.Builder();
-        builder.comment("Independent Solar settings. Automatic bridges, classic grid spacing and hemispheres are disabled. Existing worlds retain their worldgen snapshot; the guide-star toggle is a runtime setting.").push("Settings");
+        builder.comment("Independent Solar settings. Automatic bridges, classic grid spacing and hemispheres are disabled. Existing worlds retain their worldgen snapshot; the central and planet guide toggles are runtime settings.").push("Settings");
         GENERAL = new SphereConfig.GeneralOptions(builder);
         builder.pop();
         builder.push("SolarOrbits");

@@ -145,6 +145,7 @@ public class SphereConfig {
         public final ModConfigSpec.IntValue SOLAR_CLIMATE_DIRECTION;
         public final ModConfigSpec.BooleanValue SOLAR_GUARDIANS_ENABLED;
         public final ModConfigSpec.BooleanValue SOLAR_GUIDE_ENABLED;
+        public final ModConfigSpec.BooleanValue SOLAR_PLANET_GUIDES_ENABLED;
 
         public SolarOptions(ModConfigSpec.Builder builder) {
             SOLAR_PLANET_COUNT = builder.translation("biosphereworlds.configuration.solar_planet_count")
@@ -165,6 +166,9 @@ public class SphereConfig {
             SOLAR_GUIDE_ENABLED = builder.translation("biosphereworlds.configuration.solar_guide_enabled")
                     .comment("Enable the violet guide star toward the current Solar system center. Runtime setting, including existing worlds. False on the server stops guide calculations and packets for everyone; false on a client disables its guide rendering and orientation calculations. Server changes may take up to 40 ticks to hide an already received guide.")
                     .define("solar_guide_enabled", true);
+            SOLAR_PLANET_GUIDES_ENABLED = builder.translation("biosphereworlds.configuration.solar_planet_guides_enabled")
+                    .comment("Show climate-colored stars toward orbital planets in the current Solar system. Each planet appears for half a night every two Minecraft days. Independent of the central guide star; applies to existing Solar worlds. False on the server skips planet-guide geometry and packets; false on a client skips its planet-guide calculations and rendering. Received data expires after 40 ticks.")
+                    .define("solar_planet_guides_enabled", true);
         }
     }
 
