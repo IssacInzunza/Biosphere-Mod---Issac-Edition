@@ -13,8 +13,12 @@ no se agrega a sus recetas ni cambia las versiones de layout.
 El menú identifica los archivos como Biospheres, Solar Systems y Easter Egg.
 Las traducciones usan la normalización de NeoForge (`easter.egg.toml`, sin espacios).
 `BiosphereWorldsClient` abre directamente la categoría existente de Easter Egg con
-`ConfigurationSectionScreen.Context.top` y su constructor de subsección. Solo se
-ve el interruptor, con el guardado, deshacer y recarga nativos. No se mueve la clave
+`ConfigurationSectionScreen.Context.top` y su constructor de subsección. Utiliza
+un filtro identidad no nulo (`(section, key, element) -> element`): NeoForge
+21.1.216 invoca `Filter.filterEntry` al construir las filas y no admite null aquí.
+El crash de apertura por filtro null quedó corregido; el usuario confirmó el
+28/oct/2026 que la pantalla abre sin crash con el cliente de desarrollo corregido.
+Solo se ve el interruptor, con el guardado, deshacer y recarga nativos. No se mueve la clave
 `["Easter Egg"].enabled` ni se restablece un valor false guardado; el defecto sigue true.
 API verificada en las fuentes oficiales 21.1.216, `client/gui/ConfigurationScreen.java:327–328,420–433,533–535`,
 obtenidas de [Maven de NeoForge](https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.216/neoforge-21.1.216-sources.jar).

@@ -51,7 +51,8 @@ public class BiosphereWorldsClient {
                     // NeoForge's native editing, undo, save and reload behavior.
                     UnmodifiableConfig values = EasterEggConfig.SPEC.getValues().get("Easter Egg");
                     UnmodifiableConfig specs = EasterEggConfig.SPEC.getSpec().get("Easter Egg");
-                    var context = ConfigurationScreen.ConfigurationSectionScreen.Context.top(config.getModId(), screen, config, null);
+                    var context = ConfigurationScreen.ConfigurationSectionScreen.Context.top(config.getModId(), screen, config,
+                            (section, key, element) -> element);
                     return new ConfigurationScreen.ConfigurationSectionScreen(context, screen, specs.valueMap(),
                             "Easter Egg", values.entrySet(), title);
                 }));
