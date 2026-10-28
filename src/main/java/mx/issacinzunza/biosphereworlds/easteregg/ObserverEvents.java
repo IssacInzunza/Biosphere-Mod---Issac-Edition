@@ -18,6 +18,7 @@ import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkGenerator;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -25,6 +26,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.tags.BiomeTags;
@@ -33,7 +36,11 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.ExplosionDamageCalculator;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
@@ -331,6 +338,38 @@ public final class ObserverEvents {
 
     private record Shot(Vec3 end, boolean reachesTarget) { }
 
+    /** Visual warning only: no burning blocks or contact damage before the charge completes. */
+    private static void chargeEffects(ServerLevel level, ObserverEntity light, Vec3 end) {
+        if (!applies(level) || !EasterEggConfig.ENABLED.get()) return;
+        for (var player : level.players()) if (player.distanceToSqr(end) <= 512 * 512) {
+            level.sendParticles(player, ParticleTypes.FLAME, true, end.x, end.y, end.z, 12, 0.8, 0.8, 0.8, 0.04);
+            level.sendParticles(player, ParticleTypes.LARGE_SMOKE, true, end.x, end.y, end.z, 3, 0.5, 0.5, 0.5, 0.02);
+        }
+        if (light.age() % 20 == 0)
+            level.playSound(null, end.x, end.y, end.z, SoundEvents.FIRECHARGE_USE, SoundSource.HOSTILE, 2, 0.65f);
+    }
+
+    private static boolean detonate(ServerLevel level, ObserverEntity light, Vec3 end) {
+        if (!applies(level) || !EasterEggConfig.ENABLED.get()) return false;
+        // Keep the center just before the impact surface. An explosion exactly at a
+        // player's eyes skips that player in vanilla's zero-length knockback vector branch.
+        Vec3 center = end.subtract(end.subtract(light.position()).normalize().scale(0.25));
+        if (!Double.isFinite(center.x) || !Double.isFinite(center.y) || !Double.isFinite(center.z)) return false;
+        int radius = ObserverRules.BLAST_RADIUS;
+        // Vanilla power 8 has a 16-block entity radius; its block rays are shorter.
+        // Check the surrounding margin before the engine reads blocks or traces exposure.
+        for (int x = ((int) Math.floor(center.x) - radius - 2) >> 4; x <= ((int) Math.floor(center.x) + radius + 2) >> 4; x++)
+            for (int z = ((int) Math.floor(center.z) - radius - 2) >> 4; z <= ((int) Math.floor(center.z) + radius + 2) >> 4; z++)
+                if (level.getChunkSource().getChunkNow(x, z) == null) return false;
+        level.explode(light, null, new ExplosionDamageCalculator() {
+            @Override public boolean shouldBlockExplode(Explosion explosion, BlockGetter reader, BlockPos pos, BlockState state, float power) {
+                return pos.getCenter().distanceToSqr(center) <= radius * radius
+                        && super.shouldBlockExplode(explosion, reader, pos, state, power);
+            }
+        }, center, radius / 2.0f, false, Level.ExplosionInteraction.BLOCK);
+        return true;
+    }
+
     /** Explicitly checks loaded chunks before a raycast, including shots beyond vanilla's 128-block sight cap. */
     private static Shot traceShot(ServerLevel level, ObserverEntity light, Vec3 target, Player victim, int range) {
         if (!applies(level) || !EasterEggConfig.ENABLED.get()) return null;
@@ -519,7 +558,7 @@ public final class ObserverEvents {
             firingTarget = aggressor == null ? null : aggressor.getUUID();
             battery = origin;
             shots = origin == null ? 1 : 3;
-            fireAt = leader().age() + ObserverRules.WARNING_TICKS;
+            fireAt = leader().age() + ObserverRules.RETALIATION_CHARGE_TICKS;
             attackAttempted = true; // A pending natural pulse must not be redirected onto a bystander later.
             lights.forEach(light -> { light.hostile(true); light.warnUntil(fireAt); light.lingerUntil(hostileUntil); });
             if (origin != null && origin.distanceToSqr(leader().position()) <= 384 * 384
@@ -623,21 +662,30 @@ public final class ObserverEvents {
                     lights.forEach(light -> light.warnUntil(fireAt));
                 }
             }
-            if (shots > 0 && leader().age() >= fireAt) {
+            if (shots > 0) {
                 var player = firingTarget == null ? null : level.getPlayerByUUID(firingTarget);
                 Vec3 target = battery != null ? battery.add((shots - 2) * 1.5, 0, 0)
                         : player != null && player.isAlive() && !player.isSpectator() ? player.getEyePosition() : null;
                 Shot shot = target == null ? null : traceShot(level, leader(), target, player, battery == null ? ObserverRules.SHOT_RANGE : 384);
-                if (shot != null) {
-                    leader().pulse(shot.end());
-                    if (battery == null && shot.reachesTarget() && player != null) {
-                        float damage = ObserverRules.attackDamage(player.getHealth());
-                        if (damage > 0) player.hurt(new DamageSource(level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE)
-                                .getHolderOrThrow(PULSE)), damage);
+                if (retaliationUsed && leader().age() < fireAt) {
+                    if (shot == null) leader().clearBeam();
+                    else {
+                        leader().pulse(shot.end());
+                        if (leader().age() % 4 == 0) chargeEffects(level, leader(), shot.end());
                     }
+                } else if (leader().age() >= fireAt) {
+                    if (shot != null) {
+                        leader().pulse(shot.end());
+                        if (retaliationUsed) detonate(level, leader(), shot.end());
+                        else if (battery == null && shot.reachesTarget() && player != null) {
+                            float damage = ObserverRules.attackDamage(player.getHealth());
+                            if (damage > 0) player.hurt(new DamageSource(level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE)
+                                    .getHolderOrThrow(PULSE)), damage);
+                        }
+                    }
+                    shots--;
+                    fireAt = leader().age() + 8;
                 }
-                shots--;
-                fireAt = leader().age() + 8;
             }
             if (leader().age() % 20 == 0 && budget.remaining() > 0 && !machines.isEmpty()) {
                 int index = Math.floorMod(leader().age() / 20 + leader().encounterSeed(), machines.size());

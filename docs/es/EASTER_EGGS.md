@@ -17,8 +17,8 @@ sentir que algo desconocido habita y observa el vacío.
 **Estado:** revisión de presencia y comportamiento implementada; validación visual
 y compatibilidad con naves reales pendientes.
 
-Validación automática: compilación con Java 21, 120 pruebas JUnit y 45 GameTests
-de motor (32 de worldgen y 13 del observador, ejecutados por separado). Las comprobaciones de motor incluyen equivalencia exacta de señales
+Validación automática: compilación con Java 21, 120 pruebas JUnit y 47 GameTests
+de motor (32 de worldgen y 15 del observador, ejecutados por separado). Las comprobaciones de motor incluyen equivalencia exacta de señales
 vanilla y con el observador apagado en un nivel Biospheres clásico real.
 También se comprueban la frontera de 64 bloques en ambas direcciones, exclusión
 a 65 bloques, máquinas lejanas, ausencia de carga adicional y vuelo por encima
@@ -29,14 +29,24 @@ La revisión de misterio añade prueba de pulso más allá de 128 bloques, aviso
 pared añadida durante el aviso, distancias a todos los testigos, casco genérico,
 agresor fijado, desconexión del agresor, continuidad multijugador y contrabatería
 de proyectil automático vanilla sin mods de cañones instalados.
+La revisión de represalia comprueba carga continua de 60 ticks, seguimiento del
+agresor móvil, movimiento hostil de una luz, daño mortal, vidrio destruido,
+resistencia de obsidiana, límite exterior, impacto sobre cobertura añadida durante
+la carga y cancelación en vanilla, con el interruptor apagado o sin chunks cargados.
+Los FakePlayer de estas pruebas no crean tickets de jugador: un listener temporal
+los incluye en la lista de entidades de la explosión, y Minecraft calcula exposición,
+daño y muerte. No sustituye una prueba con jugadores conectados.
 Prueba adicional aislada con Create 6.0.8: aprobada con transmisor y receptor
 reales, indicador, recuperación de entradas/frecuencias cambiadas y reemplazo de
 antena. No verifica visualmente el cliente ni otras versiones de Create.
-Pruebas adicionales con CBC 5.11.7, Create 6.0.10 y RPL 2.1.2: dos pruebas aprobadas
+Pruebas adicionales anteriores a la represalia destructiva con CBC 5.11.7,
+Create 6.0.10 y RPL 2.1.2: dos pruebas aprobadas
 en NeoForge 21.1.228, usando un argumento temporal de Gradle. La base del proyecto
 sigue en 21.1.216. Se verifican el proyectil `shot` real, origen sin artillero,
 tres pulsos separados, interrupción/recuperación del control y antenas de Create.
 No equivale a montar y disparar un cañón completo ni a probar todos los mods de armas.
+La nueva explosión de contrabatería se verifica con proyectil automático vanilla;
+queda repetir la comprobación con CBC instalado y un cañón real.
 
 Criterios:
 
@@ -73,24 +83,33 @@ Criterios:
   representaciones; requiere pruebas con Aeronautics, Simple Planes y sus versiones.
 - Ataque: 1 % de sorteos naturales, independiente de Halloween y vuelo. Una sola
   oportunidad natural por encuentro, a distancia y con advertencia de dos segundos.
-  El pulso visible dura cuatro ticks y alcanza hasta 224 bloques, sin superar la
+  El pulso visible dura diez ticks y alcanza hasta 224 bloques, sin superar la
   distancia mínima. Recalcula obstáculos al disparar: paredes, vidrio y vehículos
   representados en el motor detienen el rayo, incluso si aparecieron tras el aviso.
   Comprueba los chunks del trayecto antes de consultarlos. Solicita hasta 2 puntos de daño (un corazón), conservando al menos 2 puntos
   de salud antes de modificadores de otros mods; respeta armadura e invulnerabilidad.
   El tipo de daño no produce empuje ni altera las élitras; no hay embestida.
-- Represalia: una agresión atribuida activa diez segundos de hostilidad, destellos
-  de aviso y pulsos eléctricos más frecuentes. Un proyectil que pasa por la zona
-  inmediata de una luz también cuenta como intento. Se fija al primer agresor,
-  permite un pulso defensivo adicional y no se reasigna a otro testigo si el agresor
-  sale. Repetir ataques no reinicia el temporizador ni crea ráfagas infinitas.
+- Represalia: una agresión atribuida activa diez segundos de hostilidad, color cálido,
+  maniobras laterales incluso con una luz y pulsos eléctricos más frecuentes.
+  Durante 60 ticks (tres segundos a 20 TPS) mantiene un haz grueso sobre el agresor,
+  con llamas y humo visuales en el impacto y sonido de carga. Después produce una
+  explosión real, destructiva y potencialmente mortal: potencia vanilla 8, radio
+  de daño de 16 bloques y destrucción limitada además a 16 bloques desde el centro,
+  respetando resistencias. No garantiza un cráter uniforme de 32 bloques.
+  No protege la salud, construcciones, ganado, naves ni vidrio dentro de la explosión.
+  Las llamas de carga no incendian bloques. El haz recalcula obstáculos y sigue al
+  mismo agresor; la explosión ocurre donde termina. Se omite si el área necesaria
+  no está cargada, sin forzar chunks. Un proyectil que pasa junto a una luz también
+  cuenta como intento. Si el agresor sale, no se reasigna la represalia.
+  Repetir ataques no reinicia el temporizador ni crea ráfagas infinitas.
 - Contrabatería genérica: registra el punto real de aparición de proyectiles
   nuevos durante un encuentro, con límite de 512 y caducidad de veinte segundos.
   Proyectiles sin dueño o asociados a un vehículo, entidad mecánica grande o bloque
   de máquina tras la boca reciben tres pulsos contra su origen, separados ocho
-  ticks, con aviso previo y alcance máximo de 384 bloques. La interferencia local
-  se traslada temporalmente al origen alcanzable y cargado. No destruye el arma,
-  terreno o munición ni daña a personas cercanas. Si el arma se mueve, responde al
+  ticks, tras una carga inicial de tres segundos y con alcance máximo de 384 bloques.
+  Cada impacto produce la misma explosión destructiva; puede destruir arma, terreno
+  y entidades cercanas. La interferencia local se traslada temporalmente al origen
+  alcanzable y cargado. Si el arma se mueve, responde al
   punto registrado al disparar. No hay lista de mods de cañones: CBC sirve como
   prueba, no como dependencia. Armas que no exponen proyectil/origen pueden carecer
   de esta reacción; el daño sin atribución no se achaca al jugador más cercano.
@@ -197,7 +216,11 @@ falla, seleccionar Java 21 para esa sesión, sin modificar archivos del proyecto
     una pared y volando. Debe avisar y disparar desde lejos; probar una pared
     colocada durante el aviso y alcances superiores a 128 bloques. Comprobar un
     pulso natural, sin empuje ni desactivar élitras. Atacar una luz con arco o arma
-    de proyectil: la represalia debe fijarse al agresor. Sacar al agresor antes del
+    de proyectil en una copia desechable del mundo: la represalia debe fijarse al
+    agresor, apuntar tres segundos con haz cálido visible de frente y de lado,
+    mostrar llamas/humo y después explotar, pudiendo matar y romper vidrio.
+    Revisar aviso, sonido, maniobra de una luz solitaria, resistencia de bloques y
+    ausencia de incendios durante la carga. Sacar al agresor antes del
     disparo y comprobar que no daña a otro testigo. Repetir ataques y comprobar
     que no prolongan indefinidamente el encuentro. La interferencia puede afectar
     controles programados de naves al perder mensajes de comunicaciones.
@@ -242,7 +265,8 @@ ataque, represalias, contrabatería y continuidad multijugador.
 Ante vidrio u otra obstrucción, las luces frenan, observan tres segundos y se
 retiran; verifican segmentos de medio bloque para evitar atravesar paredes finas.
 Las interiores permanecen dentro de la geometría y las exteriores fuera. El vidrio
-no se modifica. Si la retirada también está bloqueada, esperan hasta desvanecerse.
+solo se rompe si lo alcanza una explosión de represalia. Si la retirada también
+está bloqueada, esperan hasta desvanecerse.
 
 La prueba adicional de CC usa su JAR oficial 1.120.2 temporalmente en `run/mods`:
 `.\gradlew runGameTestServer -PgameTestNamespaces=biosphereworlds_observer_cc

@@ -438,15 +438,37 @@ public final class ObserverGameTests {
         return player;
     }
 
+    private static void loadBlastChunks(net.minecraft.server.level.ServerLevel level, net.minecraft.world.phys.Vec3 center) {
+        for (int x = ((int) Math.floor(center.x) - 18) >> 4; x <= ((int) Math.floor(center.x) + 18) >> 4; x++)
+            for (int z = ((int) Math.floor(center.z) - 18) >> 4; z <= ((int) Math.floor(center.z) + 18) >> 4; z++) level.getChunk(x, z);
+    }
+
+    private static AutoCloseable includeInExplosionQueries(net.minecraft.server.level.ServerPlayer player) {
+        // These fixtures deliberately avoid registering network players/chunk tickets.
+        // Supply that missing query result through the normal explosion event; damage,
+        // exposure, resistance, knockback and death still run in Minecraft itself.
+        java.util.function.Consumer<net.neoforged.neoforge.event.level.ExplosionEvent.Detonate> listener = event -> {
+            if (event.getLevel() == player.level() && event.getExplosion().getDirectSourceEntity() instanceof ObserverEntity
+                    && !event.getAffectedEntities().contains(player)) event.getAffectedEntities().add(player);
+        };
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(listener);
+        return () -> net.neoforged.neoforge.common.NeoForge.EVENT_BUS.unregister(listener);
+    }
+
     @GameTest(template = "solar_empty", timeoutTicks = 1200)
     public static void retaliationLocksTheAggressorAndNeverRedirectsToAWitness(GameTestHelper helper) throws Exception {
         boolean enabled = EasterEggConfig.ENABLED.get();
+        AutoCloseable explosionQuery = null;
         try (var fixture = ClassicPersistenceGameTests.open(helper, java.nio.file.Path.of("observer-retaliation-" + java.util.UUID.randomUUID()), "hostile", false, true)) {
             var level = fixture.level();
             EasterEggConfig.ENABLED.set(true);
             for (int x = 0; x <= 11; x++) level.getChunk(x, 0);
             var witness = vulnerablePlayer(level, "observer-witness", 8, 230, 8);
             var aggressor = vulnerablePlayer(level, "observer-aggressor", 80, 230, 8);
+            explosionQuery = includeInExplosionQueries(aggressor);
+            loadBlastChunks(level, aggressor.getEyePosition());
+            aggressor.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_ABSORPTION).setBaseValue(200);
+            aggressor.setAbsorptionAmount(200);
             var light = new ObserverEntity(ObserverEntity.TYPE.get(), level);
             light.configure(new net.minecraft.world.phys.Vec3(168, 270, 8), 0, 21, 0, 1, 400, witness.getUUID(),
                     mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.WATCH, false);
@@ -461,28 +483,141 @@ public final class ObserverGameTests {
             level.addFreshEntity(arrow);
             ObserverEvents.projectileTick(new net.neoforged.neoforge.event.tick.EntityTickEvent.Pre(arrow));
             helper.assertTrue(light.hostile() && light.warning(), "Swept projectile attack failed to trigger a warning");
+            var hostilePosition = light.positionAt(20);
+            light.hostile(false);
+            helper.assertTrue(hostilePosition.distanceTo(light.positionAt(20)) > 8, "A solitary hostile light kept its passive trajectory");
+            light.hostile(true);
             // A second attacker must not redirect the pending pulse away from the first aggressor.
             light.hurt(level.damageSources().playerAttack(witness), 1);
-            setAge(light, 40);
+            aggressor.setPos(84, 230, 8);
+            setAge(light, 59);
             tickEncounter(encounter, level);
-            helper.assertTrue(aggressor.getHealth() == 18 && witness.getHealth() == 20, "Retaliation hit the wrong player");
-            aggressor.setHealth(20);
+            helper.assertTrue(aggressor.getAbsorptionAmount() == 200 && light.beam(0).lengthSqr() > 0 && light.warning(),
+                    "Retaliation skipped its full three-second visible charge");
+            helper.assertTrue(light.position().add(light.beam(0)).distanceToSqr(aggressor.getEyePosition()) < 0.001,
+                    "Charging beam failed to track the moving aggressor");
+            setAge(light, 60);
+            tickEncounter(encounter, level);
+            helper.assertTrue(aggressor.getAbsorptionAmount() < 200 && witness.getHealth() == 20, "Retaliation hit the wrong player");
+            float remainingAbsorption = aggressor.getAbsorptionAmount();
             aggressor.invulnerableTime = 0;
             light.hurt(level.damageSources().playerAttack(aggressor), 1);
             setAge(light, 100);
             tickEncounter(encounter, level);
-            helper.assertTrue(aggressor.getHealth() == 20, "Repeated attacks caused an unbounded retaliation loop");
+            helper.assertTrue(aggressor.getAbsorptionAmount() == remainingAbsorption, "Repeated attacks caused an unbounded retaliation loop");
             encounters(level).clear();
             Object abandoned = encounter(witness.getUUID(), witness.blockPosition(), java.util.List.of(light));
             encounters(level).add(abandoned);
             light.hurt(level.damageSources().playerAttack(aggressor), 1);
             level.players().remove(aggressor);
-            setAge(light, 140);
+            setAge(light, 160);
             tickEncounter(abandoned, level);
             helper.assertTrue(witness.getHealth() == 20, "Disconnected aggressor's retaliation was reassigned to a witness");
             arrow.discard();
             light.discard();
             level.players().remove(witness);
+            encounters(level).clear();
+        } finally {
+            if (explosionQuery != null) explosionQuery.close();
+            EasterEggConfig.ENABLED.set(enabled);
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "solar_empty", timeoutTicks = 1200)
+    public static void chargedRetaliationIsLethalDestructiveAndNeverLoadsBlastChunks(GameTestHelper helper) throws Exception {
+        boolean enabled = EasterEggConfig.ENABLED.get();
+        AutoCloseable explosionQuery = null;
+        try (var fixture = ClassicPersistenceGameTests.open(helper, java.nio.file.Path.of("observer-blast-" + java.util.UUID.randomUUID()), "blast", false, true)) {
+            var level = fixture.level();
+            EasterEggConfig.ENABLED.set(true);
+            for (int x = 0; x <= 11; x++) level.getChunk(x, 0);
+            var player = vulnerablePlayer(level, "observer-blast", 80, 230, 8);
+            explosionQuery = includeInExplosionQueries(player);
+            loadBlastChunks(level, player.getEyePosition());
+            var light = new ObserverEntity(ObserverEntity.TYPE.get(), level);
+            light.configure(new net.minecraft.world.phys.Vec3(168, 270, 8), 0, 31, 0, 1, 400, player.getUUID(),
+                    mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.WATCH, false);
+            level.addFreshEntity(light);
+            var glass = player.blockPosition().below();
+            var resistant = player.blockPosition().offset(4, 0, 0);
+            var outside = player.blockPosition().offset(17, 0, 0);
+            level.setBlock(glass, Blocks.GLASS.defaultBlockState(), 3);
+            level.setBlock(resistant, Blocks.OBSIDIAN.defaultBlockState(), 3);
+            level.setBlock(outside, Blocks.GLASS.defaultBlockState(), 3);
+            var detonate = ObserverEvents.class.getDeclaredMethod("detonate", net.minecraft.server.level.ServerLevel.class,
+                    ObserverEntity.class, net.minecraft.world.phys.Vec3.class);
+            detonate.setAccessible(true);
+            int loaded = level.getChunkSource().getLoadedChunksCount();
+            helper.assertTrue(!(boolean) detonate.invoke(null, level, light, new net.minecraft.world.phys.Vec3(2000, 230, 2000))
+                    && level.getChunkSource().getLoadedChunksCount() == loaded, "Blast forced an unloaded chunk");
+            EasterEggConfig.ENABLED.set(false);
+            helper.assertTrue(!(boolean) detonate.invoke(null, level, light, player.getEyePosition()), "Disabled observer detonated");
+            EasterEggConfig.ENABLED.set(true);
+            helper.assertTrue(!(boolean) detonate.invoke(null, helper.getLevel(), light, player.getEyePosition()), "Observer detonated in vanilla");
+            Object encounter = encounter(player.getUUID(), player.blockPosition(), java.util.List.of(light));
+            encounters(level).add(encounter);
+            light.hurt(level.damageSources().playerAttack(player), 1);
+            for (int age = 0; age < 60; age++) {
+                setAge(light, age);
+                tickEncounter(encounter, level);
+                helper.assertTrue(player.getHealth() == 20 && level.getBlockState(glass).is(Blocks.GLASS)
+                        && light.beam(0).lengthSqr() > 0, "Charge damaged its target early or lost the beam");
+            }
+            setAge(light, 60);
+            tickEncounter(encounter, level);
+            helper.assertTrue(player.getHealth() <= 0, "Retaliation preserved the player's health instead of applying real explosion damage");
+            helper.assertTrue(level.getBlockState(glass).isAir(), "Blast did not break nearby biosphere glass");
+            helper.assertTrue(level.getBlockState(resistant).is(Blocks.OBSIDIAN) && level.getBlockState(outside).is(Blocks.GLASS),
+                    "Blast ignored resistance or exceeded the 16-block radius");
+            helper.assertTrue(level.getChunkSource().getLoadedChunksCount() == loaded, "Charged explosion loaded extra chunks");
+            light.discard();
+            level.players().remove(player);
+            encounters(level).clear();
+        } finally {
+            if (explosionQuery != null) explosionQuery.close();
+            EasterEggConfig.ENABLED.set(enabled);
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "solar_empty", timeoutTicks = 1200)
+    public static void chargedRetaliationExplodesOnCoverInsteadOfThroughIt(GameTestHelper helper) throws Exception {
+        boolean enabled = EasterEggConfig.ENABLED.get();
+        try (var fixture = ClassicPersistenceGameTests.open(helper, java.nio.file.Path.of("observer-cover-" + java.util.UUID.randomUUID()), "cover", false, true)) {
+            var level = fixture.level();
+            EasterEggConfig.ENABLED.set(true);
+            for (int x = 0; x <= 11; x++) level.getChunk(x, 0);
+            var player = vulnerablePlayer(level, "observer-cover", 80, 230, 8);
+            var light = new ObserverEntity(ObserverEntity.TYPE.get(), level);
+            light.configure(new net.minecraft.world.phys.Vec3(168, 270, 8), 0, 32, 0, 1, 400, player.getUUID(),
+                    mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.WATCH, false);
+            level.addFreshEntity(light);
+            Object encounter = encounter(player.getUUID(), player.blockPosition(), java.util.List.of(light));
+            encounters(level).add(encounter);
+            light.hurt(level.damageSources().playerAttack(player), 1);
+            tickEncounter(encounter, level);
+            helper.assertTrue(light.position().add(light.beam(0)).distanceToSqr(player.getEyePosition()) < 0.001,
+                    "Warning beam did not initially aim at its aggressor");
+            // Introduce cover after the warning starts, far enough from the player
+            // that its destruction cannot reach them via the explosion radius.
+            var wall = new BlockPos(120, 248, 8);
+            for (var pos : BlockPos.betweenClosed(wall.offset(0, -4, -2), wall.offset(0, 5, 2)))
+                level.setBlock(pos, Blocks.GLASS.defaultBlockState(), 3);
+            loadBlastChunks(level, wall.getCenter());
+            setAge(light, 59);
+            tickEncounter(encounter, level);
+            var endpoint = light.position().add(light.beam(0));
+            helper.assertTrue(endpoint.x > 120 && endpoint.x < 122 && player.getHealth() == 20,
+                    "Warning beam ignored newly placed cover");
+            var impact = BlockPos.containing(endpoint.add(-0.01, 0, 0));
+            helper.assertTrue(level.getBlockState(impact).is(Blocks.GLASS), "Fixture missed its glass wall");
+            setAge(light, 60);
+            tickEncounter(encounter, level);
+            helper.assertTrue(level.getBlockState(impact).isAir() && player.getHealth() == 20,
+                    "Explosion failed to break cover or teleported through it onto the player");
+            light.discard();
+            level.players().remove(player);
             encounters(level).clear();
         } finally { EasterEggConfig.ENABLED.set(enabled); }
         helper.succeed();
@@ -669,7 +804,10 @@ public final class ObserverGameTests {
             Object encounter = encounter(witness.getUUID(), witness.blockPosition(), java.util.List.of(light));
             encounters(level).add(encounter);
             var origin = new net.minecraft.world.phys.Vec3(32, 232, 8);
-            var control = BlockPos.containing(origin).offset(0, 0, 8);
+            var control = BlockPos.containing(origin).offset(0, 0, 32);
+            var glass = BlockPos.containing(origin).below();
+            loadBlastChunks(level, origin);
+            level.setBlock(glass, Blocks.GLASS.defaultBlockState(), 3);
             level.getChunk(control.getX() >> 4, control.getZ() >> 4);
             level.setBlock(control, Blocks.REDSTONE_BLOCK.defaultBlockState(), 3);
             var type = cbc ? net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.get(
@@ -694,7 +832,7 @@ public final class ObserverGameTests {
             effectAnchor.setAccessible(true);
             helper.assertTrue(effectAnchor.get(encounter).equals(BlockPos.containing(origin)), "Counterfire followed a bystander instead of the cannon origin");
             for (int index = 0; index < 3; index++) {
-                setAge(light, 40 + index * 8);
+                setAge(light, 60 + index * 8);
                 tickEncounter(encounter, level);
                 helper.assertTrue((int) remaining.get(encounter) == 2 - index && light.beam(0).lengthSqr() > 0,
                         "Counterfire failed to emit three separated pulses");
@@ -703,8 +841,8 @@ public final class ObserverGameTests {
             }
             helper.assertTrue(level.getBlockState(control).getSignal(level, control, Direction.UP) == 0,
                     "Counterfire failed to interrupt the nearby cannon control");
-            helper.assertTrue(witness.getHealth() == 20 && level.getBlockState(control).is(Blocks.REDSTONE_BLOCK),
-                    "Counterfire harmed a bystander or destroyed its control block");
+            helper.assertTrue(witness.getHealth() == 20 && level.getBlockState(control).is(Blocks.REDSTONE_BLOCK)
+                    && level.getBlockState(glass).isAir(), "Counterfire failed to destroy its target or exceeded the blast radius");
             helper.assertTrue(level.getChunkSource().getLoadedChunksCount() == loaded, "Counterfire loaded extra chunks");
             encounters(level).clear();
             var finish = encounter.getClass().getDeclaredMethod("finish", net.minecraft.server.level.ServerLevel.class);

@@ -119,21 +119,39 @@ de forma aditiva en `no_knockback` y `no_impact`. `Encounter` permite un pulso n
 desde lejos, hasta 224 bloques y respetando la distancia mínima, tras 40 ticks de
 advertencia sincronizada. `traceShot` verifica chunks cargados antes de raycast,
 sin el límite de 128 de `LivingEntity.hasLineOfSight`. Recalcula obstáculos al
-disparar y dibuja el pulso hasta el impacto, con duración de cuatro ticks.
+disparar y dibuja el pulso hasta el impacto, con duración de diez ticks.
 Vidrio, paredes y cajas de vehículos u otros jugadores pueden detenerlo. El destino
 queda fijado al iniciar el aviso, sin reasignarlo a otra persona. Pide hasta dos puntos
 de daño, dejando dos puntos de salud antes de armadura y modificadores externos.
 Respeta invulnerabilidad y no altera movimiento ni estado de élitras. Los datos
 HOSTILE/WARNING/PULSE y el vector relativo del rayo viajan en `SynchedEntityData`;
-el renderer usa dos planos cruzados y amplía solo su caja de culling, no la hitbox.
+el renderer usa dos planos cruzados, núcleo y halo de haz, y un destello frontal
+1,5 bloques antes del extremo para que se vea al apuntar a la cámara. Amplía solo
+su caja de culling, no la hitbox.
 
 `ObserverEntity.hurt`, `AttackEntityEvent`, `ProjectileImpactEvent`, la trayectoria
 en `EntityTickEvent.Pre` y explosiones de proyectil notifican agresiones atribuibles.
 No se atribuye daño desconocido a una persona cercana. La primera provocación
-activa 200 ticks de hostilidad, aviso y una respuesta defensiva adicional contra
-el agresor original. Ataques posteriores no reinician la respuesta. Si se va el
+activa 200 ticks de hostilidad, color cálido y desplazamiento lateral también en
+una luz solitaria. Mantiene el haz 60 ticks sobre el agresor original, con partículas
+de llama/humo y sonido en el impacto antes de una explosión real. Ataques posteriores
+no reinician la respuesta. Si se va el
 agresor, no se dispara contra otro testigo. El seguimiento visual y el blanco de
 la represalia son estados separados.
+
+`detonate` verifica preajuste e interruptor antes de cualquier cálculo, y exige
+chunks ya cargados en el área de 16 bloques más un margen de dos. Usa potencia 8
+(`Explosion` duplica esa potencia para el radio de daño), `ExplosionInteraction.BLOCK`
+y resistencia vanilla, con límite adicional de 16 bloques para los centros de
+bloques destruidos. Conserva eventos de explosión y reglas de drops del motor.
+No limita daño ni protege entidades cercanas; puede matar y abrir el cascarón.
+No genera fuego persistente. El centro queda 0,25 bloques antes del impacto para
+evitar la rama vanilla que omite entidades con vector de empuje exactamente cero.
+Fuentes Minecraft 1.21.1 consultadas en la caché autorizada:
+`sourcesAndCompiledWithNeoForge_42f2db420ab373c8c4bc64d3fb9c7f08c61dc5a2_output.jar`,
+`Level.java:681–703,752–800`, `Explosion.java:216–315` y
+`ExplosionDamageCalculator.java:11–34`; partículas distantes en
+`ServerLevel.java:1276–1304`. La carga usa partículas visuales, sin quemar terreno.
 
 La contrabatería es genérica, sin nombres de mods en producción. `EntityJoinLevelEvent`
 registra origen de proyectiles nuevos solo con encuentros activos, máximo 512,
@@ -141,8 +159,9 @@ caducidad 400 ticks y sin guardar entidades en disco. Para armas sin dueño o co
 plataforma montada, entidad mecánica grande o máquina tras la boca, se responde
 al origen con tres pulsos separados ocho ticks, alcance máximo de 384. No busca
 un artillero por proximidad. Traslada interferencia solo si el origen está cargado
-y dentro de alcance. No destruye bloques ni entidades del arma ni daña a personas
-cercanas al punto. Un arma que se mueve puede eludir esa posición histórica.
+y dentro de alcance. Los tres impactos explotan tras la carga inicial de 60 ticks;
+pueden destruir el arma y dañar entidades cercanas. Un arma que se mueve puede
+eludir esa posición histórica.
 Armas de daño instantáneo sin un proyectil/origen reconocible pueden necesitar
 integración específica; no se promete compatibilidad universal.
 

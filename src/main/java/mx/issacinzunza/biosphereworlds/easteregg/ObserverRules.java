@@ -21,6 +21,8 @@ public final class ObserverRules {
     static final int INTERIOR_CLEARANCE = 32;
     static final int SHOT_RANGE = 224;
     static final int WARNING_TICKS = 40;
+    static final int RETALIATION_CHARGE_TICKS = 60;
+    static final int BLAST_RADIUS = 16;
     static final int HOSTILE_TICKS = 200;
 
     private ObserverRules() { }

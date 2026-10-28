@@ -101,6 +101,7 @@ public final class ObserverEntity extends Entity {
     public boolean warning() { return age() < entityData.get(WARNING); }
     public void warnUntil(int age) { entityData.set(WARNING, age); }
     public void lingerUntil(int age) { if (duration() < age) entityData.set(DURATION, age); }
+    public void clearBeam() { entityData.set(PULSE, -1); }
     public Vec3 beam(float partialTick) {
         return age() + partialTick < entityData.get(PULSE)
                 ? new Vec3(entityData.get(BEAM_X), entityData.get(BEAM_Y), entityData.get(BEAM_Z)) : Vec3.ZERO;
@@ -110,7 +111,7 @@ public final class ObserverEntity extends Entity {
         entityData.set(BEAM_X, (float) delta.x);
         entityData.set(BEAM_Y, (float) delta.y);
         entityData.set(BEAM_Z, (float) delta.z);
-        entityData.set(PULSE, age() + 4);
+        entityData.set(PULSE, age() + 10);
     }
     public float brightness(float partialTick) {
         double age = age() + partialTick;
@@ -127,6 +128,8 @@ public final class ObserverEntity extends Entity {
             offset = new ObserverRules.Offset(offset.x() * 0.75 + Math.cos(arc) * 6,
                     offset.y() + Math.sin(arc) * 4, offset.z() * 0.75);
         }
+        if (hostile()) offset = new ObserverRules.Offset(offset.x() + Math.sin(age * 0.07) * 18,
+                offset.y() + Math.cos(age * 0.09) * 5, offset.z());
         double scale = interior ? 0.45 : 1;
         double sin = Math.sin(heading), cos = Math.cos(heading);
         return origin.add((offset.x() * cos - offset.z() * sin) * scale, offset.y() * scale,
