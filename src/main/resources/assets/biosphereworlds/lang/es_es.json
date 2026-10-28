@@ -1,10 +1,10 @@
 {
   "entity.biosphereworlds.observer": "Señal desconocida",
-  "biosphereworlds.configuration.section.biosphereworlds.easter egg.toml": "Easter Egg",
-  "biosphereworlds.configuration.section.biosphereworlds.easter egg.toml.title": "Easter Egg",
+  "biosphereworlds.configuration.section.biosphereworlds.easter.egg.toml": "Easter Egg",
+  "biosphereworlds.configuration.section.biosphereworlds.easter.egg.toml.title": "Easter Egg",
   "biosphereworlds.configuration.Easter Egg": "Easter Egg",
   "biosphereworlds.configuration.Easter Egg.tooltip": "Activa o desactiva los easter egg.",
-  "biosphereworlds.configuration.enabled": "Activar Easter Egg",
+  "biosphereworlds.configuration.enabled": "Activado",
   "biosphereworlds.configuration.enabled.tooltip": "Activa o desactiva los easter egg en Biospheres y Solar Systems.",
   "biosphereworlds.observer.debug.world": "Los comandos del observador requieren el Overworld de un mundo Biospheres o Solar Systems.",
   "biosphereworlds.observer.debug.disabled": "Activa Easter Egg primero.",

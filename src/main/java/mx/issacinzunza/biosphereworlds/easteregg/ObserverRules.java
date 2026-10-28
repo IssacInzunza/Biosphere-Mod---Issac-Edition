@@ -46,8 +46,6 @@ public final class ObserverRules {
         return distancePerSecond >= 4 && distancePerSecond <= 120 && clearBlocksBelow >= 10;
     }
 
-    public static float attackDamage(float health) { return Math.max(0, Math.min(2, health - 2)); }
-
     public static boolean halloween(LocalDate date) {
         return date.getMonthValue() == 10 && date.getDayOfMonth() >= 25
                 || date.getMonthValue() == 11 && date.getDayOfMonth() <= 2;

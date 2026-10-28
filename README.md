@@ -198,7 +198,8 @@ Using a fresh world is strongly recommended to avoid broken borders with previou
 ### Easter Egg
 
 `config/biosphereworlds/Easter Egg.toml` contains one switch for Easter eggs in
-Biospheres and Solar Systems.
+Biospheres and Solar Systems. In the configuration menu, open **Easter Egg** to
+access the switch directly. Existing saved values are preserved.
 
 | Key / clave | Default | Behavior / comportamiento |
 |---|---|---|

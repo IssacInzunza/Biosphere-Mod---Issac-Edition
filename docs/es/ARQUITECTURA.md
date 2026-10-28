@@ -10,6 +10,15 @@ registrada por `SphereConfig.setup` y definida en `EasterEggConfig`. Se aplica a
 Overworld de Biospheres clásico y Solar Systems, incluidos mundos existentes;
 no se agrega a sus recetas ni cambia las versiones de layout.
 
+El menú identifica los archivos como Biospheres, Solar Systems y Easter Egg.
+Las traducciones usan la normalización de NeoForge (`easter.egg.toml`, sin espacios).
+`BiosphereWorldsClient` abre directamente la categoría existente de Easter Egg con
+`ConfigurationSectionScreen.Context.top` y su constructor de subsección. Solo se
+ve el interruptor, con el guardado, deshacer y recarga nativos. No se mueve la clave
+`["Easter Egg"].enabled` ni se restablece un valor false guardado; el defecto sigue true.
+API verificada en las fuentes oficiales 21.1.216, `client/gui/ConfigurationScreen.java:327–328,420–433,533–535`,
+obtenidas de [Maven de NeoForge](https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.216/neoforge-21.1.216-sources.jar).
+
 | Clave | Defecto | Rango / contrato |
 |---|---|---|
 | `enabled` | `true` | Único interruptor de todos los easter egg. False termina encuentros y restaura consultas normales de redstone. |
@@ -125,8 +134,9 @@ advertencia sincronizada. `traceShot` verifica chunks cargados antes de raycast,
 sin el límite de 128 de `LivingEntity.hasLineOfSight`. Recalcula obstáculos al
 disparar y dibuja el pulso hasta el impacto, con duración de diez ticks.
 Vidrio, paredes y cajas de vehículos u otros jugadores pueden detenerlo. El destino
-queda fijado al iniciar el aviso, sin reasignarlo a otra persona. Pide hasta dos puntos
-de daño, dejando dos puntos de salud antes de armadura y modificadores externos.
+queda fijado al iniciar el aviso, sin reasignarlo a otra persona. Pide dos puntos
+de daño base, sin consultar la salud ni reservar un mínimo para que sobreviva.
+Puede matar a un jugador con poca vida; armadura y modificadores normales siguen vigentes.
 Respeta invulnerabilidad y no altera movimiento ni estado de élitras. Los datos
 HOSTILE/WARNING/PULSE y el vector relativo del rayo viajan en `SynchedEntityData`;
 el renderer usa dos planos cruzados, núcleo y halo de haz, y un destello frontal
@@ -268,12 +278,15 @@ NeoForge 21.1.216, `neoforge-21.1.216-sources.jar`:
 `event/tick/LevelTickEvent.java:63` y `energy/IEnergyStorage.java:34,50`.
 
 Las pruebas puras cubren distribución exacta de luces, pesos horarios, fechas,
-continuidad de las seis variantes, rareza de ataque, margen de salud, destellos
+continuidad de las seis variantes, rareza de ataque, detección de vuelo, destellos
 y cuotas de drenaje. `ObserverGameTests` compara señales
 con la delegación anterior literal (por reflexión por ser protegida), comprueba
 vanilla sin estado y desactivación en un nivel clásico real. También cubre
 aparición desde el centro sobre el cascarón, margen interior, pared de vidrio
 fina, vuelo junto a un testigo móvil y un solo pulso sin cambiar velocidad.
+El pulso se comprueba también con tres puntos de salud (queda uno) y con dos
+(muerte), sin protección especial del mod. La revisión visual del acceso directo
+al interruptor y su guardado al reiniciar corresponde al cliente.
 Las pruebas están
 fuera del JAR distribuido. Radares, visibilidad, sincronización, interferencias
 y compatibilidad de bloques opcionales requieren la lista manual de

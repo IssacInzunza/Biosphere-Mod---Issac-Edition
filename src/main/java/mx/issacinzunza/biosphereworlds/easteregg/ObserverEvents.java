@@ -710,9 +710,8 @@ public final class ObserverEvents {
                         leader().pulse(shot.end());
                         if (retaliationUsed) detonate(level, leader(), shot.end());
                         else if (battery == null && shot.reachesTarget() && player != null) {
-                            float damage = ObserverRules.attackDamage(player.getHealth());
-                            if (damage > 0) player.hurt(new DamageSource(level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE)
-                                    .getHolderOrThrow(PULSE)), damage);
+                            player.hurt(new DamageSource(level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE)
+                                    .getHolderOrThrow(PULSE)), 2);
                         }
                     }
                     shots--;

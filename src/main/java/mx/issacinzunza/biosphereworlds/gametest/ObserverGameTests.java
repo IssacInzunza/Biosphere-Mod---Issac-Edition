@@ -356,7 +356,7 @@ public final class ObserverGameTests {
             tickEncounter(lowHealth, level);
             setAge(light, 280);
             tickEncounter(lowHealth, level);
-            helper.assertTrue(player.getHealth() == 2, "Pulse failed to preserve its health margin");
+            helper.assertTrue(player.getHealth() == 1, "Pulse still reduced damage to preserve a health margin");
             player.setHealth(20);
             player.invulnerableTime = 0;
             Object shielded = encounter(player.getUUID(), player.blockPosition(), java.util.List.of(light));
@@ -367,6 +367,16 @@ public final class ObserverGameTests {
             tickEncounter(shielded, level);
             helper.assertTrue(player.getHealth() == 20 && light.beam(0).length() > 0 && light.beam(0).length() < 100,
                     "A wall added during the warning failed to stop the visible pulse");
+            for (var pos : BlockPos.betweenClosed(new BlockPos(88, 220, 6), new BlockPos(88, 285, 10)))
+                level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+            player.setHealth(2);
+            player.invulnerableTime = 0;
+            setAge(light, 200);
+            Object lethal = encounter(player.getUUID(), player.blockPosition(), java.util.List.of(light));
+            tickEncounter(lethal, level);
+            setAge(light, 240);
+            tickEncounter(lethal, level);
+            helper.assertTrue(player.getHealth() <= 0, "Natural pulse protected a player with one remaining heart");
             light.discard();
             level.players().remove(player);
         } finally { EasterEggConfig.ENABLED.set(enabled); }

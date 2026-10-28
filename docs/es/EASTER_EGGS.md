@@ -7,6 +7,9 @@ Su única opción pública es `enabled = true/false`. Este registro técnico con
 spoilers; las frecuencias y demás reglas son internas y no aparecen en el menú
 ni en el README.
 Todos se limitan a Biospheres clásico y Solar Systems. Vanilla queda excluido.
+El menú abre directamente el interruptor desde Easter Egg, sin una categoría
+intermedia repetida ni el rótulo genérico Common File. Mantiene la ruta y valores
+guardados del TOML; en instalaciones nuevas está activado por defecto.
 
 ## Fase 1 — El observador
 
@@ -107,8 +110,9 @@ Criterios:
   El pulso visible dura diez ticks y alcanza hasta 224 bloques, sin superar la
   distancia mínima. Recalcula obstáculos al disparar: paredes, vidrio y vehículos
   representados en el motor detienen el rayo, incluso si aparecieron tras el aviso.
-  Comprueba los chunks del trayecto antes de consultarlos. Solicita hasta 2 puntos de daño (un corazón), conservando al menos 2 puntos
-  de salud antes de modificadores de otros mods; respeta armadura e invulnerabilidad.
+  Comprueba los chunks del trayecto antes de consultarlos. Solicita 2 puntos de
+  daño base (un corazón), sin reducirlos según la salud restante ni reservar vida.
+  Puede matar; respeta armadura e invulnerabilidad normales de Minecraft.
   El tipo de daño no produce empuje ni altera las élitras; no hay embestida.
 - Represalia: una agresión atribuida activa diez segundos de hostilidad, color cálido,
   maniobras laterales incluso con una luz y pulsos eléctricos más frecuentes.

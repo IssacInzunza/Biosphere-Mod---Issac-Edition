@@ -26,15 +26,11 @@ class ObserverRulesTest {
         assertThrows(IllegalArgumentException.class, () -> ObserverRules.mode(100, false));
     }
 
-    @Test void flightUsesSustainedWorldMovementAndDamageLeavesAHealthMargin() {
+    @Test void flightUsesSustainedWorldMovement() {
         assertTrue(ObserverRules.movingInAir(12, 12));
         assertFalse(ObserverRules.movingInAir(12, 2));
         assertFalse(ObserverRules.movingInAir(0, 12));
         assertFalse(ObserverRules.movingInAir(1000, 12));
-        assertEquals(2, ObserverRules.attackDamage(20));
-        assertEquals(1, ObserverRules.attackDamage(3));
-        assertEquals(0, ObserverRules.attackDamage(2));
-        assertEquals(0, ObserverRules.attackDamage(1));
     }
 
     @Test void variantsHaveDistinctContinuousTrajectoriesForEveryDuration() {
