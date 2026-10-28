@@ -1,5 +1,266 @@
 # Arquitectura de Biosphere Worlds
 
+## Easter Egg — observador
+
+Documentación técnica con spoilers; el menú y el README solo anuncian que hay
+easter egg y permiten activarlos o desactivarlos.
+
+Configuración de ejecución independiente: `config/biosphereworlds/Easter Egg.toml`,
+registrada por `SphereConfig.setup` y definida en `EasterEggConfig`. Se aplica al
+Overworld de Biospheres clásico y Solar Systems, incluidos mundos existentes;
+no se agrega a sus recetas ni cambia las versiones de layout.
+
+| Clave | Defecto | Rango / contrato |
+|---|---|---|
+| `enabled` | `true` | Único interruptor de todos los easter egg. False termina encuentros y restaura consultas normales de redstone. |
+
+Frecuencias, duración, formación, radio y presupuesto son reglas internas de
+`ObserverRules`, sin opciones ni descripciones reveladoras en la configuración.
+El intervalo base es 180–360 minutos, duración 15–40 segundos (la primera represalia
+puede extenderla hasta diez segundos más), radio 64 bloques y
+presupuesto máximo compartido 5000 FE. Los dos pares internos conservan min ≤ max.
+
+`ObserverRules` es puro: pesos horarios, calendario, cantidad de luces, variantes,
+trayectorias, destellos, límites de daño y presupuesto de drenaje. En un ciclo completo el peso
+integrado es 5 % día, 15 % crepúsculo y 80 % noche. Montañas: ×1.5; Halloween
+(25/oct–2/nov, calendario del servidor): ×3. Los porcentajes no son cuotas por
+jugador. Hay un mínimo real de 40 minutos de juego activo entre encuentros
+naturales.
+
+Distribución 1/2/3/4/5 luces: 35/30/20/10/5 %. Se intenta aparición interior en
+el 15 % de sorteos compatibles, con máximo tres luces. `Mode` selecciona observación,
+formación, cambios de rumbo, acercamiento al vidrio, acompañamiento o ataque.
+El ataque conserva un 1 % del sorteo incluso volando; Halloween modifica frecuencia
+del encuentro, no esa proporción. Élitra y vuelo creativo se detectan directamente;
+otros vuelos por dos muestras de desplazamiento de 4–120 bloques/segundo con diez
+bloques libres debajo. Las muestras son temporales por nivel, caducan al salir y no
+usan clases ni IDs de mods de naves. No detecta transportes que solo desplacen al
+jugador visualmente o mantengan sus coordenadas en un espacio local inmóvil.
+
+`ObserverEvents` comprueba preajuste y dimensión antes de consultar configuración,
+geometría, estado o capacidades. El reloj vive en `PlayerPersisted`, bajo
+`biosphereworlds_observer`; sobrevive clonación, desconexión y reinicio y no avanza
+sin el jugador despierto y activo. Utiliza un `java.util.Random` propio basado en
+semilla, UUID y secuencia, sin consumir aleatoriedad de terreno o de entidades
+vanilla. Los comandos forzados omiten el reloj, pero respetan puerta principal,
+preajuste, chunks cargados y separación de 512 bloques.
+
+Cada luz es un `ObserverEntity` MISC sin IA, gravedad, guardado, drops ni colisión
+física, con hitbox consultable por escáneres. Hasta cinco comparten un encuentro.
+Los datos de inicio/índice/semilla/duración/variante se sincronizan mediante datos de
+entidad; el servidor mueve y el cliente interpola. `ObserverRenderer` dibuja
+cuadrados emisivos con profundidad; no atraviesa paredes ni requiere modelos,
+texturas generadas o iluminación dinámica. La verificación de espacio reutiliza
+`SphereLayout` o `SolarLayout`, sin duplicar geometría, y consulta bloques solo
+después de comprobar `getChunkNow`.
+El núcleo y halo aumentan cuatro veces su tamaño; halo exterior de seis bloques.
+El origen de las variantes estáticas exteriores conserva 80–160 bloques en horizontal y eleva su altura sobre
+la cota superior de la esfera/cuerpo real cuando los 80–160 sobre el jugador quedan
+demasiado bajos. Puede superar el techo de construcción. El límite de render y el
+registro de seguimiento suben a 1024; la distancia real también depende de chunks
+cargados, distancia de entidades y ajustes del servidor/cliente. No garantiza
+visibilidad desde centros de esferas extremas mayores que ese alcance.
+Las interiores exigen geometría interior con margen y aire; las exteriores
+conservan la exclusión de esferas/satélites. `freePath` comprueba pasos de medio
+bloque, con longitud acotada, para no atravesar vidrio o paredes finas. Ante una
+obstrucción se detienen, esperan tres segundos y se retiran si hay espacio.
+`FLYBY` y `ATTACK` siguen la posición actual de su dueño con velocidad limitada;
+no teletransportan luces ni requieren que el transporte sea una entidad montable.
+Sus offsets son lejanos: el acompañamiento exterior se mantiene normalmente a
+80–160 bloques. `clearOfWitnesses` protege todos los jugadores, no solo al seguido:
+mínimo de 64 bloques fuera y 32 dentro, comprobado sobre el segmento. También
+excluye cajas ampliadas de vehículos montados y entidades grandes. Ante aproximación
+se retiran y desvanecen; una intrusión inmediata hace desaparecer la luz. No se
+garantiza reconocer geometría virtual que un mod de naves no exponga como bloques,
+vehículo o entidad del motor. Las interiores ahora nacen a 48–72 bloques horizontales
+y 16–28 verticales cuando el espacio lo permite; pueden aplazarse en esferas pequeñas.
+
+El estado temporal es un attachment no serializado **por nivel**, manejado solo
+en el hilo del servidor, sin mapas estáticos de mundos ni participación en C2ME.
+El mixin de señales retorna sin leer ese estado cuando se ejecuta en un worker.
+La pérdida de una luz, desactivación o fin de duración termina todo el encuentro.
+`Encounter.keepWitness` mantiene un testigo válido o selecciona otro cercano si el
+anterior sale, muere o se aleja más de 1024. Cada testigo recibe una sola vez el
+descanso compartido, incluso si llega después. Grupos alejados pueden coexistir:
+separación respecto al origen o a las luces de 512 bloques, sin bloqueo global.
+`status` distingue luces, encuentros de la dimensión, cercanos y hostiles. `stop`
+también reconoce a participantes que viajaron lejos del origen.
+La zona se fija inicialmente en la posición del jugador. Una contrabatería
+alcanzable puede trasladarla al origen registrado del disparo, restaurando primero
+fuentes y antenas de la zona anterior. Máquinas y receptores se recogen de los block entities de chunks ya
+cargados, priorizando cercanía; hay un máximo de 256 candidatos de energía y 64
+receptores. La redstone ordinaria se busca primero en secciones cercanas no vacías,
+con un presupuesto de 8192 posiciones por tick y un máximo de 64 fuentes. Las
+fuentes halladas durante una ráfaga se notifican de inmediato. La búsqueda omite
+chunks descargados y secciones vacías, sin forzar su carga. Esto evita recorrer
+un cubo de más de dos millones de bloques en un solo tick al ampliar el radio.
+
+`MixinObserverRedstone` intercepta `BlockBehaviour.BlockStateBase.getSignal` y
+`getDirectSignal`, solo para las posiciones explícitamente recogidas durante un
+encuentro. Devuelve 0/15 durante ráfagas y deja ejecutar la lógica original entre
+ellas. Al terminar se retira primero el override y se notifican vecinos para
+recalcular contra los bloques actuales: no se sobrescriben cambios del jugador
+con una copia antigua. Puede activar TNT/puertas; el interruptor general desactiva
+todos los efectos del encuentro.
+Apagado o en vanilla devuelve a la ruta original sin crear estado de encuentro.
+
+`ObserverEnergy` respeta las caras FE extraíbles (IE, Crafts & Additions, Mekanism
+si las exponen). Cada bloque tiene una cuota del 5 % de su energía inicial; la
+interfaz FE genérica no identifica redes remotas ni multibloques compartidos.
+AE2 usa su capacidad pública `IN_WORLD_GRID_NODE_HOST` y `IEnergyService`, con
+deduplicación por red y contabilidad 2 FE = 1 AE. El adaptador reflectivo se carga
+solo si AE2 está instalado y se necesita drenaje. Firma verificada contra
+[AE2 19.2.17](https://github.com/AppliedEnergistics/Applied-Energistics-2/tree/neoforge/v19.2.17/src/main/java/appeng/api).
+Una API AE2 incompatible se registra y no impide arrancar el mod.
+El presupuesto total limita todas las luces; no se devuelve energía consumida.
+
+El ataque usa un tipo de daño propio `biosphereworlds:observer_pulse`, incluido
+de forma aditiva en `no_knockback` y `no_impact`. `Encounter` permite un pulso natural
+desde lejos, hasta 224 bloques y respetando la distancia mínima, tras 40 ticks de
+advertencia sincronizada. `traceShot` verifica chunks cargados antes de raycast,
+sin el límite de 128 de `LivingEntity.hasLineOfSight`. Recalcula obstáculos al
+disparar y dibuja el pulso hasta el impacto, con duración de cuatro ticks.
+Vidrio, paredes y cajas de vehículos u otros jugadores pueden detenerlo. El destino
+queda fijado al iniciar el aviso, sin reasignarlo a otra persona. Pide hasta dos puntos
+de daño, dejando dos puntos de salud antes de armadura y modificadores externos.
+Respeta invulnerabilidad y no altera movimiento ni estado de élitras. Los datos
+HOSTILE/WARNING/PULSE y el vector relativo del rayo viajan en `SynchedEntityData`;
+el renderer usa dos planos cruzados y amplía solo su caja de culling, no la hitbox.
+
+`ObserverEntity.hurt`, `AttackEntityEvent`, `ProjectileImpactEvent`, la trayectoria
+en `EntityTickEvent.Pre` y explosiones de proyectil notifican agresiones atribuibles.
+No se atribuye daño desconocido a una persona cercana. La primera provocación
+activa 200 ticks de hostilidad, aviso y una respuesta defensiva adicional contra
+el agresor original. Ataques posteriores no reinician la respuesta. Si se va el
+agresor, no se dispara contra otro testigo. El seguimiento visual y el blanco de
+la represalia son estados separados.
+
+La contrabatería es genérica, sin nombres de mods en producción. `EntityJoinLevelEvent`
+registra origen de proyectiles nuevos solo con encuentros activos, máximo 512,
+caducidad 400 ticks y sin guardar entidades en disco. Para armas sin dueño o con
+plataforma montada, entidad mecánica grande o máquina tras la boca, se responde
+al origen con tres pulsos separados ocho ticks, alcance máximo de 384. No busca
+un artillero por proximidad. Traslada interferencia solo si el origen está cargado
+y dentro de alcance. No destruye bloques ni entidades del arma ni daña a personas
+cercanas al punto. Un arma que se mueve puede eludir esa posición histórica.
+Armas de daño instantáneo sin un proyectil/origen reconocible pueden necesitar
+integración específica; no se promete compatibilidad universal.
+
+CBC se usa como prueba de un caso difícil, no como requisito: su fuente 1.21.1
+`AbstractCannonProjectile` extiende `Projectile` (línea 58), llama a `hurt` desde
+su colisión propia (386–401), pero `indirectArtilleryFire` no proporciona la entidad
+del proyectil (611–613). La observación del segmento de vuelo permite conservar
+el origen sin depender de ese DamageSource. Fuente:
+[AbstractCannonProjectile](https://github.com/Cannoneers-of-Create/CreateBigCannons/blob/create-v6-1.21.1/src/main/java/rbasamoyai/createbigcannons/munitions/AbstractCannonProjectile.java).
+`ObserverGameTests` prueba el mismo recorrido con un proyectil automático vanilla
+y, opcionalmente, con el `createbigcannons:shot` real. El registro se contrasta con
+[CBCEntityTypes:62](https://github.com/Cannoneers-of-Create/CreateBigCannons/blob/create-v6-1.21.1/src/main/java/rbasamoyai/createbigcannons/index/CBCEntityTypes.java#L62).
+
+`ObserverWireless` y dos mixins implementan la integración opcional CC:Tweaked sin
+dependencias de compilación. `MixinObserverWirelessLevel` guarda una lista inmutable
+volátil por nivel: el hilo del servidor publica centros de encuentros en ráfaga;
+los workers de computadoras solo leen la instantánea. No consultan attachments
+mutables ni conservan mapas estáticos de mundos. El interruptor corta el efecto
+inmediatamente; el fin/stop elimina las zonas publicadas.
+`MixinObserverWireless` es `@Pseudo`, dirigido a `WirelessNetwork.tryTransmit`
+(fuente oficial 1.21.1-1.120.2, línea 38). Comprueba nivel/preajuste antes de posiciones
+y bloquea entrega cuando uno de los extremos locales está a 64 bloques o menos.
+Afecta inalámbrico y Ender; no toca redes cableadas, canales, payloads, programas ni
+archivos. Firmas públicas `Packet.sender`, `PacketSender/PacketReceiver.getLevel`
+y `getPosition` enlazadas de forma reflectiva y perezosa. API incompatible deja
+pasar la entrega original. Un cambio del método interno requiere revalidar el
+mixin; la inyección es opcional para conservar el arranque sin CC o con otra versión.
+Fuentes: [WirelessNetwork](https://github.com/cc-tweaked/CC-Tweaked/blob/v1.21.1-1.120.2/projects/common/src/main/java/dan200/computercraft/shared/peripheral/modem/wireless/WirelessNetwork.java#L38),
+[PacketReceiver](https://tweaked.cc/mc-1.21.x/javadoc/dan200/computercraft/api/network/PacketReceiver.html)
+y [PacketSender](https://tweaked.cc/mc-1.21.x/javadoc/dan200/computercraft/api/network/PacketSender.html).
+Prueba aislada con JAR oficial CC 1.120.2, namespace `biosphereworlds_observer_cc`:
+frontera, emisión Ender, worker, recuperación, apagado y entrega vanilla comprobados
+contra `WirelessNetwork` real y endpoints de prueba. Hardware Lua/cableado/móvil
+y otras versiones siguen pendientes. Los GameTests y su plantilla no se distribuyen.
+
+`ObserverLinks` integra opcionalmente las Redstone Links de Create mediante sus
+firmas públicas, sin dependencia de compilación ni clases de Create en las firmas
+del mod. En la búsqueda inicial recoge hasta 64 receptores cargados dentro del
+radio del encuentro, incluidos los apagados. Quedan fuera del override genérico
+de señales: el adaptador llama a `RedstoneLinkBlockEntity.setSignal(0/15)` y Create
+actualiza su indicador y vecinos en su tick normal. Se reaplica durante cada
+ráfaga para cubrir cambios del transmisor en ese mismo tick.
+
+Al acabar la ráfaga o el encuentro se recalcula el máximo transmitido actual con
+`RedstoneLinkNetworkHandler.getNetworkOf/withinRange` e `IRedstoneLinkable`, sin
+restaurar un valor viejo ni cambiar objetos de frecuencia. Comprueba modo receptor,
+identidad del block entity, chunk cargado, preajuste e hilo del servidor. La
+limpieza restaura una interferencia previa aunque el interruptor general ya esté
+apagado. No escribe NBT ni llama a tick de Create manualmente en producción.
+
+Firmas contrastadas con los JAR oficiales Create 6.0.8 y 6.0.10 para Minecraft 1.21.1 y
+[su fuente pública de Redstone Links](https://github.com/Creators-of-Create/Create/tree/mc1.21.1/dev/src/main/java/com/simibubi/create/content/redstone/link).
+`ObserverGameTests.createReceiversPulseAndRestoreCurrentNetwork` usa antenas reales
+en un nivel clásico aislado y verifica indicador, pulsos, entrada y frecuencia
+cambiadas, apagado del interruptor y reemplazo del bloque. Su namespace separado
+`biosphereworlds_observer_create` evita jugadores simulados de otras pruebas que
+Create intenta sincronizar sin un cliente conectado. Se ejecuta con Create en
+`run/mods` y `runGameTestServer -PgameTestNamespaces=biosphereworlds_observer_create
+--no-configuration-cache`. El selector es de desarrollo; no añade opciones al mod.
+La plantilla extra y todos los GameTests se excluyen del JAR distribuido.
+
+Fuentes de motor consultadas, Minecraft 1.21.1, dentro de
+`C:/Users/issac/.gradle/caches/neoformruntime/intermediate_results/sourcesAndCompiledWithNeoForge_42f2db420ab373c8c4bc64d3fb9c7f08c61dc5a2_output.jar`:
+`Entity.java:342,1923,1925,2202` (contrato e interpolación),
+`EntityType.java:1334–1365` (guardado, summon y seguimiento),
+`BlockBehaviour.java:674–675,694–695` (delegación literal de señales),
+`ServerPlayer.java:1482–1484` (copia de PlayerPersisted),
+`Level.java:79` (attachment por nivel), `BiomeTags.java:12` (montañas).
+Para la prueba de Create: `BlockEntity.java:82,112` (carga y guardado del fixture).
+Para altura y búsqueda: `LevelChunk.java:195–203` (aire fuera de sus secciones),
+`ChunkAccess.java:160–165`, `LevelChunkSection.java:38–39,93–94`,
+`LevelHeightAccessor.java:19–24,39–40`, `ServerChunkCache.java:422` y
+`PersistentEntitySectionManager.java:83–90` (registro de entidades sin techo de bloques).
+Para daño y seguimiento: `DamageSource.java:56`, `LivingEntity.java:1237–1253,3033–3041`,
+`ServerPlayer.java:789–806`, `Entity.java:2235–2236`, `EntityGetter.java:199–207` y
+`ServerLevel.java:1438–1439`. El fixture no registra sus testigos como jugadores
+conectados: solo expone la lista para consultas por UUID, sin tickets de chunks.
+`ClassicPersistenceGameTests.Fixture.close` vacía tareas POI antes de cerrar sus
+almacenes mediante `managedBlock/pollTask` (`BlockableEventLoop.java:115–141`,
+`MinecraftServer.java:857–860`). Evita ejecutar tareas de chunks de prueba después
+de cerrar su almacenamiento; no cambia el cierre de mundos del mod distribuido.
+Para los pulsos y vehículos: `BlockGetter.java:69–85`, `AABB.java:41–43,405,603`,
+`Entity.java:1579–1585,3030–3034,3192,3257`, `ServerLevel.java:1326` y
+`Explosion.java:272,427`. Para las agresiones, fuentes NeoForge 21.1.216:
+`event/entity/player/AttackEntityEvent.java:30–35`,
+`event/entity/ProjectileImpactEvent.java:27–37`,
+`event/entity/EntityJoinLevelEvent.java:34–55`,
+`event/tick/EntityTickEvent.java:28–39` y `event/level/ExplosionEvent.java:65–79`.
+NeoForge 21.1.216, `neoforge-21.1.216-sources.jar`:
+`attachment/IAttachmentHolder.java:72–82`, `attachment/AttachmentType.java:95–96`,
+`event/tick/LevelTickEvent.java:63` y `energy/IEnergyStorage.java:34,50`.
+
+Las pruebas puras cubren distribución exacta de luces, pesos horarios, fechas,
+continuidad de las seis variantes, rareza de ataque, margen de salud, destellos
+y cuotas de drenaje. `ObserverGameTests` compara señales
+con la delegación anterior literal (por reflexión por ser protegida), comprueba
+vanilla sin estado y desactivación en un nivel clásico real. También cubre
+aparición desde el centro sobre el cascarón, margen interior, pared de vidrio
+fina, vuelo junto a un testigo móvil y un solo pulso sin cambiar velocidad.
+Las pruebas están
+fuera del JAR distribuido. Radares, visibilidad, sincronización, interferencias
+y compatibilidad de bloques opcionales requieren la lista manual de
+[EASTER_EGGS.md](EASTER_EGGS.md). No se promete compatibilidad de radar sin probar
+su versión/filtros; Advanced Peripherals documenta `Environment Detector.scanEntities`.
+
+Las pruebas del observador usan el namespace `biosphereworlds_observer`, separado
+de las de worldgen para evitar mezclar sus niveles temporales con jugadores
+conectados simulados de otras baterías durante el guardado/cierre de GameTestServer.
+Ejecutar por separado `runGameTestServer` y
+`runGameTestServer -PgameTestNamespaces=biosphereworlds_observer`; ambas rutas
+mantienen las comprobaciones de no-op vanilla y apagado. Las plantillas de prueba
+de todos esos namespaces se excluyen del JAR.
+La prueba de CBC real usa `biosphereworlds_observer_cbc`. CBC 5.11.7 requiere
+NeoForge 21.1.228 y Create 6.0.10 requiere al menos 21.1.219; se prueban con argumento
+temporal `'-Pneo_version=21.1.228'`, sin editar `gradle.properties` ni cambiar la base
+21.1.216 del proyecto. RPL usado: 2.1.2. Se conserva además una prueba de proyectil
+automático vanilla para verificar que no depende de CBC.
+
 ## Corrección de altura de satélites
 
 `SphereLayout.satellitesAtCell` activa la adaptación vertical de

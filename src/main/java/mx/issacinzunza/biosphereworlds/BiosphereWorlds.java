@@ -22,6 +22,8 @@ public class BiosphereWorlds {
 
     public BiosphereWorlds(IEventBus modEventBus, ModContainer modContainer) {
         SphereConfig.setup(modContainer);
+        mx.issacinzunza.biosphereworlds.easteregg.ObserverEntity.TYPES.register(modEventBus);
+        mx.issacinzunza.biosphereworlds.easteregg.ObserverEvents.ATTACHMENTS.register(modEventBus);
         modEventBus.addListener((net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent event) ->
                 event.registrar("1").optional().playToClient(
                         mx.issacinzunza.biosphereworlds.event.SolarGuidePayload.TYPE,

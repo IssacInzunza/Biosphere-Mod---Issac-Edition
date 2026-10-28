@@ -195,6 +195,15 @@ Using a fresh world is strongly recommended to avoid broken borders with previou
 
 ## Configuration
 
+### Easter Egg
+
+`config/biosphereworlds/Easter Egg.toml` contains one switch for Easter eggs in
+Biospheres and Solar Systems.
+
+| Key / clave | Default | Behavior / comportamiento |
+|---|---|---|
+| `enabled` | `true` | Enable or disable Easter eggs. / Activar o desactivar los easter egg. |
+
 Config file path in development environment: `run/config/biosphereworlds/BiosphereWorlds.toml`
 
 Typical path in normal client/server installations: `<game_dir>/config/biosphereworlds/BiosphereWorlds.toml`

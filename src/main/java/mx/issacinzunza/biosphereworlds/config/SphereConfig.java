@@ -228,5 +228,6 @@ public class SphereConfig {
         migrateConfigFiles(FMLPaths.CONFIGDIR.get());
         modContainer.registerConfig(ModConfig.Type.COMMON, SPEC, "biosphereworlds/BiosphereWorlds.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, SolarConfig.SPEC, "biosphereworlds/SolarSystems.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, EasterEggConfig.SPEC, "biosphereworlds/Easter Egg.toml");
     }
 }

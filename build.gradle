@@ -51,7 +51,7 @@ neoForge {
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
             type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', providers.gradleProperty('gameTestNamespaces').getOrElse(project.mod_id)
         }
 
         data {
@@ -98,6 +98,10 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 tasks.named('jar', Jar) {
     exclude 'mx/issacinzunza/biosphereworlds/gametest/**'
     exclude 'data/biosphereworlds/structure/solar_empty.nbt'
+    exclude 'data/biosphereworlds_observer_create/**'
+    exclude 'data/biosphereworlds_observer_cc/**'
+    exclude 'data/biosphereworlds_observer_cbc/**'
+    exclude 'data/biosphereworlds_observer/**'
 }
 
 tasks.named('test', Test) {

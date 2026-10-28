@@ -34,8 +34,10 @@ public class BiosphereWorldsClient {
     private static ClientLevel guideLevel;
     private static long guideExpires;
 
-    public BiosphereWorldsClient(ModContainer modContainer) {
+    public BiosphereWorldsClient(net.neoforged.bus.api.IEventBus modEventBus, ModContainer modContainer) {
         modContainer.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
+        modEventBus.addListener((net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) ->
+                event.registerEntityRenderer(mx.issacinzunza.biosphereworlds.easteregg.ObserverEntity.TYPE.get(), ObserverRenderer::new));
         NeoForge.EVENT_BUS.addListener(BiosphereWorldsClient::renderGuide);
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> {
             guide = null;
