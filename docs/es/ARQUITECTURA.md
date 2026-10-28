@@ -115,11 +115,16 @@ dimensión y centro X/Z originales; exige permanecer en esa dimensión y valida 
 el centro corresponda a un cuerpo orbital del layout, sin aceptar sol ni lunas.
 
 Solo al ejecutar el TP, `SolarEvents.findPlanetArrival` recorre como máximo las 9x9
-columnas centrales, de la más cercana hacia fuera y de arriba abajo. Reutiliza
-`Body.containsBox` con margen 2 para excluir cascarón y exterior, comprueba borde
-del mundo, soporte sólido completo sin fluido ni magma, pies/cabeza en aire y
-colisión de la caja real del jugador. Permite una bajada de un bloque sobre capas
-de nieve. Si no hay destino adecuado, cancela sin mover al jugador. Puede cargar
+columnas centrales, de la más cercana hacia fuera. Consulta únicamente la superficie
+`WORLD_SURFACE`, ya filtrada por Solar para excluir cascarón y satélites e incluyendo
+fluidos. Solo baja a través de nieve o decoración inofensiva contigua al suelo;
+se detiene ante aire, fluido u obstrucción y nunca busca una cueva más abajo.
+Si esa superficie no sirve, pasa a otra columna. Reutiliza `Body.containsBox` con
+margen 2 y comprueba borde, soporte de colisión completo sin fluido, espacio para
+pies/cabeza y colisión de la caja real del jugador. Rechaza lava, fuego, magma,
+hogueras, cactus, bayas, rosas del Wither y nieve en polvo en los 3x3 bloques desde
+el soporte hasta la cabeza. Permite una bajada de un bloque sobre capas de nieve.
+Si no hay superficie adecuada, cancela sin mover al jugador. Puede cargar
 o generar chunks del destino al pulsar; el listado conserva su consulta sin chunks.
 El TP desmonta al jugador y reinicia velocidad y distancia de caída. No construye
 plataformas ni modifica bloques. El destino puede diferir de las coordenadas del
@@ -127,8 +132,12 @@ centro que se muestran. Los textos existen en en_us, es_es y es_mx.
 No añade configuración ni altera generación, snapshots o versiones del layout.
 
 El GameTest `planetTeleportRequiresSupportClearanceAndPlanetInterior` verifica vacío,
-suelo sólido, nieve, agua/lava/telarañas, techo bajo, magma, alternativa cercana y
-rechazo del cascarón. Usa un jugador simulado para comprobar colisiones y la búsqueda;
+suelo sólido, nieve, plantas inofensivas, agua/lava/telarañas, techo bajo, peligros
+adyacentes, alternativa cercana y rechazo del cascarón.
+`planetTeleportRejectsCavesBelowUnsafeSurface` reproduce una cueva bajo una superficie
+con agua/lava/magma/telarañas: debe cancelar o elegir otra columna de superficie,
+nunca el suelo inferior. La regresión falló con la búsqueda anterior.
+Usan un jugador simulado para comprobar colisiones y la búsqueda;
 el movimiento y el clic en un cliente real se verifican manualmente.
 
 `SolarLayoutTest` comprueba centros, planetas, borde inclusivo, exterior inmediato,

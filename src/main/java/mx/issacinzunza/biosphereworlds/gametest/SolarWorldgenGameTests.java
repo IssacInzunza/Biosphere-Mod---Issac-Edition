@@ -33,6 +33,38 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(BiosphereWorlds.MODID)
 @PrefixGameTestTemplate(false)
 public final class SolarWorldgenGameTests {
+    @GameTest(template = "solar_empty", batch = "planet_surface")
+    public static void planetTeleportRejectsCavesBelowUnsafeSurface(GameTestHelper helper)
+            throws ReflectiveOperationException {
+        var level = helper.getLevel();
+        var floor = helper.absolutePos(new BlockPos(8, 8, 8));
+        var planet = new SolarLayout.Body(1, floor.getX() + 0.5, floor.getY() + 4,
+                floor.getZ() + 0.5, 12, false, SolarLayout.Climate.TEMPERATE);
+        for (int dx = -4; dx <= 4; dx++) {
+            for (int dz = -4; dz <= 4; dz++) {
+                for (int dy = -12; dy <= 20; dy++) {
+                    level.setBlock(floor.offset(dx, dy, dz), Blocks.AIR.defaultBlockState(), 2);
+                }
+            }
+        }
+        level.setBlock(floor, Blocks.STONE.defaultBlockState(), 2);
+        var surface = floor.above(5);
+        level.setBlock(surface, Blocks.STONE.defaultBlockState(), 2);
+        for (var obstruction : new net.minecraft.world.level.block.Block[]{Blocks.WATER, Blocks.LAVA,
+                Blocks.MAGMA_BLOCK, Blocks.COBWEB}) {
+            level.setBlock(surface.above(), obstruction.defaultBlockState(), 2);
+            // The lower stone and its two air blocks form a cave, never an alternate surface.
+            assertPlanetArrival(helper, planet, null);
+        }
+        level.setBlock(surface.above(), Blocks.AIR.defaultBlockState(), 2);
+        assertPlanetArrival(helper, planet, surface.above());
+        level.setBlock(surface.above(), Blocks.WATER.defaultBlockState(), 2);
+        var nearbySurface = surface.offset(1, 0, 0);
+        level.setBlock(nearbySurface, Blocks.STONE.defaultBlockState(), 2);
+        assertPlanetArrival(helper, planet, nearbySurface.above());
+        helper.succeed();
+    }
+
     @GameTest(template = "solar_empty", batch = "planet_navigation")
     public static void planetTeleportRequiresSupportClearanceAndPlanetInterior(GameTestHelper helper)
             throws ReflectiveOperationException {
@@ -62,6 +94,25 @@ public final class SolarWorldgenGameTests {
         level.setBlock(floor.above(2), Blocks.AIR.defaultBlockState(), 2);
         level.setBlock(floor, Blocks.MAGMA_BLOCK.defaultBlockState(), 2);
         assertPlanetArrival(helper, planet, null);
+        level.setBlock(floor, Blocks.STONE.defaultBlockState(), 2);
+        for (var hazard : new net.minecraft.world.level.block.Block[]{Blocks.LAVA, Blocks.FIRE,
+                Blocks.SOUL_FIRE, Blocks.MAGMA_BLOCK, Blocks.CAMPFIRE, Blocks.CACTUS,
+                Blocks.SWEET_BERRY_BUSH, Blocks.WITHER_ROSE, Blocks.POWDER_SNOW}) {
+            var hazardPos = floor.offset(1, 1, 0);
+            var support = hazard == Blocks.SOUL_FIRE ? Blocks.SOUL_SAND : hazard == Blocks.CACTUS ? Blocks.SAND : Blocks.DIRT;
+            level.setBlock(hazardPos.below(), support.defaultBlockState(), 2);
+            level.setBlock(hazardPos, hazard.defaultBlockState(), 2);
+            helper.assertTrue(level.getBlockState(hazardPos).is(hazard), "Hazard fixture must remain present: " + hazard);
+            assertPlanetArrival(helper, planet, null);
+            level.setBlock(hazardPos, Blocks.AIR.defaultBlockState(), 2);
+            level.setBlock(hazardPos.below(), Blocks.AIR.defaultBlockState(), 2);
+        }
+        for (var decoration : new net.minecraft.world.level.block.Block[]{Blocks.SHORT_GRASS, Blocks.DANDELION}) {
+            level.setBlock(floor.above(), decoration.defaultBlockState(), 2);
+            assertPlanetArrival(helper, planet, floor.above());
+        }
+        level.setBlock(floor.above(), Blocks.AIR.defaultBlockState(), 2);
+        level.setBlock(floor, Blocks.AIR.defaultBlockState(), 2);
         var nearby = floor.offset(1, 0, 0);
         level.setBlock(nearby, Blocks.STONE.defaultBlockState(), 2);
         assertPlanetArrival(helper, planet, nearby.above());
