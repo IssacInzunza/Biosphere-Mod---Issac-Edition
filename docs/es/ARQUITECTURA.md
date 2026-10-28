@@ -108,15 +108,37 @@ de la celda actual; fuera devuelve null y el comando informa que no hay sistema.
 La respuesta enumera solo cuerpos orbitales (excluye sol y lunas), ordenados por
 distancia 3D al centro. El número de planeta conserva su índice en `System.bodies`,
 independientemente del orden de proximidad. Muestra clima, coordenadas de bloque
-del centro y distancia redondeada. Esas coordenadas son referencias de navegación,
-no destinos seguros de teletransporte. Los textos existen en en_us, es_es y es_mx.
+del centro y distancia redondeada. Las coordenadas verdes tienen un clic de ejecución
+de `/biospheres locate planets teleport <dimension> <x> <z>`, con el mismo permiso
+de nivel 2 heredado del nodo `planets` y un texto al pasar el cursor. El enlace guarda
+dimensión y centro X/Z originales; exige permanecer en esa dimensión y valida que
+el centro corresponda a un cuerpo orbital del layout, sin aceptar sol ni lunas.
+
+Solo al ejecutar el TP, `SolarEvents.findPlanetArrival` recorre como máximo las 9x9
+columnas centrales, de la más cercana hacia fuera y de arriba abajo. Reutiliza
+`Body.containsBox` con margen 2 para excluir cascarón y exterior, comprueba borde
+del mundo, soporte sólido completo sin fluido ni magma, pies/cabeza en aire y
+colisión de la caja real del jugador. Permite una bajada de un bloque sobre capas
+de nieve. Si no hay destino adecuado, cancela sin mover al jugador. Puede cargar
+o generar chunks del destino al pulsar; el listado conserva su consulta sin chunks.
+El TP desmonta al jugador y reinicia velocidad y distancia de caída. No construye
+plataformas ni modifica bloques. El destino puede diferir de las coordenadas del
+centro que se muestran. Los textos existen en en_us, es_es y es_mx.
 No añade configuración ni altera generación, snapshots o versiones del layout.
+
+El GameTest `planetTeleportRequiresSupportClearanceAndPlanetInterior` verifica vacío,
+suelo sólido, nieve, agua/lava/telarañas, techo bajo, magma, alternativa cercana y
+rechazo del cascarón. Usa un jugador simulado para comprobar colisiones y la búsqueda;
+el movimiento y el clic en un cliente real se verifican manualmente.
 
 `SolarLayoutTest` comprueba centros, planetas, borde inclusivo, exterior inmediato,
 esquinas y vacío entre sistemas, con celdas negativas, semillas y layouts 1–7.
 Queda verificar en juego registro/autocompletado, uso con OP de nivel 2 o superior,
 rechazo y ausencia de autocompletado de `planets` con permisos inferiores, orden y distancias,
 idiomas, cambios de sistema y rechazo en clásico, vanilla, Nether, End y consola.
+Verificar también clic/tooltip, enlaces antiguos tras cambiar de sistema o dimensión,
+pérdida de OP después de listar, llegada a terreno/nieve, planetas aún no visitados
+y cancelación cuando no existe un lugar adecuado en la zona de búsqueda.
 
 ## Estrella guía Solar
 

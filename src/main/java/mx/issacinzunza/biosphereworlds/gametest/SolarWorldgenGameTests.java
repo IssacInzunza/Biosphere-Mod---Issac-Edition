@@ -33,6 +33,55 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(BiosphereWorlds.MODID)
 @PrefixGameTestTemplate(false)
 public final class SolarWorldgenGameTests {
+    @GameTest(template = "solar_empty", batch = "planet_navigation")
+    public static void planetTeleportRequiresSupportClearanceAndPlanetInterior(GameTestHelper helper)
+            throws ReflectiveOperationException {
+        var level = helper.getLevel();
+        var floor = helper.absolutePos(new BlockPos(8, 8, 8));
+        var planet = new SolarLayout.Body(1, floor.getX() + 0.5, floor.getY() + 1.5,
+                floor.getZ() + 0.5, 5, false, SolarLayout.Climate.TEMPERATE);
+        for (int dx = -4; dx <= 4; dx++) {
+            for (int dz = -4; dz <= 4; dz++) {
+                for (int dy = -5; dy <= 8; dy++) {
+                    level.setBlock(floor.offset(dx, dy, dz), Blocks.AIR.defaultBlockState(), 2);
+                }
+            }
+        }
+        assertPlanetArrival(helper, planet, null);
+        level.setBlock(floor, Blocks.STONE.defaultBlockState(), 2);
+        assertPlanetArrival(helper, planet, floor.above());
+        level.setBlock(floor.above(), Blocks.SNOW.defaultBlockState(), 2);
+        assertPlanetArrival(helper, planet, floor.above(2));
+        for (var obstruction : new net.minecraft.world.level.block.Block[]{Blocks.WATER, Blocks.LAVA, Blocks.COBWEB}) {
+            level.setBlock(floor.above(), obstruction.defaultBlockState(), 2);
+            assertPlanetArrival(helper, planet, null);
+        }
+        level.setBlock(floor.above(), Blocks.AIR.defaultBlockState(), 2);
+        level.setBlock(floor.above(2), Blocks.STONE.defaultBlockState(), 2);
+        assertPlanetArrival(helper, planet, null);
+        level.setBlock(floor.above(2), Blocks.AIR.defaultBlockState(), 2);
+        level.setBlock(floor, Blocks.MAGMA_BLOCK.defaultBlockState(), 2);
+        assertPlanetArrival(helper, planet, null);
+        var nearby = floor.offset(1, 0, 0);
+        level.setBlock(nearby, Blocks.STONE.defaultBlockState(), 2);
+        assertPlanetArrival(helper, planet, nearby.above());
+        level.setBlock(nearby, Blocks.AIR.defaultBlockState(), 2);
+        level.setBlock(floor, Blocks.AIR.defaultBlockState(), 2);
+        level.setBlock(floor.above(3), Blocks.GLASS.defaultBlockState(), 2);
+        assertPlanetArrival(helper, planet, null);
+        helper.succeed();
+    }
+
+    private static void assertPlanetArrival(GameTestHelper helper, SolarLayout.Body planet, BlockPos expected)
+            throws ReflectiveOperationException {
+        var find = mx.issacinzunza.biosphereworlds.event.SolarEvents.class.getDeclaredMethod("findPlanetArrival",
+                net.minecraft.server.level.ServerLevel.class, SolarLayout.Body.class, net.minecraft.server.level.ServerPlayer.class);
+        find.setAccessible(true);
+        var player = net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(helper.getLevel());
+        var actual = (BlockPos) find.invoke(null, helper.getLevel(), planet, player);
+        helper.assertTrue(java.util.Objects.equals(actual, expected), "Expected planet landing " + expected + ", got " + actual);
+    }
+
     @GameTest(template = "solar_empty")
     public static void solarExposesMultiNoiseAndPreservesClimateRouting(GameTestHelper helper) {
         var registries = helper.getLevel().registryAccess();

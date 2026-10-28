@@ -25,8 +25,14 @@ with stable planet numbers, climate, center block coordinates and rounded 3D
 distance to each center. The sun and moons are excluded. Between systems, outside
 their horizontal radius, it reports that you are outside a solar system. It uses
 the world's saved layout without loading or generating chunks, including in
-existing Solar worlds. Reported centers are navigation references, not safe
-teleport destinations. Classic Biospheres and vanilla dimensions reject the command.
+existing Solar worlds. Click the green center coordinates to teleport: the server
+checks for a landing spot in the central 9x9 columns, inside the planet, with full
+solid support (excluding magma), air for the player and no collision. Snow layers
+are supported. If no suitable spot exists, teleport is canceled. Only clicking
+may load or generate destination chunks. Links retain their original dimension
+and planet; they reject use in another dimension or after losing OP permission.
+The landing position can differ from the displayed center. Classic Biospheres
+and vanilla dimensions reject the command.
 
 Solar worlds also show a violet End-themed guide star toward the current system's
 center, slightly above the horizon. It pulses gently, fades over the last 64 blocks

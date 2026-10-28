@@ -1,5 +1,6 @@
 package mx.issacinzunza.biosphereworlds.event;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import java.util.Comparator;
 import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkGenerator;
 import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarLayout;
@@ -10,10 +11,16 @@ import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.DimensionArgument;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.ExplosionEvent;
@@ -34,7 +41,15 @@ public final class SolarEvents {
                 .then(Commands.literal("locate")
                         .then(Commands.literal("planets")
                                 .requires(source -> source.hasPermission(2))
-                                .executes(context -> locatePlanets(context.getSource())))));
+                                .executes(context -> locatePlanets(context.getSource()))
+                                .then(Commands.literal("teleport")
+                                        .then(Commands.argument("dimension", DimensionArgument.dimension())
+                                                .then(Commands.argument("x", IntegerArgumentType.integer(-30_000_000, 30_000_000))
+                                                        .then(Commands.argument("z", IntegerArgumentType.integer(-30_000_000, 30_000_000))
+                                                                .executes(context -> teleportToPlanet(context.getSource(),
+                                                                        DimensionArgument.getDimension(context, "dimension"),
+                                                                        IntegerArgumentType.getInteger(context, "x"),
+                                                                        IntegerArgumentType.getInteger(context, "z"))))))))));
     }
 
     private static int locatePlanets(CommandSourceStack source) {
@@ -63,11 +78,90 @@ public final class SolarEvents {
                 case COLD -> "commands.biosphereworlds.planets.climate.cold";
             });
             long distance = Math.round(Math.sqrt(position.distanceToSqr(planet.x(), planet.y(), planet.z())));
+            int x = (int) Math.floor(planet.x());
+            int y = (int) Math.floor(planet.y());
+            int z = (int) Math.floor(planet.z());
+            String command = "/biospheres locate planets teleport " + player.serverLevel().dimension().location()
+                    + " " + x + " " + z;
+            var coordinates = Component.translatable("commands.biosphereworlds.planets.coordinates", x, y, z)
+                    .withStyle(style -> style.withColor(ChatFormatting.GREEN)
+                            .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
+                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                    Component.translatable("commands.biosphereworlds.planets.teleport_hint"))));
             source.sendSuccess(() -> Component.translatable("commands.biosphereworlds.planets.entry",
-                    system.bodies().indexOf(planet), climate, (int) Math.floor(planet.x()),
-                    (int) Math.floor(planet.y()), (int) Math.floor(planet.z()), distance), false);
+                    system.bodies().indexOf(planet), climate, coordinates, distance), false);
         }
         return planets.size();
+    }
+
+    private static int teleportToPlanet(CommandSourceStack source, ServerLevel destination, int x, int z) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.player_only"));
+            return 0;
+        }
+        var level = player.serverLevel();
+        if (!(level.getChunkSource().getGenerator() instanceof SolarChunkGenerator generator)) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.solar_only"));
+            return 0;
+        }
+        if (level != destination) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.wrong_dimension"));
+            return 0;
+        }
+        var planet = generator.layout().systemAtBlock(x, z).bodies().stream()
+                .filter(body -> !body.central() && (int) Math.floor(body.x()) == x && (int) Math.floor(body.z()) == z)
+                .findFirst().orElse(null);
+        if (planet == null) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.invalid_planet"));
+            return 0;
+        }
+        var arrival = findPlanetArrival(level, planet, player);
+        if (arrival == null) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.no_landing"));
+            return 0;
+        }
+        player.stopRiding();
+        player.teleportTo(arrival.getX() + 0.5, arrival.getY(), arrival.getZ() + 0.5);
+        player.setDeltaMovement(Vec3.ZERO);
+        player.fallDistance = 0;
+        source.sendSuccess(() -> Component.translatable("commands.biosphereworlds.planets.teleported",
+                arrival.getX(), arrival.getY(), arrival.getZ()), false);
+        return 1;
+    }
+
+    /** Bounded search in the central 9x9 columns; only clicking a link may load destination chunks. */
+    private static BlockPos findPlanetArrival(ServerLevel level, SolarLayout.Body planet, ServerPlayer player) {
+        int centerX = (int) Math.floor(planet.x());
+        int centerZ = (int) Math.floor(planet.z());
+        for (int ring = 0; ring <= 4; ring++) {
+            for (int dx = -ring; dx <= ring; dx++) {
+                for (int dz = -ring; dz <= ring; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
+                    int x = centerX + dx;
+                    int z = centerZ + dz;
+                    for (int y = level.getMaxBuildHeight() - 4; y >= level.getMinBuildHeight(); y--) {
+                        if (!planet.containsBox(x, y, z, x + 1, y + 3, z + 1, 2)) continue;
+                        var floor = new BlockPos(x, y, z);
+                        if (!level.getWorldBorder().isWithinBounds(floor)) continue;
+                        var state = level.getBlockState(floor);
+                        if (!state.isSolid() || !state.isCollisionShapeFullBlock(level, floor)
+                                || !state.getFluidState().isEmpty() || state.is(Blocks.MAGMA_BLOCK)) continue;
+                        var feet = floor.above();
+                        // Leave a one-block descent onto snow rather than treating every snowy surface as blocked.
+                        if (level.getBlockState(feet).is(Blocks.SNOW)) feet = feet.above();
+                        if (!level.getBlockState(feet).isAir() || !level.getBlockState(feet.above()).isAir()
+                                || !planet.containsBox(x, feet.getY(), z, x + 1, feet.getY() + 2, z + 1, 2)) continue;
+                        var bounds = player.getBoundingBox().move(x + 0.5 - player.getX(),
+                                feet.getY() - player.getY(), z + 0.5 - player.getZ());
+                        var border = level.getWorldBorder();
+                        if (bounds.minX < border.getMinX() || bounds.maxX > border.getMaxX()
+                                || bounds.minZ < border.getMinZ() || bounds.maxZ > border.getMaxZ()) continue;
+                        if (level.noCollision(player, bounds)) return feet;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     @SubscribeEvent public static void guide(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
