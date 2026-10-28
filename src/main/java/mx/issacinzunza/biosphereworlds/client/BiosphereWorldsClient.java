@@ -1,6 +1,8 @@
 package mx.issacinzunza.biosphereworlds.client;
 
 import mx.issacinzunza.biosphereworlds.BiosphereWorlds;
+import mx.issacinzunza.biosphereworlds.config.EasterEggConfig;
+import com.electronwill.nightconfig.core.UnmodifiableConfig;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -40,8 +42,21 @@ public class BiosphereWorldsClient {
     private static ClientLevel planetGuideLevel;
     private static long planetGuidesExpire;
 
-    public BiosphereWorldsClient(ModContainer modContainer) {
-        modContainer.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
+    public BiosphereWorldsClient(net.neoforged.bus.api.IEventBus modEventBus, ModContainer modContainer) {
+        modContainer.registerExtensionPoint(IConfigScreenFactory.class, (container, parent) ->
+                new ConfigurationScreen(container, parent, (screen, type, config, title) -> {
+                    if (config.getSpec() != EasterEggConfig.SPEC)
+                        return new ConfigurationScreen.ConfigurationSectionScreen(screen, type, config, title);
+                    // Open the existing category directly, preserving its saved key and
+                    // NeoForge's native editing, undo, save and reload behavior.
+                    UnmodifiableConfig values = EasterEggConfig.SPEC.getValues().get("Easter Egg");
+                    UnmodifiableConfig specs = EasterEggConfig.SPEC.getSpec().get("Easter Egg");
+                    var context = ConfigurationScreen.ConfigurationSectionScreen.Context.top(config.getModId(), screen, config, null);
+                    return new ConfigurationScreen.ConfigurationSectionScreen(context, screen, specs.valueMap(),
+                            "Easter Egg", values.entrySet(), title);
+                }));
+        modEventBus.addListener((net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) ->
+                event.registerEntityRenderer(mx.issacinzunza.biosphereworlds.easteregg.ObserverEntity.TYPE.get(), ObserverRenderer::new));
         NeoForge.EVENT_BUS.addListener(BiosphereWorldsClient::renderGuide);
         NeoForge.EVENT_BUS.addListener(BiosphereWorldsClient::renderPlanetGuides);
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> {

@@ -229,13 +229,19 @@ public final class ClassicPersistenceGameTests {
         helper.succeed();
     }
 
-    private record Fixture(ServerLevel level, LevelStorageSource.LevelStorageAccess storage) implements AutoCloseable {
+    record Fixture(ServerLevel level, LevelStorageSource.LevelStorageAccess storage) implements AutoCloseable {
         @Override public void close() throws Exception {
-            try { level.close(); IOUtilities.waitUntilIOWorkerComplete(); }
+            // Chunk generation queues POI updates on the server. Drain them before closing their storage.
+            try {
+                // managedBlock also runs fresh TickTasks when this test has exceeded the tick budget.
+                level.getServer().managedBlock(() -> !level.getServer().pollTask());
+                level.close();
+                IOUtilities.waitUntilIOWorkerComplete();
+            }
             finally { storage.close(); }
         }
     }
-    private static Fixture open(GameTestHelper helper, Path root, String name, boolean fresh, boolean classic) throws Exception {
+    static Fixture open(GameTestHelper helper, Path root, String name, boolean fresh, boolean classic) throws Exception {
         var server = helper.getLevel().getServer();
         var registry = helper.getLevel().registryAccess();
         var storage = LevelStorageSource.createDefault(root).createAccess(name);
