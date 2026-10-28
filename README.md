@@ -25,16 +25,12 @@ with stable planet numbers, climate, center block coordinates and rounded 3D
 distance to each center. The sun and moons are excluded. Between systems, outside
 their horizontal radius, it reports that you are outside a solar system. It uses
 the world's saved layout without loading or generating chunks, including in
-existing Solar worlds. Click the green center coordinates to teleport: the server
-checks only the outer surface of the central 9x9 columns, using Solar's heightmaps
-that ignore the shell and moons. It requires full solid support, room for the player,
-no collision, and no lava, fire, magma or other known hazards in the surrounding
-3x3 area from the support to head height. Snow and harmless surface plants are
-supported. An unsafe surface skips that column, never descending into a cave.
-If no suitable surface exists, teleport is canceled. Only clicking
-may load or generate destination chunks. Links retain their original dimension
+existing Solar worlds. Click the green center coordinates to teleport directly
+into the sky above the planet's center, 16 blocks above the world's build ceiling
+(Y=336 in the standard Solar Overworld). There is no ground or route search.
+The player's game mode is preserved. Links retain their original dimension
 and planet; they reject use in another dimension or after losing OP permission.
-The landing position can differ from the displayed center. Classic Biospheres
+The teleport height differs from the displayed center Y. Classic Biospheres
 and vanilla dimensions reject the command.
 
 Solar worlds also show a violet End-themed guide star toward the current system's

@@ -114,31 +114,13 @@ de nivel 2 heredado del nodo `planets` y un texto al pasar el cursor. El enlace 
 dimensión y centro X/Z originales; exige permanecer en esa dimensión y valida que
 el centro corresponda a un cuerpo orbital del layout, sin aceptar sol ni lunas.
 
-Solo al ejecutar el TP, `SolarEvents.findPlanetArrival` recorre como máximo las 9x9
-columnas centrales, de la más cercana hacia fuera. Consulta únicamente la superficie
-`WORLD_SURFACE`, ya filtrada por Solar para excluir cascarón y satélites e incluyendo
-fluidos. Solo baja a través de nieve o decoración inofensiva contigua al suelo;
-se detiene ante aire, fluido u obstrucción y nunca busca una cueva más abajo.
-Si esa superficie no sirve, pasa a otra columna. Reutiliza `Body.containsBox` con
-margen 2 y comprueba borde, soporte de colisión completo sin fluido, espacio para
-pies/cabeza y colisión de la caja real del jugador. Rechaza lava, fuego, magma,
-hogueras, cactus, bayas, rosas del Wither y nieve en polvo en los 3x3 bloques desde
-el soporte hasta la cabeza. Permite una bajada de un bloque sobre capas de nieve.
-Si no hay superficie adecuada, cancela sin mover al jugador. Puede cargar
-o generar chunks del destino al pulsar; el listado conserva su consulta sin chunks.
-El TP desmonta al jugador y reinicia velocidad y distancia de caída. No construye
-plataformas ni modifica bloques. El destino puede diferir de las coordenadas del
-centro que se muestran. Los textos existen en en_us, es_es y es_mx.
+`SolarEvents.teleportToPlanet` coloca directamente al jugador en el cielo sobre el
+centro X/Z validado, a `getMaxBuildHeight() + 16` (Y=336 en el Overworld Solar
+estándar). No busca suelo ni rutas y no consulta bloques ni heightmaps. Desmonta
+al jugador y reinicia velocidad y distancia de caída, conservando su modo de juego.
+La altura de TP difiere de la Y del centro mostrada en la lista. Los textos existen
+en en_us, es_es y es_mx.
 No añade configuración ni altera generación, snapshots o versiones del layout.
-
-El GameTest `planetTeleportRequiresSupportClearanceAndPlanetInterior` verifica vacío,
-suelo sólido, nieve, plantas inofensivas, agua/lava/telarañas, techo bajo, peligros
-adyacentes, alternativa cercana y rechazo del cascarón.
-`planetTeleportRejectsCavesBelowUnsafeSurface` reproduce una cueva bajo una superficie
-con agua/lava/magma/telarañas: debe cancelar o elegir otra columna de superficie,
-nunca el suelo inferior. La regresión falló con la búsqueda anterior.
-Usan un jugador simulado para comprobar colisiones y la búsqueda;
-el movimiento y el clic en un cliente real se verifican manualmente.
 
 `SolarLayoutTest` comprueba centros, planetas, borde inclusivo, exterior inmediato,
 esquinas y vacío entre sistemas, con celdas negativas, semillas y layouts 1–7.
@@ -146,8 +128,8 @@ Queda verificar en juego registro/autocompletado, uso con OP de nivel 2 o superi
 rechazo y ausencia de autocompletado de `planets` con permisos inferiores, orden y distancias,
 idiomas, cambios de sistema y rechazo en clásico, vanilla, Nether, End y consola.
 Verificar también clic/tooltip, enlaces antiguos tras cambiar de sistema o dimensión,
-pérdida de OP después de listar, llegada a terreno/nieve, planetas aún no visitados
-y cancelación cuando no existe un lugar adecuado en la zona de búsqueda.
+pérdida de OP después de listar y llegada al cielo sobre el planeta con terreno,
+agua o vegetación debajo, incluidos planetas aún no visitados.
 
 ## Estrella guía Solar
 
