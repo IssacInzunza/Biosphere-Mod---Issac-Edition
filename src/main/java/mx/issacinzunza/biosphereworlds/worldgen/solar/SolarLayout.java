@@ -205,6 +205,13 @@ public final class SolarLayout {
         return systemAtCell((int) Math.floor(x / params.spacing()), (int) Math.floor(z / params.spacing()));
     }
 
+    /** Returns the system inside its inclusive horizontal envelope, or null in inter-system space. */
+    public System systemContaining(double x, double z) {
+        var system = systemAtBlock(x, z);
+        var center = system.central();
+        return Math.hypot(x - center.x(), z - center.z()) <= params.systemRadius() ? system : null;
+    }
+
     public System systemAtCell(int cellX, int cellZ) {
         long key = ((long) cellX << 32) ^ (cellZ & 0xffffffffL);
         int slot = (int) mix(key) & 255;

@@ -95,6 +95,42 @@ reabrir: tanto chunks nuevos como antiguos conservan la receta guardada. La ruta
 legacy continúa cubierta por GameTests; un mundo anterior sin receta sigue el
 TOML como antes. Alcance y límites en [VERIFICACION-MOTOR-2026-10-22.md](VERIFICACION-MOTOR-2026-10-22.md).
 
+## Comando para localizar planetas
+
+`SolarEvents.registerCommands` registra `/biospheres locate planets` en el servidor,
+con permiso de operador de nivel 2 o superior en el nodo `planets`, requerido para
+ejecución y autocompletado. Antes de consultar geometría o cachés, comprueba
+`SolarChunkGenerator`; además exige que el ejecutor sea un jugador. Usa su posición
+real y el layout guardado del mundo, también en versiones 1–7, sin consultar chunks.
+`SolarLayout.systemContaining` aplica el radio horizontal inclusivo del sistema
+de la celda actual; fuera devuelve null y el comando informa que no hay sistema.
+
+La respuesta enumera solo cuerpos orbitales (excluye sol y lunas), ordenados por
+distancia 3D al centro. El número de planeta conserva su índice en `System.bodies`,
+independientemente del orden de proximidad. Muestra clima, coordenadas de bloque
+del centro y distancia redondeada. Las coordenadas verdes tienen un clic de ejecución
+de `/biospheres locate planets teleport <dimension> <x> <z>`, con el mismo permiso
+de nivel 2 heredado del nodo `planets` y un texto al pasar el cursor. El enlace guarda
+dimensión y centro X/Z originales; exige permanecer en esa dimensión y valida que
+el centro corresponda a un cuerpo orbital del layout, sin aceptar sol ni lunas.
+
+`SolarEvents.teleportToPlanet` coloca directamente al jugador en el cielo sobre el
+centro X/Z validado, a `getMaxBuildHeight() + 16` (Y=336 en el Overworld Solar
+estándar). No busca suelo ni rutas y no consulta bloques ni heightmaps. Desmonta
+al jugador y reinicia velocidad y distancia de caída, conservando su modo de juego.
+La altura de TP difiere de la Y del centro mostrada en la lista. Los textos existen
+en en_us, es_es y es_mx.
+No añade configuración ni altera generación, snapshots o versiones del layout.
+
+`SolarLayoutTest` comprueba centros, planetas, borde inclusivo, exterior inmediato,
+esquinas y vacío entre sistemas, con celdas negativas, semillas y layouts 1–7.
+Queda verificar en juego registro/autocompletado, uso con OP de nivel 2 o superior,
+rechazo y ausencia de autocompletado de `planets` con permisos inferiores, orden y distancias,
+idiomas, cambios de sistema y rechazo en clásico, vanilla, Nether, End y consola.
+Verificar también clic/tooltip, enlaces antiguos tras cambiar de sistema o dimensión,
+pérdida de OP después de listar y llegada al cielo sobre el planeta con terreno,
+agua o vegetación debajo, incluidos planetas aún no visitados.
+
 ## Estrella guía Solar
 
 `SolarEvents.guide` comprueba primero `SolarChunkGenerator` y envía cada diez ticks

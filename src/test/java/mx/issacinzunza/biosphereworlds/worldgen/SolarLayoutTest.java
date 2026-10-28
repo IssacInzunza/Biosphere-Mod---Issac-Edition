@@ -13,6 +13,34 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class SolarLayoutTest {
     @Test
+    void currentSystemIncludesPlanetsAndBoundaryButExcludesSpaceBetweenSystems() {
+        int radius = SolarLayout.requiredSingleOrbitSystemRadius(8, 128, 180, 400, 75, 12, 16);
+        var params = new SolarLayout.Params(radius, 1500, 8, 128, 128, 180, 400, 400,
+                false, 30, 40, 30, 3, 30, 55, 16);
+        for (int version = 1; version <= 7; version++) {
+            for (long seed : new long[]{0, 71, Long.MIN_VALUE}) {
+                var layout = new SolarLayout(seed, params, version, SolarLayout.PlacementOptions.defaults());
+                for (int cell : new int[]{-4, 0, 3}) {
+                    var system = layout.systemAtCell(cell, -2);
+                    var center = system.central();
+                    assertEquals(system, layout.systemContaining(center.x(), center.z()));
+                    for (var planet : system.bodies()) {
+                        assertEquals(system, layout.systemContaining(planet.x(), planet.z()));
+                    }
+                    double edge = center.x() + radius;
+                    assertEquals(system, layout.systemContaining(edge, center.z()));
+                    assertEquals(system, layout.systemContaining(Math.nextDown(edge), center.z()));
+                    assertNull(layout.systemContaining(Math.nextUp(edge), center.z()));
+                    assertNull(layout.systemContaining(center.x(), center.z() - radius - 1));
+                    assertNull(layout.systemContaining(center.x() + radius, center.z() + radius));
+                    var next = layout.systemAtCell(cell + 1, -2).central();
+                    assertNull(layout.systemContaining((center.x() + next.x()) / 2, (center.z() + next.z()) / 2));
+                }
+            }
+        }
+    }
+
+    @Test
     void largeSpawnPlanetRecoversItsTwoMoonsOnlyInLayoutSeven() {
         long seed = -7284467477822061774L;
         var params = largeMoonParams(3);

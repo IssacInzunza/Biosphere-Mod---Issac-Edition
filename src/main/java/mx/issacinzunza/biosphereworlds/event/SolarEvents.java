@@ -1,5 +1,7 @@
 package mx.issacinzunza.biosphereworlds.event;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import java.util.Comparator;
 import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkGenerator;
 import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarLayout;
 import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarGuardians;
@@ -7,14 +9,24 @@ import mx.issacinzunza.biosphereworlds.worldgen.solar.SolarChunkAccess;
 import net.neoforged.neoforge.event.entity.living.MobSpawnEvent;
 import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.minecraft.core.BlockPos;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.DimensionArgument;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 
 
@@ -22,6 +34,94 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 @EventBusSubscriber
 public final class SolarEvents {
     private SolarEvents() { }
+
+    @SubscribeEvent public static void registerCommands(RegisterCommandsEvent event) {
+        event.getDispatcher().register(Commands.literal("biospheres")
+                .then(Commands.literal("locate")
+                        .then(Commands.literal("planets")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(context -> locatePlanets(context.getSource()))
+                                .then(Commands.literal("teleport")
+                                        .then(Commands.argument("dimension", DimensionArgument.dimension())
+                                                .then(Commands.argument("x", IntegerArgumentType.integer(-30_000_000, 30_000_000))
+                                                        .then(Commands.argument("z", IntegerArgumentType.integer(-30_000_000, 30_000_000))
+                                                                .executes(context -> teleportToPlanet(context.getSource(),
+                                                                        DimensionArgument.getDimension(context, "dimension"),
+                                                                        IntegerArgumentType.getInteger(context, "x"),
+                                                                        IntegerArgumentType.getInteger(context, "z"))))))))));
+    }
+
+    private static int locatePlanets(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.player_only"));
+            return 0;
+        }
+        if (!(player.serverLevel().getChunkSource().getGenerator() instanceof SolarChunkGenerator generator)) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.solar_only"));
+            return 0;
+        }
+        var position = player.position();
+        var system = generator.layout().systemContaining(position.x, position.z);
+        if (system == null) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.outside_system"));
+            return 0;
+        }
+        var planets = system.bodies().stream().filter(body -> !body.central())
+                .sorted(Comparator.comparingDouble(body -> position.distanceToSqr(body.x(), body.y(), body.z())))
+                .toList();
+        source.sendSuccess(() -> Component.translatable("commands.biosphereworlds.planets.header", planets.size()), false);
+        for (var planet : planets) {
+            var climate = Component.translatable(switch (planet.climate()) {
+                case HOT -> "commands.biosphereworlds.planets.climate.hot";
+                case TEMPERATE -> "commands.biosphereworlds.planets.climate.temperate";
+                case COLD -> "commands.biosphereworlds.planets.climate.cold";
+            });
+            long distance = Math.round(Math.sqrt(position.distanceToSqr(planet.x(), planet.y(), planet.z())));
+            int x = (int) Math.floor(planet.x());
+            int y = (int) Math.floor(planet.y());
+            int z = (int) Math.floor(planet.z());
+            String command = "/biospheres locate planets teleport " + player.serverLevel().dimension().location()
+                    + " " + x + " " + z;
+            var coordinates = Component.translatable("commands.biosphereworlds.planets.coordinates", x, y, z)
+                    .withStyle(style -> style.withColor(ChatFormatting.GREEN)
+                            .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
+                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                    Component.translatable("commands.biosphereworlds.planets.teleport_hint"))));
+            source.sendSuccess(() -> Component.translatable("commands.biosphereworlds.planets.entry",
+                    system.bodies().indexOf(planet), climate, coordinates, distance), false);
+        }
+        return planets.size();
+    }
+
+    private static int teleportToPlanet(CommandSourceStack source, ServerLevel destination, int x, int z) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.player_only"));
+            return 0;
+        }
+        var level = player.serverLevel();
+        if (!(level.getChunkSource().getGenerator() instanceof SolarChunkGenerator generator)) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.solar_only"));
+            return 0;
+        }
+        if (level != destination) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.wrong_dimension"));
+            return 0;
+        }
+        var planet = generator.layout().systemAtBlock(x, z).bodies().stream()
+                .filter(body -> !body.central() && (int) Math.floor(body.x()) == x && (int) Math.floor(body.z()) == z)
+                .findFirst().orElse(null);
+        if (planet == null) {
+            source.sendFailure(Component.translatable("commands.biosphereworlds.planets.invalid_planet"));
+            return 0;
+        }
+        int y = level.getMaxBuildHeight() + 16;
+        player.stopRiding();
+        player.teleportTo(x + 0.5, y, z + 0.5);
+        player.setDeltaMovement(Vec3.ZERO);
+        player.fallDistance = 0;
+        source.sendSuccess(() -> Component.translatable("commands.biosphereworlds.planets.teleported", x, y, z), false);
+        return 1;
+    }
 
     @SubscribeEvent public static void guide(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)
