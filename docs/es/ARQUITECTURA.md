@@ -98,7 +98,8 @@ TOML como antes. Alcance y límites en [VERIFICACION-MOTOR-2026-10-22.md](VERIFI
 ## Comando para localizar planetas
 
 `SolarEvents.registerCommands` registra `/biospheres locate planets` en el servidor,
-sin exigir permisos de operador. Antes de consultar geometría o cachés, comprueba
+con permiso de operador de nivel 2 o superior en el nodo `planets`, requerido para
+ejecución y autocompletado. Antes de consultar geometría o cachés, comprueba
 `SolarChunkGenerator`; además exige que el ejecutor sea un jugador. Usa su posición
 real y el layout guardado del mundo, también en versiones 1–7, sin consultar chunks.
 `SolarLayout.systemContaining` aplica el radio horizontal inclusivo del sistema
@@ -113,7 +114,8 @@ No añade configuración ni altera generación, snapshots o versiones del layout
 
 `SolarLayoutTest` comprueba centros, planetas, borde inclusivo, exterior inmediato,
 esquinas y vacío entre sistemas, con celdas negativas, semillas y layouts 1–7.
-Queda verificar en juego registro/autocompletado, uso sin OP, orden y distancias,
+Queda verificar en juego registro/autocompletado, uso con OP de nivel 2 o superior,
+rechazo y ausencia de autocompletado de `planets` con permisos inferiores, orden y distancias,
 idiomas, cambios de sistema y rechazo en clásico, vanilla, Nether, End y consola.
 
 ## Estrella guía Solar

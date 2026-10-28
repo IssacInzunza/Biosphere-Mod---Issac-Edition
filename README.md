@@ -20,7 +20,7 @@ relocate saved planets or silently replace a saved world's settings.
 Generate Structures must be enabled.
 
 Use `/biospheres locate planets` as a player in a Solar world; operator permission
-is not required. It lists the current system's orbital planets, nearest first,
+level 2 or higher is required. It lists the current system's orbital planets, nearest first,
 with stable planet numbers, climate, center block coordinates and rounded 3D
 distance to each center. The sun and moons are excluded. Between systems, outside
 their horizontal radius, it reports that you are outside a solar system. It uses

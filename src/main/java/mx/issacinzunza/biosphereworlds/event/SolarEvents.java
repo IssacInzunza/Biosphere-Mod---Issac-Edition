@@ -33,6 +33,7 @@ public final class SolarEvents {
         event.getDispatcher().register(Commands.literal("biospheres")
                 .then(Commands.literal("locate")
                         .then(Commands.literal("planets")
+                                .requires(source -> source.hasPermission(2))
                                 .executes(context -> locatePlanets(context.getSource())))));
     }
 
