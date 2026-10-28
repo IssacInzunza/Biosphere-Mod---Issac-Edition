@@ -135,7 +135,7 @@ public final class SolarWorldgenGameTests {
         level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 2);
         assertSpawnSearch(helper, pos, 0, pos);
         level.setBlock(pos.below(), Blocks.WATER.defaultBlockState(), 2);
-        assertSpawnSearch(helper, pos, 0, null);
+        assertSpawnSearch(helper, pos, 0, pos);
         level.setBlock(pos.below(), Blocks.AIR.defaultBlockState(), 2);
         assertSpawnSearch(helper, pos, 0, null);
         level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 2);
@@ -157,18 +157,35 @@ public final class SolarWorldgenGameTests {
         assertSpawnSearch(helper, pos, 1, alternate);
         level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 2);
         assertSpawnSearch(helper, pos, 1, pos);
+        // Dry land wins even when the original column has an exposed ocean surface.
+        level.setBlock(pos.below(), Blocks.WATER.defaultBlockState(), 2);
+        assertSpawnSearch(helper, pos, 1, alternate);
+        // A roofed air pocket below water is not an exposed spawn surface.
+        level.setBlock(alternate.below(), Blocks.AIR.defaultBlockState(), 2);
+        level.setBlock(pos.above(3), Blocks.WATER.defaultBlockState(), 2);
+        assertSpawnSearch(helper, pos, 0, pos.above(4));
+        level.setBlock(pos.above(3), Blocks.LAVA.defaultBlockState(), 2);
+        assertSpawnSearch(helper, pos, 0, null);
+        level.setBlock(pos.above(3), Blocks.AIR.defaultBlockState(), 2);
+        level.setBlock(pos.below(), Blocks.MAGMA_BLOCK.defaultBlockState(), 2);
+        assertSpawnSearch(helper, pos, 0, null);
         helper.succeed();
     }
 
     private static void assertSpawnSearch(GameTestHelper helper, BlockPos pos, int radius, BlockPos expected)
             throws ReflectiveOperationException {
         var find = mx.issacinzunza.biosphereworlds.event.PlayerSpawnHandler.class.getDeclaredMethod("findValidPosition",
-                net.minecraft.world.level.Level.class, BlockPos.class, int.class, java.util.function.Predicate.class);
+                net.minecraft.world.level.Level.class, BlockPos.class, int.class, java.util.function.Predicate.class,
+                java.util.function.Predicate.class);
         find.setAccessible(true);
         java.util.function.Predicate<net.minecraft.world.level.block.state.BlockState> shell =
                 state -> state.is(Blocks.GLASS) || state.is(Blocks.TINTED_GLASS);
-        var actual = (BlockPos) find.invoke(null, helper.getLevel(), pos, radius, shell);
+        java.util.function.Predicate<BlockPos> inside = candidate -> true;
+        var actual = (BlockPos) find.invoke(null, helper.getLevel(), pos, radius, shell, inside);
         helper.assertTrue(java.util.Objects.equals(actual, expected), "Expected shared spawn destination " + expected + ", got " + actual);
+        java.util.function.Predicate<BlockPos> outside = candidate -> false;
+        helper.assertTrue(find.invoke(null, helper.getLevel(), pos, radius, shell, outside) == null,
+                "Spawn must never leave the selected sphere");
     }
 
     /** Produces independent orbit envelopes for current test fixtures; older snapshots keep their exact params. */
