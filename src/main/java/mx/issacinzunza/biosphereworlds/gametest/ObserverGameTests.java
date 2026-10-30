@@ -23,6 +23,40 @@ public final class ObserverGameTests {
     private ObserverGameTests() { }
 
     @GameTest(template = "solar_empty")
+    public static void observerCommandsRequireOperatorsInEitherRegistrationOrder(GameTestHelper helper) {
+        var commands = new java.util.ArrayList<String>(java.util.List.of("observer", "observer 5",
+                "observer interference", "observer interference 5", "observer stop", "observer status",
+                "observer inside", "observer inside 3"));
+        for (var mode : mx.issacinzunza.biosphereworlds.easteregg.ObserverRules.Mode.values()) {
+            String name = mode.name().toLowerCase(java.util.Locale.ROOT);
+            commands.add("observer " + name);
+            commands.add("observer " + name + " 5");
+            commands.add("observer inside " + name);
+            commands.add("observer inside " + name + " 3");
+        }
+        var context = net.minecraft.commands.CommandBuildContext.simple(helper.getLevel().registryAccess(),
+                net.minecraft.world.flag.FeatureFlagSet.of());
+        for (boolean solarFirst : new boolean[]{true, false}) {
+            var dispatcher = new com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack>();
+            var event = new net.neoforged.neoforge.event.RegisterCommandsEvent(dispatcher,
+                    net.minecraft.commands.Commands.CommandSelection.ALL, context);
+            if (solarFirst) mx.issacinzunza.biosphereworlds.event.SolarEvents.registerCommands(event);
+            ObserverEvents.commands(event);
+            if (!solarFirst) mx.issacinzunza.biosphereworlds.event.SolarEvents.registerCommands(event);
+            for (int permission = 0; permission <= 2; permission++) {
+                var source = helper.getLevel().getServer().createCommandSourceStack().withPermission(permission);
+                for (String command : commands) {
+                    var parsed = dispatcher.parse("biospheres debug " + command, source);
+                    boolean accepted = !parsed.getReader().canRead() && parsed.getExceptions().isEmpty();
+                    helper.assertTrue(accepted == (permission == 2),
+                            "Wrong access for permission " + permission + ", solarFirst=" + solarFirst + ": " + command);
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "solar_empty")
     public static void vanillaSignalsEqualTheLiteralPreObserverMethods(GameTestHelper helper) throws Exception {
         var level = helper.getLevel();
         helper.assertTrue(!ObserverEvents.applies(level), "Fixture must be vanilla");

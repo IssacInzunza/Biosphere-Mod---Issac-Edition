@@ -750,6 +750,7 @@ public final class ObserverEvents {
 
     @SubscribeEvent public static void commands(RegisterCommandsEvent event) {
         var observer = Commands.literal("observer")
+                .requires(source -> source.hasPermission(2))
                 .executes(c -> debugSpawn(c.getSource(), 0, false))
                 .then(Commands.argument("lights", IntegerArgumentType.integer(1, ObserverRules.MAX_LIGHTS))
                         .executes(c -> debugSpawn(c.getSource(), IntegerArgumentType.getInteger(c, "lights"), false)))
@@ -771,7 +772,7 @@ public final class ObserverEvents {
                             .executes(c -> debugSpawn(c.getSource(), IntegerArgumentType.getInteger(c, "lights"), false, mode, true))));
         }
         observer.then(inside);
-        event.getDispatcher().register(Commands.literal("biospheres").requires(s -> s.hasPermission(2))
+        event.getDispatcher().register(Commands.literal("biospheres")
                 .then(Commands.literal("debug").then(observer)));
     }
 
